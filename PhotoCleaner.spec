@@ -52,10 +52,11 @@ mediapipe_datas, mediapipe_binaries, mediapipe_hiddenimports = collect_all('medi
 haar_xml_files = []
 try:
     _, cv2_pkg_dir = get_package_paths('cv2')
-    cv2_data_path = Path(cv2_pkg_dir) / 'data' / 'haarcascades'
+    cv2_data_path = Path(cv2_pkg_dir) / 'data'
     if cv2_data_path.exists():
-        haar_xml_files = [(str(xml_file), 'cv2/data/haarcascades') 
-                          for xml_file in cv2_data_path.glob('*.xml')]
+        # Haar cascade XMLs are directly in cv2/data/, not in cv2/data/haarcascades/
+        haar_xml_files = [(str(xml_file), 'cv2/data') 
+                          for xml_file in cv2_data_path.glob('haarcascade_*.xml')]
         print(f"[BUILD] Found {len(haar_xml_files)} Haar Cascade XML files in {cv2_data_path}")
     else:
         print(f"[BUILD] WARNING: Haar Cascade directory not found: {cv2_data_path}")

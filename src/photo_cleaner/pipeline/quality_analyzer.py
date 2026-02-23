@@ -390,7 +390,10 @@ def _resolve_haar_cascade_dir() -> Path | None:
         return _HAAR_CASCADE_DIR_CACHE
 
     _HAAR_CASCADE_DIR_CHECKED = True
-    if not CV2_AVAILABLE or _cv2 is None:
+    
+    # Note: We don't check if _cv2 is loaded because the resolver should work
+    # even before cv2 is lazily imported. We'll just check the filesystem paths.
+    if not CV2_AVAILABLE:
         _HAAR_CASCADE_DIR_CACHE = None
         return _HAAR_CASCADE_DIR_CACHE
 
@@ -401,39 +404,55 @@ def _resolve_haar_cascade_dir() -> Path | None:
             candidates.append(Path(env_dir))
     except Exception:
         pass
-    try:
-        data_dir = getattr(_cv2.data, "haarcascades", None)
-        if data_dir:
-            candidates.append(Path(data_dir))
-    except Exception:
-        pass
-    try:
-        module_dir = Path(_cv2.__file__).resolve().parent
-        candidates.append(module_dir / "data" / "haarcascades")
-        candidates.append(module_dir.parent / "cv2" / "data" / "haarcascades")
-    except Exception:
-        pass
+    
+    # Try to get cv2 module for path resolution (might not be lazily imported yet)
+    cv2_module = _cv2
+    if cv2_module is None:
+        try:
+            import cv2 as cv2_temp
+            cv2_module = cv2_temp
+        except Exception:
+            cv2_module = None
+    
+    if cv2_module is not None:
+        try:
+            data_dir = getattr(cv2_module.data, "haarcascades", None)
+            if data_dir:
+                candidates.append(Path(data_dir))
+        except Exception:
+            pass
+        try:
+            module_dir = Path(cv2_module.__file__).resolve().parent
+            candidates.append(module_dir / "data" / "haarcascades")
+            candidates.append(module_dir / "data")  # Haar cascades are directly in data/, not data/haarcascades/
+            candidates.append(module_dir.parent / "cv2" / "data" / "haarcascades")
+            candidates.append(module_dir.parent / "cv2" / "data")
+        except Exception:
+            pass
+    
     try:
         app_dir = AppConfig.get_app_dir()
         candidates.append(app_dir / "_internal" / "cv2" / "data" / "haarcascades")
+        candidates.append(app_dir / "_internal" / "cv2" / "data")
         candidates.append(app_dir / "cv2" / "data" / "haarcascades")
+        candidates.append(app_dir / "cv2" / "data")
     except Exception:
         pass
     try:
         meipass = Path(getattr(sys, "_MEIPASS", ""))
         if meipass:
             candidates.append(meipass / "cv2" / "data" / "haarcascades")
+            candidates.append(meipass / "cv2" / "data")
             candidates.append(meipass / "_internal" / "cv2" / "data" / "haarcascades")
+            candidates.append(meipass / "_internal" / "cv2" / "data")
     except Exception:
         pass
 
     for candidate in candidates:
         path = candidate
-        if path.name == "data":
-            path = path / "haarcascades"
         if not path.exists():
             continue
-        if list(path.glob("*.xml")):
+        if list(path.glob("haarcascade_*.xml")):  # Match haarcascade_ pattern directly
             _HAAR_CASCADE_DIR_CACHE = path
             logger.info("Haar cascades found at %s", path)
             return _HAAR_CASCADE_DIR_CACHE

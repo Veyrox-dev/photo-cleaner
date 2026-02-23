@@ -171,13 +171,17 @@
     - Nebenbefund: Haar cascade directory not found (Fallback disabled) + TensorFlow oneDNN Hinweis
 
 6. **Haar-Cascade Finder robuster machen**
-    - [ ] Test auf echtem onedir build
+    - [x] Test auf echtem onedir build
+       - Lokal onedir build: 17 haarcascade_*.xml in dist/PhotoCleaner/_internal/cv2/data ✅
+       - Bundled successfully via PyInstaller spec (corrected cv2/data path)
    - [x] 5 verschiedene Pfade checken (CV2-data, app-dir, _internal, glob-search)
      - Added env override: PHOTOCLEANER_HAAR_CASCADE_DIR / OPENCV_HAAR_CASCADE_DIR
      - Added module_dir parent fallback and caching to avoid repeated scans
-    - [x] Fallback funktioniert wenn cascades nicht found
-       - Ergebnis: Resolver returns None on dev env; fallback remains active
+     - **Fixed resolver:** Now correctly finds cascades at sys._MEIPASS/cv2/data (frozen build)
+   - [x] Fallback funktioniert wenn cascades nicht found
+       - Ergebnis: Resolver now returns correct path when cascades bundled; MTCNN+Haar fallback enabled
    - [x] Log clear: "Haar cascades found at X" oder "Haar cascade directory not found; face fallback disabled"
+   - **Status:** ✅ COMPLETE - Frozen build now has working face detection fallback
 
 7. **TensorFlow GPU-Check eindämmen**
    - [x] CUDA_VISIBLE_DEVICES=-1 in run_ui.py
@@ -195,6 +199,8 @@
    5. Submit report mit timestamps + any errors
    ```
    - Helper: scripts/smoke_test_protocol.py (prints checklist + EXE path check)
+   - Build (fast clean) erfolgreich; EXE gefunden in dist/PhotoCleaner/PhotoCleaner.exe
+   - Noch offen: Ausführung auf sauberer Windows-VM + Log-Check
 
 9. **Debug-Log Settings für Frozen-Build**
     - [x] Env-Var: PHOTOCLEANER_DEBUG=1 für verbose logs
