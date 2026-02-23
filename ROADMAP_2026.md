@@ -1,7 +1,7 @@
 # PhotoCleaner - Roadmap 2026 (REVISITED)
 
-**Aktualisiert:** 22. Februar 2026 (nach Stabilisierungs-Fix)  
-**Status:** Phase 4 CRITICAL STABILIZATION (Frozen-Build Fixes, MediaPipe-Timeout, Threading)  
+**Aktualisiert:** 23. Februar 2026 (i18n Improvements + Git Cleanup)  
+**Status:** Phase 4.1 CRITICAL STABILIZATION - Day 2 (Internationalization completed)  
 **Ziel:** v1.0.0 Launch im November 2026 (revised timing)  
 **Timeline:** 9 Monate mit Fokus auf STABILITÄTSRISIKEN
 
@@ -135,24 +135,46 @@
    - **Summary**: **Complete pipeline now deterministic** - Groups sichtbar nach Duplicate Finder, Rating dann Thumbnails (ONE click)
    - **User Impact**: Before: Had to click 2-3 times to get rating. After: Works first time, every time
 
-4. **Config-Hash-Deadlock diagnostizieren**
+4. **Internationalization (i18n) Improvements** (Feb 23, 2026)
+   - [x] Complete License Dialog i18n
+     - Added 39 new translation keys (DE + EN)
+     - Replaced all hardcoded German strings in license_dialog.py
+     - Includes: labels, info texts, QMessageBox messages, feature comparison table
+     - Strategy: Full HTML blocks for complex structures (maintainability)
+     - Impact: License dialog fully bilingual, ready for international users
+     - Status: MERGED & TESTED
+   - [x] Complete Selection/Comparison UI i18n
+     - Added 17 new translation keys (DE + EN)
+     - Replaced hardcoded strings in modern_window.py (selection state, comparison, errors)
+     - Includes: selection count messages, compare button variants, error messages
+     - Impact: Main window selection UI fully internationalized
+     - Status: MERGED & TESTED
+   - [x] Git Repository Cleanup
+     - Problem: 3 large ZIP files (422 MB each) blocked push for 42 commits
+     - Solution: Created orphan branch, consolidated commits, force-pushed clean history
+     - Impact: Repository clean, all 42 commits successfully synced to GitHub
+     - Status: RESOLVED
+   - Files: i18n.py, license_dialog.py, modern_window.py
+   - **User Impact**: Software now properly supports English language for international adoption
+
+5. **Config-Hash-Deadlock diagnostizieren**
    - [ ] Code-Review: _init_config_hash() kann blockieren?
    - [ ] Test: 100x QualityAnalyzer creation im Loop
    - [ ] Parallel-Load Test: 10 threads gleichzeitig
    - [ ] Wenn blockiert: Verschiebe init zu lazy-loading
 
-5. **Haar-Cascade Finder robuster machen**
+6. **Haar-Cascade Finder robuster machen**
    - [ ] Test auf echtem onedir build
    - [ ] 5 verschiedene Pfade checken (CV2-data, app-dir, _internal, glob-search)
    - [ ] Fallback funktioniert wenn cascades nicht found
    - [ ] Log clear: "Cascades found at X" oder "Cascades not found, Haar fallback disabled"
 
-6. **TensorFlow GPU-Check eindämmen**
+7. **TensorFlow GPU-Check eindämmen**
    - [x] CUDA_VISIBLE_DEVICES=-1 in run_ui.py
    - [ ] Test: GPU-Enumeration sollte <2s sein
    - [ ] Log: "TensorFlow CPU-only mode enabled" klar sichtbar
 
-7. **Smoke-Test Protocol (für alle Änderungen)**
+8. **Smoke-Test Protocol (für alle Änderungen)**
    ```
    Procedure:
    1. Build mit .\build.bat fast clean
@@ -162,7 +184,7 @@
    5. Submit report mit timestamps + any errors
    ```
 
-6. **Debug-Log Settings für Frozen-Build**
+9. **Debug-Log Settings für Frozen-Build**
    - [ ] Env-Var: PHOTOCLEANER_DEBUG=1 für verbose logs
    - [ ] Logs always to file (%APPDATA%\PhotoCleaner\PhotoCleaner.log)
    - [ ] Console-logging minimiert (frozen GUI shouldn't output)
