@@ -1,0 +1,93 @@
+[
+  {
+    "test_name": "10k",
+    "timestamp": "2026-02-23T18:53:05.162441",
+    "image_count": 10000,
+    "dataset_size_mb": 179.4175624847412,
+    "elapsed_seconds": 0.09824395179748535,
+    "elapsed_formatted": "00:00:00",
+    "images_per_second": 101787.44,
+    "mb_per_second": 1826.25,
+    "return_code": 2,
+    "memory_usage": {
+      "current_mb": 0.7291631698608398,
+      "peak_mb": 1.0032434463500977,
+      "system_start_percent": 50.9,
+      "system_end_percent": 50.9,
+      "system_delta_percent": 0.0
+    },
+    "success": false
+  },
+  {
+    "test_name": "10k",
+    "timestamp": "2026-02-23T18:53:51.887252",
+    "image_count": 10000,
+    "dataset_size_mb": 179.4175624847412,
+    "elapsed_seconds": 0.08454394340515137,
+    "elapsed_formatted": "00:00:00",
+    "images_per_second": 118281.68,
+    "mb_per_second": 2122.18,
+    "return_code": 1,
+    "memory_usage": {
+      "peak_mb": 0,
+      "system_start_percent": 53.1,
+      "system_end_percent": 53.1,
+      "system_delta_percent": 0.0
+    },
+    "success": false
+  },
+  {
+    "test_name": "10k",
+    "timestamp": "2026-02-23T18:54:11.042690",
+    "image_count": 10000,
+    "dataset_size_mb": 179.4175624847412,
+    "elapsed_seconds": 0.15102028846740723,
+    "elapsed_formatted": "00:00:00",
+    "images_per_second": 66216.27,
+    "mb_per_second": 1188.04,
+    "return_code": 1,
+    "memory_usage": {
+      "peak_mb": 0,
+      "system_start_percent": 54.3,
+      "system_end_percent": 54.3,
+      "system_delta_percent": 0.0
+    },
+    "success": false
+  },
+  {
+    "test_name": "10k",
+    "timestamp": "2026-02-23T18:54:50.034310",
+    "image_count": 10000,
+    "dataset_size_mb": 179.4175624847412,
+    "elapsed_seconds": 0.23183345794677734,
+    "elapsed_formatted": "00:00:00",
+    "images_per_second": 43134.41,
+    "mb_per_second": 773.91,
+    "return_code": 1,
+    "memory_usage": {
+      "peak_mb": 0,
+      "system_start_percent": 55.2,
+      "system_end_percent": 55.2,
+      "system_delta_percent": 0.0
+    },
+    "success": false
+  },
+  {
+    "test_name": "10k",
+    "timestamp": "2026-02-23T18:55:20.968204",
+    "image_count": 10000,
+    "dataset_size_mb": 179.4175624847412,
+    "elapsed_seconds": 0.48067712783813477,
+    "elapsed_formatted": "00:00:00",
+    "images_per_second": 20803.99,
+    "mb_per_second": 373.26,
+    "return_code": 1,
+    "memory_usage": {
+      "peak_mb": 0,
+      "system_start_percent": 56.0,
+      "system_end_percent": 56.0,
+      "system_delta_percent": 0.0
+    },
+    "success": false
+  }
+]
