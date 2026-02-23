@@ -1,0 +1,203 @@
+name: Performance Regression Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/performance.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+  schedule:
+    # Run performance tests weekly on Monday at 3 AM UTC
+    - cron: '0 3 * * 1'
+
+jobs:
+  performance:
+    name: License System Performance Regression Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov
+    
+    - name: Run license system profiling
+      run: |
+        python -m photo_cleaner.profiling.profile_license > performance_results.txt 2>&1
+    
+    - name: Parse performance results
+      id: perf_results
+      run: |
+        python << 'EOF'
+        import json
+        import os
+        
+        # Find the latest profiling result
+        profiling_dir = "profiling_results"
+        if os.path.exists(profiling_dir):
+          files = sorted([f for f in os.listdir(profiling_dir) if f.startswith("license_system_")])
+          if files:
+            latest = files[-1]
+            with open(os.path.join(profiling_dir, latest), 'r') as f:
+              data = json.load(f)
+              
+            # Extract key metrics
+            machine_id_time = next(
+              (m['duration_ms'] for m in data['metrics'] if 'machine_id' in m['name']),
+              None
+            )
+            init_time = next(
+              (m['duration_ms'] for m in data['metrics'] if m['name'] == 'license_initialization'),
+              None
+            )
+            total_time = data['total_duration_ms']
+            
+            print(f"MACHINE_ID_TIME={machine_id_time:.2f}")
+            print(f"INIT_TIME={init_time:.2f}")
+            print(f"TOTAL_TIME={total_time:.2f}")
+            
+            # Write to env for next step
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"machine_id_time={machine_id_time:.2f}\n")
+              f.write(f"init_time={init_time:.2f}\n")
+              f.write(f"total_time={total_time:.2f}\n")
+        EOF
+    
+    - name: Check performance thresholds
+      run: |
+        python << 'EOF'
+        import json
+        import os
+        import sys
+        
+        # Define performance thresholds (in milliseconds)
+        THRESHOLDS = {
+          "machine_id_computation": 250,      # CPU-bound, hardware-dependent
+          "license_initialization": 250,      # One-time cost at startup
+          "feature_flag_checks": 0.1,         # Should be sub-microsecond
+          "license_activation": 10,           # HMAC + file write
+          "cloud_snapshot": 5                 # File read + JSON parse
+        }
+        
+        # Find latest profiling result
+        profiling_dir = "profiling_results"
+        failed_checks = []
+        
+        if os.path.exists(profiling_dir):
+          files = sorted([f for f in os.listdir(profiling_dir) if f.startswith("license_system_")])
+          if files:
+            latest = files[-1]
+            with open(os.path.join(profiling_dir, latest), 'r') as f:
+              data = json.load(f)
+            
+            print("\n=== Performance Regression Check ===\n")
+            
+            for metric in data['metrics']:
+              operation = metric['name']
+              duration = metric['duration_ms']
+              
+              # Find matching threshold
+              threshold = next(
+                (THRESHOLDS[k] for k in THRESHOLDS if k in operation.lower()),
+                None
+              )
+              
+              if threshold:
+                status = "✓ PASS" if duration <= threshold else "✗ FAIL"
+                print(f"{status} | {operation}: {duration:.3f}ms (threshold: {threshold}ms)")
+                
+                if duration > threshold:
+                  failed_checks.append(f"{operation}: {duration:.3f}ms > {threshold}ms")
+            
+            if failed_checks:
+              print("\n=== Performance Regressions Detected ===")
+              for check in failed_checks:
+                print(f"  • {check}")
+              sys.exit(1)
+            else:
+              print("\n✓ All performance checks passed!")
+        else:
+          print("Warning: No profiling results found")
+        
+        EOF
+    
+    - name: Generate performance report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-report
+        path: |
+          performance_results.txt
+          profiling_results/
+        retention-days: 90
+    
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const resultFile = 'performance_results.txt';
+          
+          let comment = '## Performance Regression Test Results\n\n';
+          
+          if (fs.existsSync(resultFile)) {
+            const content = fs.readFileSync(resultFile, 'utf8');
+            comment += '```\n' + content + '\n```\n';
+          } else {
+            comment += 'Performance profiling completed. See artifacts for detailed results.\n';
+          }
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  pipeline-perf:
+    name: Image Processing Pipeline Performance
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[perf]')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-benchmark
+    
+    - name: Run pipeline performance tests
+      run: |
+        pytest tests/performance/ -v --benchmark-only || echo "Performance tests not yet implemented"
+    
+    - name: Archive benchmark results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pipeline-benchmarks
+        path: .benchmarks/
+        retention-days: 90

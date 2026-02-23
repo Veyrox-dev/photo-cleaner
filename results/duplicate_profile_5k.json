@@ -1,0 +1,29 @@
+{
+  "profile_type": "duplicate_finder",
+  "test_date": "2026-02-04 15:48:04",
+  "image_count": 136,
+  "timing": {
+    "total_duration_seconds": 0.0014381999999386608,
+    "per_image_avg_ms": 0.010574999999548976
+  },
+  "duplicates_found": {
+    "exact_duplicate_groups": 0,
+    "exact_duplicate_images": 0,
+    "total_duplicate_images": 0
+  },
+  "performance_classification": "EXCELLENT",
+  "stage_breakdown": [
+    {
+      "stage": "load_files",
+      "duration_seconds": 0.00041569999939383706,
+      "duplicate_groups_found": 0,
+      "images_in_groups": 0
+    },
+    {
+      "stage": "exact_duplicates",
+      "duration_seconds": 1.6799999684735667e-05,
+      "duplicate_groups_found": 0,
+      "images_in_groups": 0
+    }
+  ]
+}

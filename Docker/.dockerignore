@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+docs/_build/
+
+# Project specific
+archive/
+test_data_*/
+temp_heic_conversions/
+*.db
+*.license
+photo_cleaner.db
+photo_cleaner.license
+
+# OS
+.DS_Store
+Thumbs.db

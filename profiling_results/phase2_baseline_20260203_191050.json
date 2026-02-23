@@ -1,0 +1,12 @@
+{
+  "profiling_date": "2026-02-03T19:10:47.333645",
+  "phase": "Phase 2 Week 1",
+  "goal": "Establish baseline and identify Top 5 bottlenecks",
+  "test_runs": [
+    {
+      "stage_name": "profile_Input",
+      "error": "'NoneType' object has no attribute 'cursor'",
+      "timestamp": "2026-02-03T19:10:50.459711"
+    }
+  ]
+}

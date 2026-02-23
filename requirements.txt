@@ -1,0 +1,52 @@
+# PhotoCleaner v7.0.0 - Requirements (Known-Good Python 3.12 stack)
+# Install with: pip install -r requirements.txt
+
+# ============================================================================
+# CORE DEPENDENCIES (Required)
+# ============================================================================
+
+# Image Processing
+Pillow==12.1.0              # PIL fork for image loading/manipulation
+pillow-heif==0.13.0         # HEIC/HEIF image support (required for iPhone photos)
+imagehash==4.3.1            # Perceptual hashing (pHash, dHash)
+numpy==1.26.4               # PINNED: Locked version for PyInstaller compatibility (DO NOT UPGRADE)
+scipy==1.11.4               # Required by imagehash (pHash) on Python 3.11
+
+# Computer Vision & ML
+opencv-python==4.11.0.86    # OpenCV for image operations (Laplacian, face detection)
+mediapipe==0.10.32          # Google MediaPipe for Face Mesh (468 landmarks)
+tensorflow==2.16.2          # Backend for MTCNN (Python 3.11, no _pywrap_tensorflow_common)
+mtcnn==0.1.1                # MTCNN face detection (Multi-task CNN, better than Haar Cascade)
+                            # NOTE: Version 0.1.1 required (1.0.0 has TensorFlow compatibility issues)
+
+# UI Framework
+PySide6==6.6.3              # Qt6 bindings for modern UI (required for GUI)
+
+# Utilities
+send2trash==1.8.2           # Safe deletion to system trash/recycle bin
+click==8.1.8                # CLI framework for command-line interface
+cryptography==42.0.8        # Ed25519 signatures for offline licenses
+jaraco.functools==4.0.1     # Required by pkg_resources at runtime (PyInstaller rthook)
+jaraco.context==5.3.0       # Required by pkg_resources at runtime (PyInstaller rthook)
+jaraco.text==3.12.1         # Required by pkg_resources at runtime (PyInstaller rthook)
+platformdirs==4.2.1         # Required by pkg_resources (platform-specific directories)
+
+# ============================================================================
+# OPTIONAL DEPENDENCIES (Advanced Features)
+# ============================================================================
+
+# Advanced Face Detection (Stage 2 - requires Visual Studio C++ Build Tools on Windows)
+# dlib>=19.24.0             # Install with: pip install dlib (after VS Build Tools)
+# NOTE: Uncomment above if you want Stage 2 face detection
+# Windows: Requires "Desktop development with C++" from Visual Studio Build Tools
+# Linux/Mac: Works out of the box
+
+# ============================================================================
+# DEVELOPMENT DEPENDENCIES (Optional)
+# ============================================================================
+# Uncomment below for development/testing:
+# pytest>=8.0.0             # Test framework
+# pytest-cov>=4.1.0         # Coverage reports
+# black>=24.0.0             # Code formatter
+# ruff>=0.1.0               # Fast Python linter
+# mypy>=1.8.0               # Static type checker

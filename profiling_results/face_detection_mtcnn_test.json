@@ -1,0 +1,117 @@
+{
+  "metadata": {
+    "input_folder": "test_data_system\\5k",
+    "sample_size": 5,
+    "analyzed_images": 5
+  },
+  "statistics": {
+    "total_images": 5,
+    "score_distribution": {
+      "mean": 58.35,
+      "median": 68.94,
+      "stdev": 17.75,
+      "min": 39.06,
+      "max": 75.52
+    },
+    "component_means": {
+      "sharpness": 59.14,
+      "lighting": 63.44
+    },
+    "face_analysis": {
+      "images_with_faces": 5,
+      "images_all_eyes_open": 3,
+      "images_eyes_closed": 2
+    }
+  },
+  "images": [
+    {
+      "file_path": "C:\\Users\\chris\\OneDrive\\Bilder\\01_Photocleaner\\Input\\20260102_194143.heic",
+      "file_name": "20260102_194143.heic",
+      "resolution": "2000×923",
+      "megapixels": 1.8,
+      "quality_score": 75.52,
+      "sharpness_score": 67.54,
+      "lighting_score": 63.39,
+      "resolution_score": 30.75,
+      "has_faces": true,
+      "face_count": 4,
+      "all_eyes_open": true,
+      "iso": null,
+      "exposure_time": null,
+      "f_number": null,
+      "camera_model": "Samsung"
+    },
+    {
+      "file_path": "C:\\Users\\chris\\OneDrive\\Bilder\\01_Photocleaner\\Input\\20260102_194144.heic",
+      "file_name": "20260102_194144.heic",
+      "resolution": "8160×3768",
+      "megapixels": 30.7,
+      "quality_score": 69.04,
+      "sharpness_score": 57.05,
+      "lighting_score": 63.13,
+      "resolution_score": 30.75,
+      "has_faces": true,
+      "face_count": 4,
+      "all_eyes_open": true,
+      "iso": null,
+      "exposure_time": null,
+      "f_number": null,
+      "camera_model": "Samsung"
+    },
+    {
+      "file_path": "C:\\Users\\chris\\OneDrive\\Bilder\\01_Photocleaner\\Input\\20260102_194145.heic",
+      "file_name": "20260102_194145.heic",
+      "resolution": "8160×3768",
+      "megapixels": 30.7,
+      "quality_score": 68.94,
+      "sharpness_score": 56.86,
+      "lighting_score": 64.02,
+      "resolution_score": 30.75,
+      "has_faces": true,
+      "face_count": 4,
+      "all_eyes_open": true,
+      "iso": null,
+      "exposure_time": null,
+      "f_number": null,
+      "camera_model": "Samsung"
+    },
+    {
+      "file_path": "C:\\Users\\chris\\OneDrive\\Bilder\\01_Photocleaner\\Input\\20260102_194147.heic",
+      "file_name": "20260102_194147.heic",
+      "resolution": "8160×3768",
+      "megapixels": 30.7,
+      "quality_score": 39.06,
+      "sharpness_score": 57.1,
+      "lighting_score": 62.7,
+      "resolution_score": 30.75,
+      "has_faces": true,
+      "face_count": 4,
+      "all_eyes_open": false,
+      "iso": null,
+      "exposure_time": null,
+      "f_number": null,
+      "camera_model": "Samsung"
+    },
+    {
+      "file_path": "C:\\Users\\chris\\OneDrive\\Bilder\\01_Photocleaner\\Input\\20260102_194148.heic",
+      "file_name": "20260102_194148.heic",
+      "resolution": "8160×3768",
+      "megapixels": 30.7,
+      "quality_score": 39.18,
+      "sharpness_score": 57.15,
+      "lighting_score": 63.94,
+      "resolution_score": 30.75,
+      "has_faces": true,
+      "face_count": 4,
+      "all_eyes_open": false,
+      "iso": null,
+      "exposure_time": null,
+      "f_number": null,
+      "camera_model": "Samsung"
+    }
+  ],
+  "outliers": {
+    "high_score_closed_eyes": [],
+    "low_score_eyes_open": []
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "profiling_date": "2026-02-03T19:09:33.435866",
+  "phase": "Phase 2 Week 1",
+  "goal": "Establish baseline and identify Top 5 bottlenecks",
+  "test_runs": [
+    {
+      "stage_name": "profile_Input",
+      "error": "PhotoCleanerPipeline.__init__() got an unexpected keyword argument 'db_conn'",
+      "timestamp": "2026-02-03T19:09:33.439142"
+    }
+  ]
+}

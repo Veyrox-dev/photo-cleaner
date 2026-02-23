@@ -1,0 +1,125 @@
+{
+  "profiling_date": "2026-02-03T19:40:59.588778",
+  "phase": "Phase 2 Week 1",
+  "goal": "Establish baseline and identify Top 5 bottlenecks",
+  "test_runs": [
+    {
+      "stage_name": "1k_images_baseline",
+      "folder_path": "test_data_system\\1k",
+      "image_count": 0,
+      "duplicate_groups": 0,
+      "duration_seconds": 1.0264108180999756,
+      "memory_start_mb": 37.0,
+      "memory_peak_mb": 70.23828125,
+      "memory_delta_mb": 33.23828125,
+      "top_bottlenecks": [
+        {
+          "function": "<module>",
+          "file": "__init__.py",
+          "line": 1,
+          "cumulative_time_s": 1.2002342999999998,
+          "total_time_s": 0.0009154999999999995,
+          "call_count": 38,
+          "time_per_call_ms": 31.58511315789473
+        },
+        {
+          "function": "run",
+          "file": "pipeline.py",
+          "line": 168,
+          "cumulative_time_s": 0.5805248000000001,
+          "total_time_s": 3.3100000000000005e-05,
+          "call_count": 1,
+          "time_per_call_ms": 580.5248
+        },
+        {
+          "function": "_stage_index",
+          "file": "pipeline.py",
+          "line": 230,
+          "cumulative_time_s": 0.5776065,
+          "total_time_s": 3.6400000000000004e-05,
+          "call_count": 1,
+          "time_per_call_ms": 577.6065
+        },
+        {
+          "function": "index_folder",
+          "file": "indexer.py",
+          "line": 49,
+          "cumulative_time_s": 0.5775701000000001,
+          "total_time_s": 4.66e-05,
+          "call_count": 1,
+          "time_per_call_ms": 577.5701000000001
+        },
+        {
+          "function": "__exit__",
+          "file": "_base.py",
+          "line": 666,
+          "cumulative_time_s": 0.5747650000000001,
+          "total_time_s": 1.93e-05,
+          "call_count": 1,
+          "time_per_call_ms": 574.7650000000001
+        }
+      ],
+      "profile_output": "         178282 function calls (174644 primitive calls) in 1.013 seconds\n\n   Ordered by: cumulative time\n   List reduced from 1715 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       38    0.001    0.000    1.200    0.032 __init__.py:1(<module>)\n        1    0.000    0.000    0.581    0.581 pipeline.py:168(run)\n        1    0.000    0.000    0.578    0.578 pipeline.py:230(_stage_index)\n        1    0.000    0.000    0.578    0.578 indexer.py:49(index_folder)\n        1    0.000    0.000    0.575    0.575 _base.py:666(__exit__)\n        1    0.000    0.000    0.565    0.565 process.py:856(shutdown)\n      2/1    0.000    0.000    0.565    0.565 threading.py:1097(join)\n      2/1    0.000    0.000    0.565    0.565 {method 'join' of '_thread._ThreadHandle' objects}\n      2/1    0.000    0.000    0.564    0.564 threading.py:1030(_bootstrap)\n      2/1    0.000    0.000    0.564    0.564 threading.py:1065(_bootstrap_inner)\n      2/1    0.000    0.000    0.564    0.564 {method 'run' of '_contextvars.Context' objects}\n        1    0.000    0.000    0.564    0.564 process.py:330(run)\n        1    0.000    0.000    0.564    0.564 process.py:549(join_executor_internals)\n        1    0.000    0.000    0.564    0.564 process.py:553(_join_executor_internals)\n        7    0.000    0.000    0.504    0.072 util.py:276(__call__)\n        1    0.000    0.000    0.504    0.504 queues.py:145(join_thread)\n        1    0.000    0.000    0.504    0.504 queues.py:212(_finalize_join)\n        6    0.000    0.000    0.503    0.084 _base.py:193(as_completed)\n       10    0.000    0.000    0.463    0.046 process.py:405(wait_result_broken_or_wakeup)\n       21    0.000    0.000    0.462    0.022 connection.py:1061(wait)\n\n\n",
+      "timestamp": "2026-02-03T19:41:00.657860"
+    },
+    {
+      "stage_name": "5k_images_medium",
+      "folder_path": "test_data_system\\5k",
+      "image_count": 0,
+      "duplicate_groups": 3,
+      "duration_seconds": 144.1416757106781,
+      "memory_start_mb": 72.96875,
+      "memory_peak_mb": 87.546875,
+      "memory_delta_mb": 14.578125,
+      "top_bottlenecks": [
+        {
+          "function": "run",
+          "file": "pipeline.py",
+          "line": 168,
+          "cumulative_time_s": 144.1134565,
+          "total_time_s": 0.0016582,
+          "call_count": 1,
+          "time_per_call_ms": 144113.4565
+        },
+        {
+          "function": "_stage_index",
+          "file": "pipeline.py",
+          "line": 230,
+          "cumulative_time_s": 137.2889184,
+          "total_time_s": 0.0046398,
+          "call_count": 1,
+          "time_per_call_ms": 137288.9184
+        },
+        {
+          "function": "index_folder",
+          "file": "indexer.py",
+          "line": 49,
+          "cumulative_time_s": 137.28427860000002,
+          "total_time_s": 0.002373,
+          "call_count": 1,
+          "time_per_call_ms": 137284.27860000002
+        },
+        {
+          "function": "__exit__",
+          "file": "_base.py",
+          "line": 666,
+          "cumulative_time_s": 137.1317402,
+          "total_time_s": 1.06e-05,
+          "call_count": 1,
+          "time_per_call_ms": 137131.7402
+        },
+        {
+          "function": "shutdown",
+          "file": "process.py",
+          "line": 856,
+          "cumulative_time_s": 137.1204768,
+          "total_time_s": 0.0001166,
+          "call_count": 1,
+          "time_per_call_ms": 137120.4768
+        }
+      ],
+      "profile_output": "         2135598 function calls (2059728 primitive calls) in 144.142 seconds\n\n   Ordered by: cumulative time\n   List reduced from 816 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n        1    0.002    0.002  144.113  144.113 pipeline.py:168(run)\n        1    0.005    0.005  137.289  137.289 pipeline.py:230(_stage_index)\n        1    0.002    0.002  137.284  137.284 indexer.py:49(index_folder)\n        1    0.000    0.000  137.132  137.132 _base.py:666(__exit__)\n        1    0.000    0.000  137.120  137.120 process.py:856(shutdown)\n      2/1    0.002    0.001  137.119  137.119 threading.py:1097(join)\n      2/1    0.000    0.000  137.119  137.119 {method 'join' of '_thread._ThreadHandle' objects}\n      2/1    0.000    0.000  137.119  137.119 threading.py:1030(_bootstrap)\n      2/1    0.000    0.000  137.119  137.119 threading.py:1065(_bootstrap_inner)\n      2/1    0.000    0.000  137.119  137.119 {method 'run' of '_contextvars.Context' objects}\n        1    0.000    0.000  137.119  137.119 process.py:330(run)\n        1    0.000    0.000  137.119  137.119 process.py:549(join_executor_internals)\n        1    0.000    0.000  137.119  137.119 process.py:553(_join_executor_internals)\n     5001    0.168    0.000  136.944    0.027 _base.py:193(as_completed)\n       21    0.000    0.000  136.708    6.510 util.py:276(__call__)\n        1    0.000    0.000  136.707  136.707 queues.py:145(join_thread)\n        1    0.000    0.000  136.707  136.707 queues.py:212(_finalize_join)\n     5366    0.140    0.000  135.106    0.025 process.py:405(wait_result_broken_or_wakeup)\n    15367    0.255    0.000  134.177    0.009 connection.py:1061(wait)\n    15367    0.101    0.000  133.184    0.009 connection.py:1027(_exhaustive_wait)\n\n\n",
+      "timestamp": "2026-02-03T19:43:24.848194"
+    }
+  ]
+}

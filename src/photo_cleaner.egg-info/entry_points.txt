@@ -1,0 +1,2 @@
+[console_scripts]
+photo-cleaner = photo_cleaner.cli:main

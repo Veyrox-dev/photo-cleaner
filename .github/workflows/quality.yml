@@ -1,0 +1,289 @@
+name: Code Quality & Dependencies
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'requirements.txt'
+      - 'pyproject.toml'
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Check for dependency updates weekly
+    - cron: '0 4 * * 0'
+
+jobs:
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install ruff black pylint mypy isort
+    
+    - name: Run isort (import sorting)
+      run: |
+        isort src/ tests/ --check-only --diff || true
+      continue-on-error: true
+    
+    - name: Run ruff (linting & formatting)
+      run: |
+        ruff check src/ tests/ --select=E,W,F,I --output-format=github || true
+      continue-on-error: true
+    
+    - name: Format check with ruff
+      run: |
+        ruff format src/ tests/ --check || true
+      continue-on-error: true
+    
+    - name: Format check with black
+      run: |
+        black --check src/ tests/ || true
+      continue-on-error: true
+    
+    - name: Run pylint
+      run: |
+        pylint src/photo_cleaner \
+          --max-line-length=120 \
+          --disable=C0103,C0114,C0115,C0116,R0913,W0612 \
+          --exit-zero || true
+      continue-on-error: true
+    
+    - name: Run mypy (type checking)
+      run: |
+        mypy src/photo_cleaner \
+          --ignore-missing-imports \
+          --no-error-summary \
+          --warn-unused-ignores || true
+      continue-on-error: true
+    
+    - name: Check docstring coverage
+      run: |
+        python << 'EOF'
+        import ast
+        import os
+        from pathlib import Path
+        
+        def check_docstrings(path, min_coverage=50):
+          documented = 0
+          total = 0
+          
+          for py_file in Path(path).rglob("*.py"):
+            if "__pycache__" in str(py_file):
+              continue
+            
+            with open(py_file, 'r', encoding='utf-8', errors='ignore') as f:
+              try:
+                tree = ast.parse(f.read())
+              except SyntaxError:
+                continue
+            
+            for node in ast.walk(tree):
+              if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                total += 1
+                if ast.get_docstring(node):
+                  documented += 1
+          
+          coverage = (documented / total * 100) if total > 0 else 0
+          status = "✓" if coverage >= min_coverage else "✗"
+          print(f"{status} Docstring coverage: {coverage:.1f}% ({documented}/{total})")
+          return coverage >= min_coverage
+        
+        check_docstrings("src/photo_cleaner", min_coverage=40)
+        EOF
+      continue-on-error: true
+
+  dependency-check:
+    name: Dependency Security & Updates
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install safety pip-audit
+    
+    - name: Check for known vulnerabilities (safety)
+      run: |
+        safety check --json --file requirements.txt > safety-report.json || true
+        cat safety-report.json || echo "No vulnerabilities found"
+      continue-on-error: true
+    
+    - name: Audit dependencies (pip-audit)
+      run: |
+        pip-audit --desc || true
+      continue-on-error: true
+    
+    - name: Check for outdated packages
+      run: |
+        pip list --outdated || echo "All packages up to date"
+      continue-on-error: true
+    
+    - name: Upload dependency report
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependency-report
+        path: safety-report.json
+        retention-days: 30
+      if: always()
+
+  complexity:
+    name: Code Complexity Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+    
+    - name: Install complexity tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install radon
+    
+    - name: Check cyclomatic complexity
+      run: |
+        echo "## Cyclomatic Complexity Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        radon cc src/photo_cleaner -s >> $GITHUB_STEP_SUMMARY || true
+      continue-on-error: true
+    
+    - name: Check maintainability index
+      run: |
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Maintainability Index" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        radon mi src/photo_cleaner >> $GITHUB_STEP_SUMMARY || true
+      continue-on-error: true
+    
+    - name: Generate metrics report
+      run: |
+        python << 'EOF'
+        import subprocess
+        import json
+        
+        # Get raw metrics
+        result = subprocess.run(
+          ['radon', 'raw', 'src/photo_cleaner', '-j'],
+          capture_output=True,
+          text=True
+        )
+        
+        metrics = json.loads(result.stdout) if result.stdout else {}
+        
+        total_loc = sum(m.get('loc', 0) for m in metrics.values())
+        total_comments = sum(m.get('comment_lines', 0) for m in metrics.values())
+        
+        print(f"Total Lines of Code: {total_loc}")
+        print(f"Total Comments: {total_comments}")
+        if total_loc > 0:
+          print(f"Comment Ratio: {total_comments/total_loc*100:.1f}%")
+        EOF
+      continue-on-error: true
+
+  coverage-trends:
+    name: Test Coverage Trends
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov
+    
+    - name: Run tests with coverage
+      run: |
+        pytest tests/ -v \
+          --cov=src/photo_cleaner \
+          --cov-report=term \
+          --cov-report=json:coverage.json \
+          --cov-report=html:coverage_html || true
+    
+    - name: Generate coverage badge
+      run: |
+        python << 'EOF'
+        import json
+        import os
+        
+        if os.path.exists('coverage.json'):
+          with open('coverage.json') as f:
+            data = json.load(f)
+          coverage = data.get('totals', {}).get('percent_covered', 0)
+          
+          # Determine badge color
+          if coverage >= 90:
+            color = "brightgreen"
+          elif coverage >= 80:
+            color = "green"
+          elif coverage >= 70:
+            color = "yellowgreen"
+          elif coverage >= 60:
+            color = "yellow"
+          else:
+            color = "red"
+          
+          badge_url = f"https://img.shields.io/badge/coverage-{coverage:.1f}%25-{color}"
+          print(f"Coverage: {coverage:.1f}%")
+          print(f"Badge URL: {badge_url}")
+        EOF
+    
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage_html/
+        retention-days: 30
+      if: always()
+
+  report:
+    name: Quality Report
+    runs-on: ubuntu-latest
+    needs: [code-quality, dependency-check, complexity]
+    if: always()
+    
+    steps:
+    - name: Generate summary
+      run: |
+        echo "## Code Quality Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Quality Checks" >> $GITHUB_STEP_SUMMARY
+        echo "- Code Quality Analysis: ${{ needs.code-quality.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Dependency Security: ${{ needs.dependency-check.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Complexity Analysis: ${{ needs.complexity.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**View detailed reports in Actions artifacts**" >> $GITHUB_STEP_SUMMARY

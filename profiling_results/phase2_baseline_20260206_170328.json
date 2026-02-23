@@ -1,0 +1,66 @@
+{
+  "profiling_date": "2026-02-06T16:59:58.410341",
+  "phase": "Phase 2 Week 1",
+  "goal": "Establish baseline and identify Top 5 bottlenecks",
+  "test_runs": [
+    {
+      "stage_name": "profile_Input",
+      "folder_path": "C:\\Users\\chris\\OneDrive\\Bilder\\01_Photocleaner\\Input",
+      "image_count": 0,
+      "duplicate_groups": 11,
+      "duration_seconds": 209.9704077243805,
+      "memory_start_mb": 0.0,
+      "memory_peak_mb": 0.0,
+      "memory_delta_mb": 0.0,
+      "top_bottlenecks": [
+        {
+          "function": "as_completed",
+          "file": "_base.py",
+          "line": 199,
+          "cumulative_time_s": 248.44378400000002,
+          "total_time_s": 0.0231902,
+          "call_count": 218,
+          "time_per_call_ms": 1139.650385321101
+        },
+        {
+          "function": "wait",
+          "file": "threading.py",
+          "line": 637,
+          "cumulative_time_s": 228.39696130000002,
+          "total_time_s": 0.011268700000000001,
+          "call_count": 252,
+          "time_per_call_ms": 906.337148015873
+        },
+        {
+          "function": "wait",
+          "file": "threading.py",
+          "line": 323,
+          "cumulative_time_s": 206.1237323,
+          "total_time_s": 0.043338400000000006,
+          "call_count": 1723,
+          "time_per_call_ms": 119.6307210098665
+        },
+        {
+          "function": "error_handler",
+          "file": "traceback_utils.py",
+          "line": 110,
+          "cumulative_time_s": 68.358816,
+          "total_time_s": 0.3979866,
+          "call_count": 1516,
+          "time_per_call_ms": 45.091567282321904
+        },
+        {
+          "function": "frombytes",
+          "file": "Image.py",
+          "line": 831,
+          "cumulative_time_s": 60.505235400000004,
+          "total_time_s": 0.2406841,
+          "call_count": 516,
+          "time_per_call_ms": 117.25820813953489
+        }
+      ],
+      "profile_output": "         52514812 function calls (44446813 primitive calls) in 305.525 seconds\n\n   Ordered by: cumulative time\n   List reduced from 11947 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n  218/138    0.023    0.000  248.444    1.800 _base.py:199(as_completed)\n  252/133    0.011    0.000  228.397    1.717 threading.py:637(wait)\n 1723/280    0.043    0.000  206.124    0.736 threading.py:323(wait)\n   1516/5    0.398    0.000   68.359   13.672 traceback_utils.py:110(error_handler)\n  516/303    0.241    0.000   60.505    0.200 Image.py:831(frombytes)\n  650/130    0.222    0.000   47.518    0.366 as_plugin.py:58(load)\n        1    0.000    0.000   42.857   42.857 pipeline.py:396(_stage_cheap_filter)\n       11    0.113    0.010   42.857    3.896 cheap_filter.py:191(filter_batch)\n      123    0.656    0.005   42.742    0.347 cheap_filter.py:91(analyze_image)\n   136/62    0.026    0.000   41.249    0.665 Image.py:2220(resize)\n128071/569    0.119    0.000   38.986    0.069 {method 'acquire' of '_thread.lock' objects}\n    44/19    0.000    0.000   38.974    2.051 threading.py:1117(join)\n    44/19    0.000    0.000   38.973    2.051 threading.py:1155(_wait_for_tstate_lock)\n  272/179    0.034    0.000   34.506    0.193 _realtransforms.py:235(dct)\n  515/152    0.172    0.000   34.262    0.225 heif.py:54(data)\n  512/236    0.011    0.000   29.279    0.124 Image.py:3529(_open_core)\n  395/126    0.433    0.001   29.026    0.230 Image.py:915(convert)\n 1032/324   43.982    0.043   27.348    0.084 heif.py:106(load)\n  511/208    0.066    0.000   25.861    0.124 Image.py:3458(open)\n      115    0.001    0.000   22.320    0.194 dispatch.py:1053(_add_dispatch_for_unary_elementwise_api)\n\n\n",
+      "timestamp": "2026-02-06T17:03:28.750420"
+    }
+  ]
+}

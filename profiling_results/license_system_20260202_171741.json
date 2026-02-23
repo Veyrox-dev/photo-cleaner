@@ -1,0 +1,126 @@
+{
+  "name": "License System",
+  "target": "license",
+  "metrics": [
+    {
+      "name": "compute_machine_id",
+      "duration_ms": 180.26180000015302,
+      "memory_mb": null,
+      "operation_count": null,
+      "timestamp": "2026-02-02T17:17:40.634952",
+      "metadata": {}
+    },
+    {
+      "name": "LicenseManager.__init__",
+      "duration_ms": 177.62890000085463,
+      "memory_mb": null,
+      "operation_count": null,
+      "timestamp": "2026-02-02T17:17:40.811350",
+      "metadata": {}
+    },
+    {
+      "name": "FeatureFlags.can_batch_process",
+      "duration_ms": 0.0027999994927085936,
+      "memory_mb": null,
+      "operation_count": null,
+      "timestamp": "2026-02-02T17:17:40.977379",
+      "metadata": {}
+    },
+    {
+      "name": "FeatureFlags.can_use_extended_cache",
+      "duration_ms": 0.0013999997463542968,
+      "memory_mb": null,
+      "operation_count": null,
+      "timestamp": "2026-02-02T17:17:40.977379",
+      "metadata": {}
+    },
+    {
+      "name": "FeatureFlags.has_unlimited_images",
+      "duration_ms": 0.0012000000424450263,
+      "memory_mb": null,
+      "operation_count": null,
+      "timestamp": "2026-02-02T17:17:40.977379",
+      "metadata": {}
+    },
+    {
+      "name": "FeatureFlags.has_api_access",
+      "duration_ms": 0.0007999988156370819,
+      "memory_mb": null,
+      "operation_count": null,
+      "timestamp": "2026-02-02T17:17:40.977379",
+      "metadata": {}
+    },
+    {
+      "name": "can_process_images(100)",
+      "duration_ms": 0.0025000008463393897,
+      "memory_mb": null,
+      "operation_count": null,
+      "timestamp": "2026-02-02T17:17:41.155852",
+      "metadata": {}
+    },
+    {
+      "name": "can_process_images(500)",
+      "duration_ms": 0.0006999998731771484,
+      "memory_mb": null,
+      "operation_count": null,
+      "timestamp": "2026-02-02T17:17:41.155852",
+      "metadata": {}
+    },
+    {
+      "name": "can_process_images(1000)",
+      "duration_ms": 0.00030000046535860747,
+      "memory_mb": null,
+      "operation_count": null,
+      "timestamp": "2026-02-02T17:17:41.155852",
+      "metadata": {}
+    },
+    {
+      "name": "can_process_images(5000)",
+      "duration_ms": 9.999894245993346e-05,
+      "memory_mb": null,
+      "operation_count": null,
+      "timestamp": "2026-02-02T17:17:41.155852",
+      "metadata": {}
+    },
+    {
+      "name": "can_process_images(10000)",
+      "duration_ms": 0.00019999970390927047,
+      "memory_mb": null,
+      "operation_count": null,
+      "timestamp": "2026-02-02T17:17:41.155852",
+      "metadata": {}
+    },
+    {
+      "name": "get_license_status",
+      "duration_ms": 0.008300001354655251,
+      "memory_mb": null,
+      "operation_count": null,
+      "timestamp": "2026-02-02T17:17:41.341517",
+      "metadata": {}
+    },
+    {
+      "name": "activate_with_code",
+      "duration_ms": 1.6792999995232094,
+      "memory_mb": null,
+      "operation_count": null,
+      "timestamp": "2026-02-02T17:17:41.506022",
+      "metadata": {}
+    },
+    {
+      "name": "_load_cloud_snapshot",
+      "duration_ms": 0.2432000001135748,
+      "memory_mb": null,
+      "operation_count": null,
+      "timestamp": "2026-02-02T17:17:41.678901",
+      "metadata": {}
+    }
+  ],
+  "total_duration_ms": 359.8314999999275,
+  "start_time": "2026-02-02T17:17:41.742763",
+  "end_time": null,
+  "system_info": {
+    "python_version": "3.12.8",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+  }
+}

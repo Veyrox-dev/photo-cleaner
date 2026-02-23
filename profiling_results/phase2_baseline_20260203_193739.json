@@ -1,0 +1,71 @@
+{
+  "profiling_date": "2026-02-03T19:35:22.438039",
+  "phase": "Phase 2 Week 1",
+  "goal": "Establish baseline and identify Top 5 bottlenecks",
+  "test_runs": [
+    {
+      "stage_name": "1k_images_baseline",
+      "folder_path": "test_data_system\\1k",
+      "image_count": 0,
+      "duplicate_groups": 0,
+      "duration_seconds": 0.8876454830169678,
+      "memory_start_mb": 36.71875,
+      "memory_peak_mb": 70.19140625,
+      "memory_delta_mb": 33.47265625,
+      "top_bottlenecks": [
+        {
+          "function": "<module>",
+          "file": "__init__.py",
+          "line": 1,
+          "cumulative_time_s": 0.8672395999999999,
+          "total_time_s": 0.0008465999999999995,
+          "call_count": 38,
+          "time_per_call_ms": 22.822094736842104
+        },
+        {
+          "function": "run",
+          "file": "pipeline.py",
+          "line": 168,
+          "cumulative_time_s": 0.5541919000000001,
+          "total_time_s": 2.9900000000000002e-05,
+          "call_count": 1,
+          "time_per_call_ms": 554.1919
+        },
+        {
+          "function": "_stage_index",
+          "file": "pipeline.py",
+          "line": 230,
+          "cumulative_time_s": 0.5508578000000001,
+          "total_time_s": 2.29e-05,
+          "call_count": 1,
+          "time_per_call_ms": 550.8578000000001
+        },
+        {
+          "function": "index_folder",
+          "file": "indexer.py",
+          "line": 49,
+          "cumulative_time_s": 0.5508349,
+          "total_time_s": 4.7300000000000005e-05,
+          "call_count": 1,
+          "time_per_call_ms": 550.8349000000001
+        },
+        {
+          "function": "__exit__",
+          "file": "_base.py",
+          "line": 666,
+          "cumulative_time_s": 0.5481185000000001,
+          "total_time_s": 1.79e-05,
+          "call_count": 1,
+          "time_per_call_ms": 548.1185
+        }
+      ],
+      "profile_output": "         178282 function calls (174645 primitive calls) in 0.876 seconds\n\n   Ordered by: cumulative time\n   List reduced from 1715 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       38    0.001    0.000    0.867    0.023 __init__.py:1(<module>)\n        1    0.000    0.000    0.554    0.554 pipeline.py:168(run)\n        1    0.000    0.000    0.551    0.551 pipeline.py:230(_stage_index)\n        1    0.000    0.000    0.551    0.551 indexer.py:49(index_folder)\n        1    0.000    0.000    0.548    0.548 _base.py:666(__exit__)\n        1    0.000    0.000    0.537    0.537 process.py:856(shutdown)\n      2/1    0.000    0.000    0.537    0.537 threading.py:1097(join)\n      2/1    0.000    0.000    0.537    0.537 {method 'join' of '_thread._ThreadHandle' objects}\n      2/1    0.000    0.000    0.536    0.536 threading.py:1030(_bootstrap)\n      2/1    0.000    0.000    0.536    0.536 threading.py:1065(_bootstrap_inner)\n      2/1    0.000    0.000    0.536    0.536 {method 'run' of '_contextvars.Context' objects}\n        1    0.000    0.000    0.536    0.536 process.py:330(run)\n        1    0.000    0.000    0.536    0.536 process.py:549(join_executor_internals)\n        1    0.000    0.000    0.536    0.536 process.py:553(_join_executor_internals)\n        7    0.000    0.000    0.478    0.068 util.py:276(__call__)\n        1    0.000    0.000    0.478    0.478 queues.py:145(join_thread)\n        1    0.000    0.000    0.478    0.478 queues.py:212(_finalize_join)\n        6    0.000    0.000    0.477    0.080 _base.py:193(as_completed)\n       10    0.000    0.000    0.445    0.044 process.py:405(wait_result_broken_or_wakeup)\n       21    0.000    0.000    0.444    0.021 connection.py:1061(wait)\n\n\n",
+      "timestamp": "2026-02-03T19:35:23.372527"
+    },
+    {
+      "stage_name": "5k_images_medium",
+      "error": "too many values to unpack (expected 2, got 3)",
+      "timestamp": "2026-02-03T19:37:39.580306"
+    }
+  ]
+}

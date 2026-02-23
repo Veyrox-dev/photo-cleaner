@@ -1,0 +1,109 @@
+{
+  "profile_type": "quality_analyzer",
+  "test_date": "2026-02-04 15:41:45",
+  "test_data_dir": "test_data_system/5k",
+  "image_count": 5000,
+  "successful_analyses": 5000,
+  "failed_analyses": 0,
+  "timing": {
+    "total_duration_seconds": 1172.4405020999993,
+    "per_image_min_ms": 27.973599999313592,
+    "per_image_max_ms": 1395.3049000001556,
+    "per_image_avg_ms": 228.89576934000124,
+    "total_analysis_ms": 1144478.8467000062
+  },
+  "performance_classification": "GOOD",
+  "memory_estimated_mb": 244.140625,
+  "detailed_metrics": [
+    {
+      "image_path": "test_data_system\\5k\\test_img_00001.jpg",
+      "total_time": 0.6765500999999858,
+      "file_size_kb": 1379.537109375,
+      "image_size": [
+        4032,
+        3024
+      ]
+    },
+    {
+      "image_path": "test_data_system\\5k\\test_img_00002.jpg",
+      "total_time": 0.07164120000015828,
+      "file_size_kb": 257.5009765625,
+      "image_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "image_path": "test_data_system\\5k\\test_img_00003.jpg",
+      "total_time": 0.03211780000037834,
+      "file_size_kb": 95.2333984375,
+      "image_size": [
+        1200,
+        800
+      ]
+    },
+    {
+      "image_path": "test_data_system\\5k\\test_img_00004.jpg",
+      "total_time": 0.509063900000001,
+      "file_size_kb": 1510.1181640625,
+      "image_size": [
+        4032,
+        3024
+      ]
+    },
+    {
+      "image_path": "test_data_system\\5k\\test_img_00005.jpg",
+      "total_time": 0.5189202000001387,
+      "file_size_kb": 2244.08984375,
+      "image_size": [
+        4032,
+        3024
+      ]
+    },
+    {
+      "image_path": "test_data_system\\5k\\test_img_00006.jpg",
+      "total_time": 0.3358723999999711,
+      "file_size_kb": 1322.083984375,
+      "image_size": [
+        3840,
+        2160
+      ]
+    },
+    {
+      "image_path": "test_data_system\\5k\\test_img_00007.jpg",
+      "total_time": 0.33386160000009113,
+      "file_size_kb": 1236.232421875,
+      "image_size": [
+        3840,
+        2160
+      ]
+    },
+    {
+      "image_path": "test_data_system\\5k\\test_img_00008.jpg",
+      "total_time": 0.030781699999351986,
+      "file_size_kb": 128.2939453125,
+      "image_size": [
+        1200,
+        800
+      ]
+    },
+    {
+      "image_path": "test_data_system\\5k\\test_img_00009.jpg",
+      "total_time": 0.07231330000013259,
+      "file_size_kb": 402.318359375,
+      "image_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "image_path": "test_data_system\\5k\\test_img_00010.jpg",
+      "total_time": 0.33350199999949837,
+      "file_size_kb": 1005.0673828125,
+      "image_size": [
+        3840,
+        2160
+      ]
+    }
+  ]
+}

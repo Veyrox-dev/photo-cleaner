@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-02-22T19:15:54.215Z",
+  "version": "0.8.3",
+  "email": "service@jandi.de",
+  "image_count": "100-500",
+  "image_types": [
+    "portraits",
+    "groups"
+  ],
+  "accuracy": "85",
+  "trust": "3",
+  "common_errors": "\"Fehler\": manche Bilder werden in getrennte Gruppen geführt, obwohl sie alle zusammen gehören",
+  "eye_quality": "3",
+  "sharpness": "3",
+  "lighting": "3",
+  "speed": "fast",
+  "crashes": "",
+  "likes": "",
+  "dislikes": "",
+  "nps": "8",
+  "bugs": "Lizenz wurde nicht erkannt",
+  "would_buy": "probably",
+  "buy_reason": "",
+  "overall": "4",
+  "additional": ""
+}

@@ -1,0 +1,47 @@
+"""
+Runtime hook for numpy - fixes PyInstaller docstring TypeError.
+
+CRITICAL: This hook must run BEFORE any numpy imports from other modules.
+It forces the initialization of numpy's C extensions in the correct order.
+"""
+import sys
+import os
+
+# Only run in frozen (PyInstaller) mode
+if getattr(sys, 'frozen', False):
+    # Silence TensorFlow oneDNN warnings during startup
+    os.environ.setdefault('TF_ENABLE_ONEDNN_OPTS', '0')
+    
+    # Force numpy initialization BEFORE any other imports
+    # This prevents the docstring TypeError in numpy.core.overrides
+    try:
+        # Step 1: Import numpy base
+        import numpy
+        
+        # Step 2: Force load multiarray which triggers C extension initialization
+        import numpy.core.multiarray
+        
+        # Step 3: Load the problematic overrides module that was failing
+        import numpy.core.overrides
+        
+        # Step 4: Load other critical modules
+        import numpy.core._multiarray_umath
+        import numpy.core._methods
+        import numpy.core.umath
+        import numpy.lib
+        import numpy.lib.format
+        import numpy.random
+        
+        print(f"[PyInstaller Hook] NumPy {numpy.__version__} initialized successfully")
+        
+    except ImportError as e:
+        # Log but don't fail - numpy might not be needed for all code paths
+        print(f"[PyInstaller Hook] Warning: NumPy initialization incomplete: {e}")
+    except TypeError as e:
+        # This is the specific error we're trying to prevent
+        if "docstring" in str(e):
+            print(f"[PyInstaller Hook] CRITICAL ERROR - NumPy docstring issue: {e}")
+            raise
+        else:
+            raise
+

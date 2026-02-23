@@ -1,0 +1,66 @@
+{
+  "profiling_date": "2026-02-06T17:05:53.210058",
+  "phase": "Phase 2 Week 1",
+  "goal": "Establish baseline and identify Top 5 bottlenecks",
+  "test_runs": [
+    {
+      "stage_name": "profile_Input",
+      "folder_path": "C:\\Users\\chris\\OneDrive\\Bilder\\01_Photocleaner\\Input",
+      "image_count": 0,
+      "duplicate_groups": 11,
+      "duration_seconds": 184.01972889900208,
+      "memory_start_mb": 0.0,
+      "memory_peak_mb": 0.0,
+      "memory_delta_mb": 0.0,
+      "top_bottlenecks": [
+        {
+          "function": "as_completed",
+          "file": "_base.py",
+          "line": 199,
+          "cumulative_time_s": 325.7314807,
+          "total_time_s": 0.0554631,
+          "call_count": 337,
+          "time_per_call_ms": 966.5622572700297
+        },
+        {
+          "function": "wait",
+          "file": "threading.py",
+          "line": 637,
+          "cumulative_time_s": 309.2204554,
+          "total_time_s": 0.013430000000000001,
+          "call_count": 388,
+          "time_per_call_ms": 796.959936597938
+        },
+        {
+          "function": "wait",
+          "file": "threading.py",
+          "line": 323,
+          "cumulative_time_s": 294.7535293,
+          "total_time_s": 0.12749280000000002,
+          "call_count": 2027,
+          "time_per_call_ms": 145.4136799703996
+        },
+        {
+          "function": "resize",
+          "file": "Image.py",
+          "line": 2220,
+          "cumulative_time_s": 61.93616600000001,
+          "total_time_s": 0.034330900000000004,
+          "call_count": 136,
+          "time_per_call_ms": 455.41298529411773
+        },
+        {
+          "function": "<method 'acquire' of '_thread.lock' objects>",
+          "file": "~",
+          "line": 0,
+          "cumulative_time_s": 53.3371238,
+          "total_time_s": 0.1150544,
+          "call_count": 129439,
+          "time_per_call_ms": 0.4120637813950973
+        }
+      ],
+      "profile_output": "         52219237 function calls (44652226 primitive calls) in 281.192 seconds\n\n   Ordered by: cumulative time\n   List reduced from 11946 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n  337/265    0.055    0.000  325.731    1.229 _base.py:199(as_completed)\n  388/276    0.013    0.000  309.220    1.120 threading.py:637(wait)\n 2027/531    0.127    0.000  294.754    0.555 threading.py:323(wait)\n   136/71    0.034    0.000   61.936    0.872 Image.py:2220(resize)\n129439/1587    0.115    0.000   53.337    0.034 {method 'acquire' of '_thread.lock' objects}\n    74/51    0.000    0.000   53.320    1.045 threading.py:1117(join)\n    74/51    0.000    0.000   53.319    1.045 threading.py:1155(_wait_for_tstate_lock)\n     16/7    0.000    0.000   38.903    5.558 layer.py:517(add_weight)\n   646/47    0.259    0.000   35.690    0.759 as_plugin.py:58(load)\n        9    0.000    0.000   33.374    3.708 _base.py:646(__exit__)\n        9    0.000    0.000   33.374    3.708 thread.py:220(shutdown)\n     62/9    0.002    0.000   33.371    3.708 threading.py:1018(_bootstrap)\n     62/9    0.000    0.000   33.369    3.708 threading.py:1058(_bootstrap_inner)\n   1262/9    0.659    0.001   33.356    3.706 thread.py:54(run)\n     69/9    0.000    0.000   32.107    3.567 threading.py:1001(run)\n   710/40    0.018    0.000   32.107    0.803 {method 'get' of '_queue.SimpleQueue' objects}\n     69/9    0.000    0.000   32.106    3.567 thread.py:70(_worker)\n        1    0.000    0.000   18.699   18.699 pipeline.py:230(_stage_index)\n        1    0.000    0.000   18.699   18.699 indexer.py:49(index_folder)\n    136/1    0.074    0.001   18.682   18.682 indexer.py:124(_process_file)\n\n\n",
+      "timestamp": "2026-02-06T17:08:57.590171"
+    }
+  ]
+}

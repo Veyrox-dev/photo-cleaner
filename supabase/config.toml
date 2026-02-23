@@ -1,0 +1,9 @@
+# Supabase Edge Functions configuration
+
+[functions.exchange-license-key]
+# Temporarily disable JWT verification to allow anon key calls (client-side activation).
+verify_jwt = false
+
+[functions.license-webhook]
+# Stripe webhooks don't send Supabase JWTs; disable JWT verification for this function.
+verify_jwt = false

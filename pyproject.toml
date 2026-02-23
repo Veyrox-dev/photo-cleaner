@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "photo-cleaner"
+version = "0.8.3"
+description = "Intelligente Fotoverwaltung mit Auto-Auswahl, Online License System, Image Cache: Duplikate finden, Face Mesh Analyse, Modern UI, sichere Löschung"
+readme = "docs/README.md"
+requires-python = ">=3.12,<3.13"
+license = {text = "Proprietary"}
+authors = [
+    {name = "PhotoCleaner Team"}
+]
+keywords = ["photo", "duplicate", "image", "perceptual-hash", "photo-management", "exif", "organization"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Desktop Environment :: File Managers",
+]
+
+dependencies = [
+    "Pillow>=10.2.0",
+    "imagehash>=4.3.1",
+    "PySide6>=6.6.0",
+    "opencv-python>=4.8.0",
+    "mediapipe>=0.10.0",
+    "send2trash>=1.8.0",
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+]
+advanced = [
+    "dlib>=19.24.0",  # Advanced face detection (requires Visual Studio C++ Build Tools on Windows)
+]
+
+[project.scripts]
+photo-cleaner = "photo_cleaner.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q --strict-markers --tb=short"
+testpaths = ["tests/unit", "tests/integration", "tests/ui"]
+pythonpath = ["src"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/test_*.py",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = ["E501", "B008", "C901"]
+addopts = "--cov=photo_cleaner --cov-report=term-missing --cov-report=html"
