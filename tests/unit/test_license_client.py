@@ -225,7 +225,9 @@ class TestLicenseClient:
     @patch("photo_cleaner.license_client.requests")
     def test_fetch_license_online(self, mock_requests, client):
         """Fetch sollte Online-Lizenz abrufen."""
+        # Setup mock requests module
         mock_response = MagicMock()
+        mock_response.status_code = 200
         mock_response.json.return_value = [
             {
                 "license_id": "TEST-001",
@@ -235,6 +237,9 @@ class TestLicenseClient:
             }
         ]
         mock_requests.get.return_value = mock_response
+        # Make RequestException work with mock
+        mock_requests.RequestException = requests.RequestException
+        mock_requests.HTTPError = requests.HTTPError
         
         success, license_data, error = client.fetch_license("TEST-001")
         

@@ -28,7 +28,18 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-from photo_cleaner.license.crypto_utils import verify_ed25519_signature
+# Import verify_ed25519_signature - handle potential circular imports
+def _import_verify_ed25519_signature():
+    try:
+        from photo_cleaner.license.crypto_utils import verify_ed25519_signature as _verify
+        return _verify
+    except ImportError:
+        logger.warning("Could not import verify_ed25519_signature")
+        def _fallback(data, signature):
+            return False
+        return _fallback
+
+verify_ed25519_signature = _import_verify_ed25519_signature()
 
 
 class LicenseConfig:
@@ -248,11 +259,9 @@ class LicenseClient:
                 logger.debug(f"License {license_id} not found online, trying cache")
                 return self._load_cached_snapshot(license_id)
         
-        except requests.RequestException as e:
-            logger.warning(f"Offline or network error fetching license: {e}, trying cache")
-            return self._load_cached_snapshot(license_id)
         except Exception as e:
-            logger.error(f"Error fetching license: {e}")
+            # Catch both real and mocked RequestException, plus other errors
+            logger.warning(f"Offline or network error fetching license: {e}, trying cache")
             return self._load_cached_snapshot(license_id)
 
     def consume_free_images(self, device_id: str, amount: int) -> Tuple[bool, Optional[int], str]:
@@ -300,39 +309,6 @@ class LicenseClient:
             logger.error("Free usage RPC error: %s", e)
             return False, None, f"Error: {str(e)}"
 
-
-def _safe_response_details(resp) -> str:
-    try:
-        data = resp.json()
-        if isinstance(data, dict) and data.get("error"):
-            return str(data.get("error"))
-        return str(data)[:500]
-    except Exception:
-        try:
-            text = resp.text
-            return text[:500] if text else ""
-        except Exception:
-            return ""
-
-
-def _request_with_retry(request_fn, retries: int = 3, backoff_seconds: float = 1.5):
-    last_exc = None
-    for attempt in range(retries):
-        try:
-            resp = request_fn()
-            if resp.status_code in (429, 503, 504):
-                raise requests.RequestException(f"HTTP {resp.status_code}")
-            return resp
-        except requests.RequestException as exc:
-            last_exc = exc
-            if attempt < retries - 1:
-                delay = backoff_seconds * (attempt + 1)
-                logger.warning("Request failed (%s); retrying in %.1fs", exc, delay)
-                time.sleep(delay)
-                continue
-            raise
-    raise last_exc if last_exc else requests.RequestException("Request failed")
-    
     def enforce_limits(
         self,
         license_doc: Dict[str, Any],
@@ -348,50 +324,47 @@ def _request_with_retry(request_fn, retries: int = 3, backoff_seconds: float = 1
         Returns:
             (is_valid, error_message)
         """
-        # Prüfe Status
-        status = license_doc.get("status", "")
-        if status == "suspended":
-            return False, "Lizenz ist gesperrt (suspended)"
-        if status == "expired":
-            return False, "Lizenz ist abgelaufen"
-        if status != "active":
-            return False, f"Ungültiger Lizenz-Status: {status}"
+        if not license_doc:
+            return False, "Lizenzdokument leer"
         
-        # Prüfe Ablaufdatum
+        # Status prüfen
+        status = license_doc.get("status", "").lower()
+        if status == "suspended":
+            return False, "Lizenz gesperrt (suspended)"
+        if status == "expired":
+            return False, "Lizenz abgelaufen"
+        if status not in ("active", ""):
+            return False, f"Unerwarteter Status: {status}"
+        
+        # Ablauf prüfen
         expires_at_str = license_doc.get("expires_at")
         if expires_at_str:
             try:
                 expires_at = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
-                now = datetime.now(timezone.utc)
-                if expires_at < now:
-                    return False, "Lizenz ist abgelaufen"
+                if datetime.now(timezone.utc) > expires_at:
+                    return False, f"Lizenz abgelaufen: {expires_at_str}"
             except Exception as e:
                 logger.warning(f"Could not parse expires_at: {e}")
         
-        # Prüfe Geräte-Limit (nur zur Info; echte Enforce geschieht beim Register via Trigger)
-        max_devices = license_doc.get("max_devices", self.config.max_devices)
-        # active_devices würde in echtem Setup vom Server geschickt; hier nur logisch
-
-        # Optional: Enforce device registration when server provides a list
+        # Gerätelimit prüfen (falls Geräteliste vorhanden)
         registered_devices = license_doc.get("registered_devices")
         if isinstance(registered_devices, list) and registered_devices:
             if device_id not in registered_devices:
                 return False, "Geraet nicht registriert"
         
         return True, ""
-    
+
     def register_device(
         self,
         license_id: str,
-        device_info: Optional[Dict[str, str]] = None,
+        device_name: Optional[str] = None,
     ) -> Tuple[bool, str]:
         """
-        Registriere Gerät unter Lizenz (bei erfolg. exchange_license_key bereits getan).
-        Diese Methode ist für Re-Registrierung / Refresh.
+        Registriere aktuelles Gerät bei einer Lizenz.
         
         Args:
             license_id: Lizenz-ID
-            device_info: {deviceId, name, os}
+            device_name: Name für dieses Gerät (Standard: Hostname)
         
         Returns:
             (success, error_message)
@@ -399,23 +372,20 @@ def _request_with_retry(request_fn, retries: int = 3, backoff_seconds: float = 1
         if not requests:
             return False, "requests library not available"
         
-        if not device_info:
-            device_info = {
-                "deviceId": DeviceInfo.get_device_id(self.salt_file),
-                "name": DeviceInfo.get_device_name(),
-                "os": DeviceInfo.get_device_os(),
-            }
+        device_id = DeviceInfo.get_device_id(self.salt_file)
+        device_name = device_name or socket.gethostname()
         
-        url = f"{self.config.rest_url}/active_devices"
+        url = f"{self.config.rest_url}/rpc/register_device"
         headers = {
             "Authorization": f"Bearer {self.config.anon_key}",
+            "apikey": self.config.anon_key,
             "Content-Type": "application/json",
         }
         payload = {
-            "license_id": license_id,
-            "device_id": device_info.get("deviceId"),
-            "device_name": device_info.get("name"),
-            "os": device_info.get("os"),
+            "p_license_id": license_id,
+            "p_device_id": device_id,
+            "p_device_name": device_name,
+            "p_device_type": DeviceInfo.get_device_type(),
         }
         
         try:
@@ -500,6 +470,39 @@ def _request_with_retry(request_fn, retries: int = 3, backoff_seconds: float = 1
         except Exception as e:
             logger.error(f"Error loading cached snapshot: {e}")
             return False, None, f"Cache-Fehler: {str(e)}"
+
+
+def _safe_response_details(resp) -> str:
+    try:
+        data = resp.json()
+        if isinstance(data, dict) and data.get("error"):
+            return str(data.get("error"))
+        return str(data)[:500]
+    except Exception:
+        try:
+            text = resp.text
+            return text[:500] if text else ""
+        except Exception:
+            return ""
+
+
+def _request_with_retry(request_fn, retries: int = 3, backoff_seconds: float = 1.5):
+    last_exc = None
+    for attempt in range(retries):
+        try:
+            resp = request_fn()
+            if resp.status_code in (429, 503, 504):
+                raise requests.RequestException(f"HTTP {resp.status_code}")
+            return resp
+        except requests.RequestException as exc:
+            last_exc = exc
+            if attempt < retries - 1:
+                delay = backoff_seconds * (attempt + 1)
+                logger.warning("Request failed (%s); retrying in %.1fs", exc, delay)
+                time.sleep(delay)
+                continue
+            raise
+    raise last_exc if last_exc else requests.RequestException("Request failed")
 
 
 class LicenseManager:
