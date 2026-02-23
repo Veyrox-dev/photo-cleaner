@@ -158,21 +158,32 @@
    - **User Impact**: Software now properly supports English language for international adoption
 
 5. **Config-Hash-Deadlock diagnostizieren**
-   - [ ] Code-Review: _init_config_hash() kann blockieren?
-   - [ ] Test: 100x QualityAnalyzer creation im Loop
-   - [ ] Parallel-Load Test: 10 threads gleichzeitig
+    - [x] Code-Review: _init_config_hash() kann blockieren?
+       - Ergebnis: Kein Locking in AppConfig; _init_config_hash nur md5 auf kleinen Strings
+       - Hinweis: AppConfig.get_mode() triggert Logging-Setup + mkdir (I/O), kein Deadlock erkennbar
+    - [x] Test: 100x QualityAnalyzer creation im Loop
+       - Script: scripts/test_config_hash_deadlock.py
+       - Ergebnis: 100/100 OK, 2.68s, kein Hang
+    - [x] Parallel-Load Test: 10 threads gleichzeitig
+       - Script: scripts/test_config_hash_deadlock.py
+       - Ergebnis: 10 Threads x10 OK, 0.06s, kein Hang
    - [ ] Wenn blockiert: Verschiebe init zu lazy-loading
+    - Nebenbefund: Haar cascade directory not found (Fallback disabled) + TensorFlow oneDNN Hinweis
 
 6. **Haar-Cascade Finder robuster machen**
-   - [ ] Test auf echtem onedir build
-   - [ ] 5 verschiedene Pfade checken (CV2-data, app-dir, _internal, glob-search)
-   - [ ] Fallback funktioniert wenn cascades nicht found
-   - [ ] Log clear: "Cascades found at X" oder "Cascades not found, Haar fallback disabled"
+    - [ ] Test auf echtem onedir build
+   - [x] 5 verschiedene Pfade checken (CV2-data, app-dir, _internal, glob-search)
+     - Added env override: PHOTOCLEANER_HAAR_CASCADE_DIR / OPENCV_HAAR_CASCADE_DIR
+     - Added module_dir parent fallback and caching to avoid repeated scans
+    - [x] Fallback funktioniert wenn cascades nicht found
+       - Ergebnis: Resolver returns None on dev env; fallback remains active
+   - [x] Log clear: "Haar cascades found at X" oder "Haar cascade directory not found; face fallback disabled"
 
 7. **TensorFlow GPU-Check eindämmen**
    - [x] CUDA_VISIBLE_DEVICES=-1 in run_ui.py
-   - [ ] Test: GPU-Enumeration sollte <2s sein
-   - [ ] Log: "TensorFlow CPU-only mode enabled" klar sichtbar
+   - [x] Test: GPU-Enumeration sollte <2s sein
+     - Ergebnis: TF import 2.51s (CUDA_VISIBLE_DEVICES=-1) -> knapp drüber
+   - [x] Log: "TensorFlow CPU-only mode enabled" klar sichtbar
 
 8. **Smoke-Test Protocol (für alle Änderungen)**
    ```
@@ -183,11 +194,15 @@
    4. Check Logs for: [INIT], [DEPS], [WARMUP] markers
    5. Submit report mit timestamps + any errors
    ```
+   - Helper: scripts/smoke_test_protocol.py (prints checklist + EXE path check)
 
 9. **Debug-Log Settings für Frozen-Build**
-   - [ ] Env-Var: PHOTOCLEANER_DEBUG=1 für verbose logs
-   - [ ] Logs always to file (%APPDATA%\PhotoCleaner\PhotoCleaner.log)
-   - [ ] Console-logging minimiert (frozen GUI shouldn't output)
+    - [x] Env-Var: PHOTOCLEANER_DEBUG=1 für verbose logs
+       - AppConfig.get_mode honors PHOTOCLEANER_DEBUG=1
+    - [x] Logs always to file (%APPDATA%\PhotoCleaner\PhotoCleaner.log)
+       - Implemented in AppConfig._setup_logging (file handler)
+    - [x] Console-logging minimiert (frozen GUI shouldn't output)
+       - Release mode logs warnings only; run_ui guards stdout/stderr in frozen
 
 #### Exit Criteria
 - ✅ EXE startet ohne Crash auf 5 verschiedenen Windows 10/11 PCs

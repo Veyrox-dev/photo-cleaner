@@ -380,10 +380,27 @@ def _resolve_face_mesh_ctor():
         return None
 
 
+_HAAR_CASCADE_DIR_CACHE: Path | None = None
+_HAAR_CASCADE_DIR_CHECKED = False
+
+
 def _resolve_haar_cascade_dir() -> Path | None:
+    global _HAAR_CASCADE_DIR_CACHE, _HAAR_CASCADE_DIR_CHECKED
+    if _HAAR_CASCADE_DIR_CHECKED:
+        return _HAAR_CASCADE_DIR_CACHE
+
+    _HAAR_CASCADE_DIR_CHECKED = True
     if not CV2_AVAILABLE or _cv2 is None:
-        return None
+        _HAAR_CASCADE_DIR_CACHE = None
+        return _HAAR_CASCADE_DIR_CACHE
+
     candidates = []
+    try:
+        env_dir = os.environ.get("PHOTOCLEANER_HAAR_CASCADE_DIR") or os.environ.get("OPENCV_HAAR_CASCADE_DIR")
+        if env_dir:
+            candidates.append(Path(env_dir))
+    except Exception:
+        pass
     try:
         data_dir = getattr(_cv2.data, "haarcascades", None)
         if data_dir:
@@ -393,6 +410,7 @@ def _resolve_haar_cascade_dir() -> Path | None:
     try:
         module_dir = Path(_cv2.__file__).resolve().parent
         candidates.append(module_dir / "data" / "haarcascades")
+        candidates.append(module_dir.parent / "cv2" / "data" / "haarcascades")
     except Exception:
         pass
     try:
@@ -416,7 +434,10 @@ def _resolve_haar_cascade_dir() -> Path | None:
         if not path.exists():
             continue
         if list(path.glob("*.xml")):
-            return path
+            _HAAR_CASCADE_DIR_CACHE = path
+            logger.info("Haar cascades found at %s", path)
+            return _HAAR_CASCADE_DIR_CACHE
+
     try:
         app_dir = AppConfig.get_app_dir()
         for root in (app_dir, app_dir / "_internal"):
@@ -424,10 +445,15 @@ def _resolve_haar_cascade_dir() -> Path | None:
                 continue
             match = next(root.rglob("haarcascade_frontalface_default.xml"), None)
             if match is not None:
-                return match.parent
+                _HAAR_CASCADE_DIR_CACHE = match.parent
+                logger.info("Haar cascades found at %s", match.parent)
+                return _HAAR_CASCADE_DIR_CACHE
     except Exception:
         pass
-    return None
+
+    logger.warning("Haar cascade directory not found; face fallback disabled")
+    _HAAR_CASCADE_DIR_CACHE = None
+    return _HAAR_CASCADE_DIR_CACHE
 
 
 class CameraProfile:
@@ -764,9 +790,7 @@ class QualityAnalyzer:
         if CV2_AVAILABLE:
             try:
                 cascade_dir = _resolve_haar_cascade_dir()
-                if cascade_dir is None:
-                    logger.warning("Haar cascade directory not found; face fallback disabled")
-                else:
+                if cascade_dir is not None:
                     face_path = cascade_dir / "haarcascade_frontalface_default.xml"
                     eye_path = cascade_dir / "haarcascade_eye_tree_eyeglasses.xml"
                     self.face_cascade = _cv2.CascadeClassifier(str(face_path))

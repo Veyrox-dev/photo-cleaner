@@ -17,6 +17,7 @@ import argparse
 import io
 import os
 import sys
+import time
 from pathlib import Path
 
 # ============================================================================
@@ -30,7 +31,7 @@ if "TF_ENABLE_ONEDNN_OPTS" not in os.environ:
 
 # Force TensorFlow CPU-only mode in frozen builds (avoid GPU check hang)
 if getattr(sys, 'frozen', False):
-    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU
+    os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")  # Disable GPU unless explicitly overridden
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Suppress all TF logs in frozen build
 
 # In frozen GUI builds, stdout/stderr can be None; make them safe early.
@@ -380,6 +381,12 @@ def main():
     logger = get_logger(__name__)
     logger.info(f"=== PhotoCleaner {VERSION} gestartet im {mode.value} Modus ===")
 
+    cuda_visible = os.environ.get("CUDA_VISIBLE_DEVICES")
+    if cuda_visible == "-1":
+        logger.info("TensorFlow CPU-only mode enabled (CUDA_VISIBLE_DEVICES=-1)")
+    elif cuda_visible is not None:
+        logger.info("CUDA_VISIBLE_DEVICES=%s", cuda_visible)
+
     from photo_cleaner.core.hasher import check_phash_support
     check_phash_support(logger)
 
@@ -400,8 +407,12 @@ def main():
     # TensorFlow MUSS vor Qt/PySide6 geladen werden, sonst DLL-Fehler
     mtcnn_status = {"available": False, "error": None}
     try:
+        tf_import_start = time.perf_counter()
         import tensorflow as tf
-        logger.info(f"TensorFlow {tf.__version__} loaded successfully")
+        tf_import_elapsed = time.perf_counter() - tf_import_start
+        logger.info(f"TensorFlow {tf.__version__} loaded successfully in {tf_import_elapsed:.2f}s")
+        if tf_import_elapsed > 2.0:
+            logger.warning("TensorFlow import took %.2fs; GPU enumeration may be slow", tf_import_elapsed)
         _configure_keras_logging(logger)
     except Exception as e:
         mtcnn_status["error"] = str(e)

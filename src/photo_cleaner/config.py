@@ -42,9 +42,13 @@ class AppConfig:
     def get_mode(cls) -> AppMode:
         """Get current application mode. Defaults to DEBUG if not set."""
         if cls._mode is None:
-            # Auto-detect from environment or default to RELEASE for EXE builds
-            env_mode = os.environ.get("PHOTOCLEANER_MODE", "RELEASE").upper()
-            cls._mode = AppMode(env_mode) if env_mode in ("DEBUG", "RELEASE") else AppMode.RELEASE
+            debug_flag = os.environ.get("PHOTOCLEANER_DEBUG", "0").lower() in ("1", "true", "yes")
+            if debug_flag:
+                cls._mode = AppMode.DEBUG
+            else:
+                # Auto-detect from environment or default to RELEASE for EXE builds
+                env_mode = os.environ.get("PHOTOCLEANER_MODE", "RELEASE").upper()
+                cls._mode = AppMode(env_mode) if env_mode in ("DEBUG", "RELEASE") else AppMode.RELEASE
             cls._setup_logging()
         return cls._mode
     
