@@ -49,25 +49,34 @@ def stress_test_10k():
     # Test 2: Image hashing (CPU-intensive)
     hasher = ImageHasher()
     hash_start = time.time()
-    hash_count = 0
+    phash_count = 0
+    file_hash_count = 0
     hash_errors = 0
     
-    for file_path in files[:100]:  # Hash first 100 to keep test quick
+    for file_path in files[:1000]:  # Hash first 1000 files
         try:
-            result = hasher.hash_file(file_path)
-            if result:
-                hash_count += 1
+            # Compute perceptual hash
+            phash = hasher.compute_phash(file_path)
+            if phash:
+                phash_count += 1
+            
+            # Compute file hash
+            file_hash = hasher.compute_file_hash(file_path)
+            if file_hash:
+                file_hash_count += 1
         except Exception as e:
             hash_errors += 1
     
     hash_time = time.time() - hash_start
     current, peak = tracemalloc.get_traced_memory()
     
-    print(f"\n✅ HASH SAMPLE (100 files)")
-    print(f"   Successfully hashed {hash_count} files in {hash_time:.2f}s")
+    print(f"\n✅ HASH SAMPLE (1000 files)")
+    print(f"   pHash computed: {phash_count} files")
+    print(f"   File hash computed: {file_hash_count} files")
     print(f"   Errors: {hash_errors}")
-    if hash_count > 0:
-        print(f"   Speed: {hash_count/hash_time:.0f} files/sec")
+    print(f"   Time: {hash_time:.2f}s")
+    if phash_count > 0:
+        print(f"   Speed: {phash_count/hash_time:.0f} files/sec")
     
     # Memory report
     mem_used = (current - start_mem) / (1024 * 1024)
@@ -80,10 +89,10 @@ def stress_test_10k():
     
     # Extrapolate
     total_time = time.time() - start_time
-    if hash_count > 0:
-        extrapolated_time = (len(files) / hash_count) * hash_time
+    if phash_count > 0:
+        extrapolated_time = (len(files) / phash_count) * hash_time
         print(f"\n📈 EXTRAPOLATION (all {len(files):,} files)")
-        print(f"   Estimated time: {extrapolated_time/60:.1f} minutes")
+        print(f"   Estimated time (at sampled speed): {extrapolated_time/60:.1f} minutes")
         print(f"   Estimated speed: {len(files)/extrapolated_time:.0f} files/sec")
     
     print(f"\nTotal test time: {total_time:.2f}s")

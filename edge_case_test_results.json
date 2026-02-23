@@ -1,0 +1,38 @@
+[
+  {
+    "test": "Empty Directory",
+    "passed": true,
+    "details": "Correctly returned 0 files",
+    "timestamp": "2026-02-23T19:09:24.868312"
+  },
+  {
+    "test": "Corrupted JPEG",
+    "passed": true,
+    "details": "Scanned 2 files, successfully hashed 0",
+    "timestamp": "2026-02-23T19:09:25.175477"
+  },
+  {
+    "test": "Missing EXIF",
+    "passed": true,
+    "details": "Skipped gracefully (PIL fallback)",
+    "timestamp": "2026-02-23T19:09:25.177540"
+  },
+  {
+    "test": "Invalid File Format",
+    "passed": true,
+    "details": "Scanned 2 files, 0 successful, 0 errors",
+    "timestamp": "2026-02-23T19:09:25.181336"
+  },
+  {
+    "test": "Deeply Nested Folders",
+    "passed": true,
+    "details": "Found file at 20 levels deep",
+    "timestamp": "2026-02-23T19:09:25.189011"
+  },
+  {
+    "test": "Read-Only Files",
+    "passed": true,
+    "details": "Found read-only file: 1 files",
+    "timestamp": "2026-02-23T19:09:25.191448"
+  }
+]
