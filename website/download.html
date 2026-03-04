@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PhotoCleaner für Windows herunterladen. Version 1.0 Launch am 3. Oktober 2026. Jetzt auf Warteliste eintragen und keine Updates verpassen!">
+    <meta name="keywords" content="PhotoCleaner Download, Windows Foto Software, Duplikat Erkennung Download">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/icon.png">
+    <title>PhotoCleaner Download - Windows Version 1.0</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --text-dark: #0f172a;
+            --text-gray: #334155;
+            --bg-white: #ffffff;
+            --bg-light: #f8fafc;
+            --border: #e2e8f0;
+            --disabled-bg: #d1d5db;
+            --disabled-text: #6b7280;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 48px;
+            --spacing-3xl: 64px;
+            --radius: 6px;
+            --radius-lg: 12px;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --transition: all 0.2s ease;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text-dark);
+            background: var(--bg-white);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: white;
+            box-shadow: var(--shadow-sm);
+            z-index: 1000;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+            height: 64px;
+            width: 100%;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-back a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .nav-back a:hover {
+            color: var(--primary-dark);
+        }
+
+        /* Main Content */
+        main {
+            margin-top: 64px;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: var(--spacing-3xl) var(--spacing-lg);
+        }
+
+        .hero-download {
+            text-align: center;
+            padding: var(--spacing-3xl) var(--spacing-lg);
+        }
+
+        .hero-icon {
+            font-size: 80px;
+            margin-bottom: var(--spacing-lg);
+            display: block;
+        }
+
+        h1 {
+            font-size: 44px;
+            margin-bottom: var(--spacing-lg);
+            color: var(--text-dark);
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: var(--text-gray);
+            margin-bottom: var(--spacing-2xl);
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .download-section {
+            background: var(--bg-light);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-3xl);
+            margin-bottom: var(--spacing-2xl);
+            text-align: center;
+        }
+
+        .version-label {
+            font-size: 14px;
+            color: var(--text-gray);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .version-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: 12px 24px;
+            border-radius: var(--radius);
+            text-decoration: none;
+            font-weight: 600;
+            transition: var(--transition);
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-disabled {
+            background: var(--disabled-bg);
+            color: var(--disabled-text);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-disabled:hover {
+            background: var(--disabled-bg);
+            transform: none;
+        }
+
+        .btn-lg {
+            padding: 16px 32px;
+            font-size: 18px;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-light);
+            color: var(--primary-dark);
+            border-color: var(--primary-dark);
+        }
+
+        .availability-info {
+            background: #dbeafe;
+            border-left: 4px solid var(--primary);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius);
+            text-align: left;
+            margin-top: var(--spacing-2xl);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .availability-info h3 {
+            color: var(--primary);
+            margin-bottom: var(--spacing-md);
+            font-size: 16px;
+        }
+
+        .availability-info p {
+            color: var(--text-dark);
+            line-height: 1.8;
+        }
+
+        .features-preview {
+            margin-top: var(--spacing-3xl);
+            padding-top: var(--spacing-2xl);
+            border-top: 1px solid var(--border);
+        }
+
+        .features-preview h2 {
+            font-size: 28px;
+            margin-bottom: var(--spacing-2xl);
+            text-align: center;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-2xl);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .feature-item {
+            background: var(--bg-light);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            border-left: 4px solid var(--primary);
+        }
+
+        .feature-item h3 {
+            color: var(--text-dark);
+            margin-bottom: var(--spacing-md);
+            font-size: 16px;
+        }
+
+        .feature-item p {
+            color: var(--text-gray);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .contact-box {
+            background: var(--bg-light);
+            padding: var(--spacing-2xl);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            margin-top: var(--spacing-2xl);
+        }
+
+        .contact-box h3 {
+            color: var(--text-dark);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .contact-box a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .contact-box a:hover {
+            color: var(--primary-dark);
+            text-decoration: underline;
+        }
+
+        /* Notify Me Form */
+        .notify-form {
+            background: white;
+            padding: var(--spacing-2xl);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            margin-top: var(--spacing-2xl);
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .notify-form h3 {
+            color: var(--text-dark);
+            margin-bottom: var(--spacing-md);
+            font-size: 20px;
+        }
+
+        .notify-form p {
+            color: var(--text-gray);
+            margin-bottom: var(--spacing-lg);
+            font-size: 14px;
+        }
+
+        .notify-form form {
+            display: flex;
+            gap: var(--spacing-md);
+        }
+
+        .notify-form input[type="email"] {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .notify-form input[type="email"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .notify-form button {
+            padding: 12px 24px;
+            white-space: nowrap;
+        }
+
+        .notify-success {
+            display: none;
+            background: #d1fae5;
+            border: 1.5px solid #059669;
+            color: #065f46;
+            padding: var(--spacing-md);
+            border-radius: var(--radius);
+            margin-top: var(--spacing-md);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .notify-success.active {
+            display: block;
+        }
+
+        /* Countdown Timer */
+        .countdown-timer {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-2xl);
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .countdown-item {
+            background: white;
+            padding: var(--spacing-lg);
+            border-radius: var(--radius);
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .countdown-number {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--primary);
+            display: block;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .countdown-label {
+            font-size: 12px;
+            color: var(--text-gray);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* System Requirements */
+        .system-requirements {
+            margin-top: var(--spacing-3xl);
+            padding-top: var(--spacing-2xl);
+            border-top: 1px solid var(--border);
+        }
+
+        .system-requirements h2 {
+            text-align: center;
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .requirements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        .requirement-item {
+            background: var(--bg-light);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius);
+            border-left: 3px solid var(--primary);
+        }
+
+        .requirement-item h4 {
+            color: var(--text-dark);
+            margin-bottom: var(--spacing-sm);
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .requirement-item p {
+            color: var(--text-gray);
+            font-size: 13px;
+            margin-bottom: 0;
+        }
+
+        .requirement-item .req-spec {
+            color: var(--primary);
+            font-weight: 600;
+            margin-top: var(--spacing-sm);
+            display: block;
+        }
+
+        @media (max-width: 640px) {
+            .notify-form form {
+                flex-direction: column;
+            }
+
+            .notify-form button {
+                width: 100%;
+            }
+
+            .countdown-timer {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .countdown-number {
+                font-size: 24px;
+            }
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: var(--bg-light);
+            color: var(--primary);
+            text-decoration: none;
+            border-radius: var(--radius);
+            font-weight: 500;
+            transition: var(--transition);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .back-button:hover {
+            background: var(--border);
+            color: var(--primary-dark);
+        }
+
+        /* Footer */
+        footer {
+            background: var(--text-dark);
+            color: white;
+            padding: var(--spacing-3xl) 0;
+            margin-top: var(--spacing-3xl);
+        }
+
+        footer .container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-2xl);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .footer-section h4 {
+            margin-bottom: var(--spacing-md);
+            font-size: 16px;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section li {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .footer-section a {
+            color: #cbd5e1;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: var(--spacing-lg);
+            text-align: center;
+            color: #cbd5e1;
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                padding: 0 var(--spacing-md);
+                height: 56px;
+            }
+
+            .logo {
+                gap: 8px;
+                font-size: 18px;
+            }
+
+            .logo-icon {
+                width: 28px;
+                height: 28px;
+            }
+
+            main {
+                padding: var(--spacing-2xl) var(--spacing-md);
+                margin-top: 56px;
+            }
+
+            h1 {
+                font-size: 32px;
+            }
+
+            .version-title {
+                font-size: 24px;
+            }
+
+            .hero-icon {
+                font-size: 60px;
+            }
+
+            .download-section {
+                padding: var(--spacing-2xl);
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 24px;
+            }
+
+            .version-title {
+                font-size: 20px;
+            }
+
+            .hero-icon {
+                font-size: 48px;
+            }
+
+            .subtitle {
+                font-size: 16px;
+            }
+
+            .btn {
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+
+            .btn-lg {
+                padding: 14px 24px;
+                font-size: 16px;
+            }
+
+            .download-section {
+                padding: var(--spacing-lg);
+            }
+
+            main {
+                padding: var(--spacing-xl) var(--spacing-md);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <nav>
+            <a href="website.html" class="logo">
+                <img src="../assets/icon.png" alt="PhotoCleaner" class="logo-icon">
+                <span>PhotoCleaner</span>
+            </a>
+            <div class="nav-back">
+                <a href="website.html">← Zurück</a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <a href="website.html" class="back-button">← Zurück zur Website</a>
+
+        <div class="hero-download">
+            <span class="hero-icon">📥</span>
+            <h1>PhotoCleaner herunterladen</h1>
+            <p class="subtitle">Die intelligente Lösung zur Verwaltung und Bereinigung Ihrer Fotobibliothek – bequem für Windows.</p>
+        </div>
+
+        <div class="download-section">
+            <div class="version-label">Kommende Version</div>
+            <div class="version-title">Version 1.0</div>
+            <button class="btn btn-lg btn-disabled" disabled>
+                Verfügbar: 3. Oktober 2026
+            </button>
+            
+            <div class="availability-info">
+                <h3>✨ Bald verfügbar</h3>
+                <p>
+                    PhotoCleaner Version 1.0 ist in Entwicklung und wird am <strong>3. Oktober 2026</strong> offiziell veröffentlicht. 
+                    Wir arbeiten hartdaran, Ihnen ein stabiles und benutzerfreundliches Produkt zu liefern. 
+                    Version 1.0 wird alle Kernfunktionen sowie viele Verbesserungen gegenüber der Beta-Phase enthalten.
+                </p>
+            </div>
+
+            <!-- Countdown Timer -->
+            <div class="countdown-timer" id="countdown">
+                <div class="countdown-item">
+                    <span class="countdown-number" id="days">0</span>
+                    <span class="countdown-label">Tage</span>
+                </div>
+                <div class="countdown-item">
+                    <span class="countdown-number" id="hours">0</span>
+                    <span class="countdown-label">Stunden</span>
+                </div>
+                <div class="countdown-item">
+                    <span class="countdown-number" id="minutes">0</span>
+                    <span class="countdown-label">Minuten</span>
+                </div>
+                <div class="countdown-item">
+                    <span class="countdown-number" id="seconds">0</span>
+                    <span class="countdown-label">Sekunden</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notify Me Form -->
+        <div class="notify-form">
+            <h3>🔔 Benachrichtigung erhalten</h3>
+            <p>Möchten Sie informiert werden, sobald PhotoCleaner verfügbar ist? Tragen Sie Ihre E-Mail ein!</p>
+            <form action="https://formsubmit.co/info@photocleaner.de" method="POST" id="notifyForm">
+                <input type="hidden" name="_subject" value="Neue Warteliste-Anmeldung für PhotoCleaner">
+                <input type="hidden" name="_captcha" value="false">
+                <input type="hidden" name="_template" value="table">
+                <input type="text" name="_honey" style="display:none">
+                <input type="hidden" name="Anmeldung_für" value="Launch-Benachrichtigung Version 1.0">
+                
+                <input 
+                    type="email" 
+                    name="email" 
+                    placeholder="ihre.email@beispiel.de" 
+                    required
+                    id="notifyEmail"
+                >
+                <button type="submit" class="btn btn-primary">Anmelden</button>
+            </form>
+            <div class="notify-success" id="notifySuccess">
+                ✅ Vielen Dank! Sie erhalten eine Benachrichtigung zum Launch.
+            </div>
+        </div>
+
+        <!-- System Requirements -->
+        <div class="system-requirements">
+            <h2>Systemanforderungen</h2>
+            <div class="requirements-grid">
+                <div class="requirement-item">
+                    <h4>💻 Betriebssystem</h4>
+                    <p>Windows 10 oder höher (64-bit)</p>
+                    <span class="req-spec">Windows 11 empfohlen</span>
+                </div>
+                <div class="requirement-item">
+                    <h4>🧠 Arbeitsspeicher</h4>
+                    <p>Mindestens 4 GB RAM</p>
+                    <span class="req-spec">8 GB oder mehr empfohlen</span>
+                </div>
+                <div class="requirement-item">
+                    <h4>💾 Speicherplatz</h4>
+                    <p>500 MB für die Installation</p>
+                    <span class="req-spec">Zusätzlicher Platz für Fotos</span>
+                </div>
+                <div class="requirement-item">
+                    <h4>⚡ Prozessor</h4>
+                    <p>Intel Core i3 oder äquivalent</p>
+                    <span class="req-spec">i5/i7 für große Bibliotheken</span>
+                </div>
+                <div class="requirement-item">
+                    <h4>📺 Bildschirm</h4>
+                    <p>Mindestens 1280 x 720 Pixel</p>
+                    <span class="req-spec">Full HD (1920x1080) empfohlen</span>
+                </div>
+                <div class="requirement-item">
+                    <h4>🎴 Weitere Anforderungen</h4>
+                    <p>Keine Internetverbindung nötig</p>
+                    <span class="req-spec">Offline voll funktionsfähig</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Preview -->
+        <div class="features-preview">
+            <h2>Was Sie erwartet</h2>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <h3>🎯 Intelligente Duplikat-Erkennung</h3>
+                    <p>Findet ähnliche Fotos automatisch mittels Perceptual Hashing – nicht nur bitweise identische Dateien.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>👁️ Geschlossene Augen erkennen</h3>
+                    <p>Die App analysiert automatisch, ob Personen die Augen geschlossen haben – perfekt für Qualitätsbewertung.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>⭐ Qualitätsbewertung</h3>
+                    <p>Objektive Analyse von Schärfe, Belichtung und Komposition für bessere Photo-Auswahl.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>📁 Ordner-Analyse</h3>
+                    <p>Verarbeiten Sie ganze Verzeichnisse in einem Durchgang – keine mühsame einzelne Dateiauswahl.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>✋ Volle Kontrolle</h3>
+                    <p>Sie kontrollieren jede Entscheidung. Intelligente Vorschläge, keine automatischen Löschungen.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>🔒 Lokale Verarbeitung</h3>
+                    <p>100% lokal auf Ihrem Computer. Keine Cloud, keine Upload, keine externen Server.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Section -->
+        <div class="contact-box">
+            <h3>Fragen zur Verfügbarkeit?</h3>
+            <p style="margin-bottom: var(--spacing-lg); color: var(--text-gray);">
+                Kontaktieren Sie unser Support-Team unter
+            </p>
+            <a href="mailto:support@photocleaner.de">support@photocleaner.de</a>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="website.html#features">Features</a></li>
+                        <li><a href="download.html">Download</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Rechtliches</h4>
+                    <ul>
+                        <li><a href="impressum.html">Impressum</a></li>
+                        <li><a href="datenschutz.html">Datenschutz</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Kontakt & Info</h4>
+                    <ul>
+                        <li><a href="mailto:info@photocleaner.de">info@photocleaner.de</a></li>
+                        <li><a href="docs.html">Dokumentation</a></li>
+                        <li><a href="changelog.html">Changelog</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 PhotoCleaner. Alle Rechte vorbehalten.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Countdown Timer to October 3, 2026
+        const launchDate = new Date('October 3, 2026 00:00:00').getTime();
+
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const distance = launchDate - now;
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            document.getElementById('days').textContent = days;
+            document.getElementById('hours').textContent = hours;
+            document.getElementById('minutes').textContent = minutes;
+            document.getElementById('seconds').textContent = seconds;
+
+            if (distance < 0) {
+                document.getElementById('countdown').innerHTML = '<p style="text-align: center; color: var(--primary); font-weight: 700; font-size: 20px;">🎉 PhotoCleaner ist jetzt verfügbar!</p>';
+            }
+        }
+
+        // Update countdown every second
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+
+        // Notify Form Success Handler (optional for better UX)
+        const notifyForm = document.getElementById('notifyForm');
+        if (notifyForm) {
+            notifyForm.addEventListener('submit', function(e) {
+                // Let FormSubmit handle the actual submission
+                // This is just for visual feedback
+                setTimeout(() => {
+                    const successMsg = document.getElementById('notifySuccess');
+                    if (successMsg) {
+                        successMsg.classList.add('active');
+                    }
+                }, 100);
+            });
+        }
+    </script>
+</body>
+</html>

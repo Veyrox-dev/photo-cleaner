@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PhotoCleaner Impressum - Rechtliche Geschäftsinformationen">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/icon.png">
+    <title>PhotoCleaner - Impressum</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --text-dark: #0f172a;
+            --text-gray: #334155;
+            --bg-white: #ffffff;
+            --bg-light: #f8fafc;
+            --border: #e2e8f0;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 48px;
+            --spacing-3xl: 64px;
+            --radius: 6px;
+            --radius-lg: 12px;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --transition: all 0.2s ease;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text-dark);
+            background: var(--bg-white);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: white;
+            box-shadow: var(--shadow-sm);
+            z-index: 1000;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+            height: 64px;
+            width: 100%;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-back a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .nav-back a:hover {
+            color: var(--primary-dark);
+        }
+
+        /* Main Content */
+        main {
+            margin-top: 64px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: var(--spacing-3xl) var(--spacing-lg);
+        }
+
+        h1 {
+            font-size: 44px;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        h2 {
+            font-size: 28px;
+            margin-top: var(--spacing-2xl);
+            margin-bottom: var(--spacing-lg);
+            color: var(--primary);
+        }
+
+        h3 {
+            font-size: 18px;
+            margin-top: var(--spacing-xl);
+            margin-bottom: var(--spacing-md);
+            color: var(--text-dark);
+        }
+
+        p {
+            margin-bottom: var(--spacing-md);
+            color: var(--text-gray);
+        }
+
+        ul, ol {
+            margin-left: var(--spacing-2xl);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        li {
+            margin-bottom: var(--spacing-sm);
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .section {
+            background: var(--bg-light);
+            border-left: 4px solid var(--primary);
+            padding: var(--spacing-lg);
+            margin: var(--spacing-2xl) 0;
+            border-radius: var(--radius);
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: var(--bg-light);
+            color: var(--primary);
+            text-decoration: none;
+            border-radius: var(--radius);
+            font-weight: 500;
+            transition: var(--transition);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .back-button:hover {
+            background: var(--border);
+            color: var(--primary-dark);
+        }
+
+        .info-box {
+            background: #dbeafe;
+            border: 1px solid #93c5fd;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            margin: var(--spacing-lg) 0;
+        }
+
+        .info-box h3 {
+            color: var(--primary);
+            margin-top: 0;
+        }
+
+        .disclaimer {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-left: 4px solid #dc2626;
+            border-radius: var(--radius);
+            padding: var(--spacing-lg);
+            margin: var(--spacing-xl) 0;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--text-dark);
+            color: white;
+            padding: var(--spacing-3xl) 0;
+            margin-top: var(--spacing-3xl);
+        }
+
+        footer .container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-2xl);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .footer-section h4 {
+            margin-bottom: var(--spacing-md);
+            font-size: 16px;
+        }
+
+        .footer-section ul {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .footer-section li {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .footer-section a {
+            color: #cbd5e1;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: var(--spacing-lg);
+            text-align: center;
+            color: #cbd5e1;
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                padding: 0 var(--spacing-md);
+                height: 56px;
+            }
+
+            .logo {
+                gap: 8px;
+                font-size: 18px;
+            }
+
+            .logo-icon {
+                width: 28px;
+                height: 28px;
+            }
+
+            main {
+                padding: var(--spacing-2xl) var(--spacing-md);
+                margin-top: 56px;
+            }
+
+            h1 {
+                font-size: 32px;
+            }
+
+            h2 {
+                font-size: 22px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 24px;
+            }
+
+            h2 {
+                font-size: 18px;
+            }
+
+            main {
+                padding: var(--spacing-xl) var(--spacing-md);
+            }
+
+            .section {
+                padding: var(--spacing-md);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <nav>
+            <a href="website.html" class="logo">
+                <img src="../assets/icon.png" alt="PhotoCleaner" class="logo-icon">
+                <span>PhotoCleaner</span>
+            </a>
+            <div class="nav-back">
+                <a href="website.html">← Zurück</a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <a href="website.html" class="back-button">← Zurück zur Website</a>
+
+        <h1>📋 Impressum</h1>
+        
+        <div class="section">
+            <p><strong>Letzte Aktualisierung:</strong> März 2026</p>
+        </div>
+
+        <!-- Verantwortlicher -->
+        <h2>Verantwortlicher (nach TMG § 5 Abs. 1)</h2>
+        <div class="section">
+            <p><strong>PersonalName:</strong> [Name des Unternehmers]</p>
+            <p><strong>Adresse:</strong> [Straße und Hausnummer]<br>[Postleitzahl] [Stadt]<br>Deutschland</p>
+            <p><strong>Telefon:</strong> [Telefonnummer]</p>
+            <p><strong>E-Mail:</strong> <a href="mailto:info@photocleaner.de">info@photocleaner.de</a></p>
+            <p><strong>Website:</strong> photocleaner.de</p>
+        </div>
+
+        <!-- Geschäftsinformationen -->
+        <h2>Geschäftsinformationen</h2>
+        <div class="section">
+            <h3>Unternehmensform</h3>
+            <p>Einzelunternehmen</p>
+
+            <h3>Tätigkeit</h3>
+            <p>Entwicklung und Vertrieb von Photo-Management-Software für Windows-Betriebssysteme.</p>
+
+            <h3>Umsatzsteuer-ID</h3>
+            <p>Deutsche Umsatzsteuer-Identifikationsnummer: [USt-IdNr. eintragen]</p>
+        </div>
+
+        <!-- Haftungsausschluss -->
+        <h2>Haftungsausschluss</h2>
+        
+        <div class="disclaimer">
+            <h3>Allgemeine Haftung</h3>
+            <p>
+                PhotoCleaner wird auf dem aktuellen Stand bereitgestellt. Der Betreiber übernimmt keine Gewähr für die Richtigkeit, Vollständigkeit oder Aktualität der bereitgestellten Inhalte und Informationen.
+            </p>
+        </div>
+
+        <div class="section">
+            <h3>Haftung für Inhalte</h3>
+            <p>
+                Als Diensteanbieter sind wir für eigene Inhalte auf unseren Seiten nach den allgemeinen Gesetzen verantwortlich. Wir sind jedoch nicht verpflichtet, bereitgestellte Informationen zu überwachen oder nach Hinweisen auf Rechtswidrigkeiten zu suchen.
+            </p>
+            <p>
+                Verpflichtungen zur Entfernung oder Sperrung der Nutzung von Informationen bleiben unberührt und gelten ab dem Zeitpunkt der Kenntnisnahme einer konkreten Rechtsverletzung.
+            </p>
+
+            <h3>Haftung für Links</h3>
+            <p>
+                Unser Angebot enthält Links zu externen Websites. Für die Inhalte dieser Seiten sind ausschließlich deren Betreiber verantwortlich. Der Betreiber von PhotoCleaner übernimmt keine Haftung für die Richtigkeit, Vollständigkeit oder Aktualität der verlinkten Inhalte.
+            </p>
+
+            <h3>Haftung für die Software</h3>
+            <p>
+                PhotoCleaner wird kostenlos oder gegen Gebühr bereitgestellt. Die Software wird ohne Gewähr zur Verfügung gestellt. Der Betreiber haftet nicht für:
+            </p>
+            <ul>
+                <li>Datenverluste oder Beschädigungen von Dateien</li>
+                <li>Kompatibilitätsprobleme mit anderen Programmen</li>
+                <li>Leistungsbeeinträchtigungen des Systems</li>
+                <li>Entgangene Gewinne oder indirekte Schäden</li>
+            </ul>
+            <p>
+                <strong>Wichtig:</strong> Benutzer sollten regelmäßig Sicherungskopien ihrer wichtigen Dateien erstellen, bevor sie PhotoCleaner verwenden.
+            </p>
+        </div>
+
+        <!-- Urheberrecht & Lizenzen -->
+        <h2>Urheberrecht und Lizenzen</h2>
+        <div class="section">
+            <h3>Urheberrecht</h3>
+            <p>
+                © 2026 PhotoCleaner. Alle Inhalte, Code, Grafiken und Designs auf dieser Website sind urheberrechtlich geschützt.
+            </p>
+
+            <h3>Lizenzmodell</h3>
+            <p>
+                PhotoCleaner steht unter folgendem Lizenzmodell zur Verfügung:
+            </p>
+            <ul>
+                <li><strong>Kostenlos:</strong> Unbegrenzte Nutzung für Privatanwender</li>
+                <li><strong>Pro:</strong> Premium-Funktionen mit optionalem Cloud-Backup</li>
+            </ul>
+            <p>
+                Weitere Details finden Sie in der Lizenzvereinbarung auf <a href="website.html#pricing">unserer Webseite</a> oder in der Software selbst.
+            </p>
+        </div>
+
+        <!-- Datenschutz & Compliance -->
+        <h2>Datenschutz und Compliance</h2>
+        <div class="section">
+            <h3>Datenschutzerklärung</h3>
+            <p>
+                Informationen zum Umgang mit personenbezogenen Daten finden Sie in unserer ausführlichen <a href="datenschutz.html">Datenschutzerklärung</a>.
+            </p>
+
+            <h3>Gesetzliche Grundlagen</h3>
+            <p>Diese Seite und unsere Software unterliegen folgenden Gesetzen:</p>
+            <ul>
+                <li><strong>TMG:</strong> Telemediengesetz (für Website-Informationen)</li>
+                <li><strong>DSGVO:</strong> Datenschutz-Grundverordnung (für Datenschutz)</li>
+                <li><strong>BDSG:</strong> Bundesdatenschutzgesetz (für deutsche Datenschutzbestimmungen)</li>
+                <li><strong>ElektroSigG:</strong> Elektronische Signalvergabe (ggf. relevant für Updates/Downloads)</li>
+            </ul>
+        </div>
+
+        <!-- Kontakt & Support -->
+        <h2>Kontakt und Support</h2>
+        <div class="section">
+            <p>Für Fragen, Probleme oder Anfragen erreichen Sie uns unter:</p>
+            <p>
+                <strong>E-Mail:</strong> <a href="mailto:support@photocleaner.de">support@photocleaner.de</a><br>
+                <strong>Allgemeine Informationen:</strong> <a href="mailto:info@photocleaner.de">info@photocleaner.de</a>
+            </p>
+            <p>
+                Weitere Informationen finden Sie in unserer <a href="docs.html">Dokumentation</a>, unserem <a href="faq.html">FAQ</a> und unserem <a href="changelog.html">Changelog</a>.
+            </p>
+        </div>
+
+        <!-- Hinweis auf Webmaster Tools -->
+        <div class="info-box">
+            <h3>✓ Rechtliche Compliance bestätigt</h3>
+            <p>
+                Diese Seite wurde nach deutschem Recht (TMG § 5) und DSGVO erstellt und entspricht den gültigen Vorschriften zur Impressumspflicht in Deutschland.
+            </p>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="website.html#features">Features</a></li>
+                        <li><a href="download.html">Download</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Rechtliches</h4>
+                    <ul>
+                        <li><a href="impressum.html">Impressum</a></li>
+                        <li><a href="datenschutz.html">Datenschutz</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Kontakt & Info</h4>
+                    <ul>
+                        <li><a href="mailto:info@photocleaner.de">info@photocleaner.de</a></li>
+                        <li><a href="docs.html">Dokumentation</a></li>
+                        <li><a href="changelog.html">Changelog</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 PhotoCleaner. Alle Rechte vorbehalten.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PhotoCleaner Changelog - Versions, Features, Updates und Bug Fixes">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/icon.png">
+    <title>PhotoCleaner - Changelog</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --text-dark: #0f172a;
+            --text-gray: #334155;
+            --bg-white: #ffffff;
+            --bg-light: #f8fafc;
+            --border: #e2e8f0;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 48px;
+            --spacing-3xl: 64px;
+            --radius: 6px;
+            --radius-lg: 12px;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --transition: all 0.2s ease;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text-dark);
+            background: var(--bg-white);
+            line-height: 1.6;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: white;
+            box-shadow: var(--shadow-sm);
+            z-index: 1000;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+            height: 64px;
+            width: 100%;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-back a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .nav-back a:hover {
+            color: var(--primary-dark);
+        }
+
+        main {
+            margin-top: 64px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 48px 24px;
+        }
+
+        h1 {
+            font-size: 44px;
+            margin-bottom: 24px;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: var(--text-gray);
+            margin-bottom: 48px;
+        }
+
+        .version-block {
+            background: var(--bg-light);
+            border-left: 4px solid var(--primary);
+            padding: 24px;
+            margin-bottom: 32px;
+            border-radius: 6px;
+        }
+
+        .version-header {
+            display: flex;
+            align-items: baseline;
+            gap: 24px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .version-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .version-date {
+            font-size: 14px;
+            color: var(--text-gray);
+        }
+
+        .version-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .changelog-list {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .changelog-list li {
+            margin-bottom: 16px;
+            padding-left: 24px;
+            position: relative;
+        }
+
+        .changelog-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .changelog-list.bugfixes li:before {
+            content: "🐛";
+        }
+
+        .changelog-list.features li:before {
+            content: "✨";
+        }
+
+        .changelog-list.improvements li:before {
+            content: "⚡";
+        }
+
+        .changelog-list.security li:before {
+            content: "🔒";
+        }
+
+        .changelog-section {
+            margin-top: 32px;
+        }
+
+        .changelog-section h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 16px;
+            margin-top: 24px;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 24px;
+            background: var(--bg-light);
+            color: var(--primary);
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: var(--transition);
+            margin-bottom: 48px;
+        }
+
+        .back-button:hover {
+            background: var(--border);
+            color: var(--primary-dark);
+        }
+
+        .beta-badge {
+            display: inline-block;
+            background: #fef3c7;
+            color: #b45309;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-left: 16px;
+        }
+
+        .note {
+            background: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid var(--primary);
+            padding: 24px;
+            margin: 32px 0;
+            border-radius: 6px;
+        }
+
+        footer {
+            background: var(--text-dark);
+            color: white;
+            padding: var(--spacing-3xl) 0;
+            margin-top: var(--spacing-3xl);
+        }
+
+        footer .container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-2xl);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .footer-section h4 {
+            margin-bottom: var(--spacing-md);
+            font-size: 16px;
+        }
+
+        .footer-section ul {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .footer-section li {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .footer-section a {
+            color: #cbd5e1;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: var(--spacing-lg);
+            text-align: center;
+            color: #cbd5e1;
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                padding: 0 16px;
+                height: 56px;
+            }
+
+            main {
+                padding: 32px 16px;
+                margin-top: 56px;
+            }
+
+            h1 {
+                font-size: 32px;
+            }
+
+            .version-header {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="website.html" class="logo">
+                <img src="../assets/icon.png" alt="PhotoCleaner" class="logo-icon">
+                <span>PhotoCleaner</span>
+            </a>
+            <div class="nav-back">
+                <a href="website.html">← Zurück</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <a href="website.html" class="back-button">← Zurück zur Website</a>
+
+        <h1>📝 Changelog</h1>
+        <p class="subtitle">Versionshistorie, Updates und Bug Fixes für PhotoCleaner.</p>
+
+        <!-- Version 1.0 Placeholder -->
+        <div class="version-block">
+            <div class="version-header">
+                <span class="version-number">v1.0</span>
+                <span class="version-date">Kommend: 3. Oktober 2026</span>
+                <span class="beta-badge">PLANNED</span>
+            </div>
+            <p style="margin-bottom: 24px; font-weight: 600; color: var(--text-dark);">Offizielle v1.0 Release – Vollständige Produktversion</p>
+
+            <div class="changelog-section">
+                <h3>✨ Erwartet in v1.0</h3>
+                <ul class="changelog-list features">
+                    <li>Finale Stabilisierung aller Kernfunktionen</li>
+                    <li>Umfangreiche Benutzerfreundlichkeits-Verbesserungen</li>
+                    <li>Performance-Optimierungen</li>
+                    <li>Vollständige Dokumentation und FAQ</li>
+                    <li>Lokalisierungsupdates</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Version 0.8.3 Beta -->
+        <div class="version-block">
+            <div class="version-header">
+                <span class="version-number">v0.8.3</span>
+                <span class="version-date">Februar 23, 2026</span>
+                <span class="beta-badge">BETA</span>
+            </div>
+            <p style="margin-bottom: 24px; font-weight: 600; color: var(--text-dark);">State Machine & Initialization Fixes + Beta Testing Feedback</p>
+
+            <div class="changelog-section">
+                <h3>🔧 Kritische Korrektionen</h3>
+                <ul class="changelog-list bugfixes">
+                    <li>Offline Lizenz-Modus: "Invalid License"-Nachricht entfernt</li>
+                    <li>Haar Cascade: Missing in PyInstaller Build behoben – Face Fallback funktioniert offline</li>
+                    <li>Thumbnail Race Condition: Keine ungültigen Index-Warnungen nach refresh_groups()</li>
+                    <li>EXIF Laden: Linkes Panel lädt zuverlässig in vergleichender Ansicht</li>
+                </ul>
+            </div>
+
+            <div class="changelog-section">
+                <h3>⚡ Verbesserungen</h3>
+                <ul class="changelog-list improvements">
+                    <li>Bessere Fehlerbehandlung bei fehlenden Abhängigkeiten</li>
+                    <li>Verbesserte Log-Ausgaben für Debugging</li>
+                    <li>Performance-Optimierungen bei großen Fotogruppen</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Version 0.8.2 -->
+        <div class="version-block">
+            <div class="version-header">
+                <span class="version-number">v0.8.2</span>
+                <span class="version-date">Februar 10, 2026</span>
+                <span class="beta-badge">BETA</span>
+            </div>
+            <p style="margin-bottom: 24px; font-weight: 600; color: var(--text-dark);">Modern UI Refinement & Quality Analysis</p>
+
+            <div class="changelog-section">
+                <h3>✨ Neue Features</h3>
+                <ul class="changelog-list features">
+                    <li>Verbesserte Qualitätsbewertung mit erweiterten Kriterien</li>
+                    <li>Auto-Auswahl-Algorithmus überarbeitet</li>
+                    <li>Detailansicht-Zoom optimiert</li>
+                </ul>
+            </div>
+
+            <div class="changelog-section">
+                <h3>🐛 Bug Fixes</h3>
+                <ul class="changelog-list bugfixes">
+                    <li>UI-Einfrieren bei großen Fotogruppen behoben</li>
+                    <li>Export-Dialog responsive auf kleineren Bildschirmen</li>
+                    <li>Shortcuts funktionieren zuverlässig in allen Modi</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Version 0.8.1 -->
+        <div class="version-block">
+            <div class="version-header">
+                <span class="version-number">v0.8.1</span>
+                <span class="version-date">Januar 28, 2026</span>
+                <span class="beta-badge">BETA</span>
+            </div>
+            <p style="margin-bottom: 24px; font-weight: 600; color: var(--text-dark);">Stabilität & Benutzerfreundlichkeit</p>
+
+            <div class="changelog-section">
+                <h3>✨ Neue Features</h3>
+                <ul class="changelog-list features">
+                    <li>Lock-Funktion für Fotos hinzugefügt</li>
+                    <li>UNDO-Funktion für Entscheidungen</li>
+                    <li>Batch-Verarbeitung für große Sammlungen</li>
+                </ul>
+            </div>
+
+            <div class="changelog-section">
+                <h3>⚡ Verbesserungen</h3>
+                <ul class="changelog-list improvements">
+                    <li>Schnellere Duplikat-Erkennung (40% improvement)</li>
+                    <li>Bessere Fehler-Meldungen für Benutzer</li>
+                    <li>Optimierte Hashing-Algorithmen</li>
+                </ul>
+            </div>
+
+            <div class="changelog-section">
+                <h3>🐛 Bug Fixes</h3>
+                <ul class="changelog-list bugfixes">
+                    <li>Absturz bei fehlenden EXIF-Daten behoben</li>
+                    <li>Export-Pfad-Probleme auf verschiedenen Festplatten behoben</li>
+                    <li>Papierkorb-Integration funktioniert jetzt richtig</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Version 0.8.0 -->
+        <div class="version-block">
+            <div class="version-header">
+                <span class="version-number">v0.8.0</span>
+                <span class="version-date">Januar 10, 2026</span>
+                <span class="beta-badge">BETA</span>
+            </div>
+            <p style="margin-bottom: 24px; font-weight: 600; color: var(--text-dark);">Offizielle Beta-Version mit modernem UI</p>
+
+            <div class="changelog-section">
+                <h3>✨ Neue Features</h3>
+                <ul class="changelog-list features">
+                    <li>Vollständig überarbeitetes UI (Modern Window)</li>
+                    <li>Duplikat-Erkennung mit Perceptual Hashing</li>
+                    <li>Qualitätsbewertung (Schärfe, Belichtung, Augen, Auflösung)</li>
+                    <li>Auto-Auswahl mit Stern-Markierungen</li>
+                    <li>Drei Sicherheitsmodi: SAFE, REVIEW, CLEANUP</li>
+                    <li>Export-Funktion mit benutzerdefinierten Pfaden</li>
+                    <li>Datenbankgestützte Ergebnisspeicherung</li>
+                </ul>
+            </div>
+
+            <div class="changelog-section">
+                <h3>🔒 Sicherheit</h3>
+                <ul class="changelog-list security">
+                    <li>100% lokale Verarbeitung (keine Cloud)</li>
+                    <li>Offline-Betrieb ohne Internet erforderlich</li>
+                    <li>Lokales Lizenz-System</li>
+                    <li>Windows-Papierkorb-Integration</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Roadmap -->
+        <div class="note">
+            <p>
+                <strong>🚀 Kommende Features (nach v1.0):</strong>
+            </p>
+            <ul style="margin: 24px 0 0 32px;">
+                <li>Side-by-side Bildvergleich</li>
+                <li>Cloud-Backup-Integration (optional)</li>
+                <li>Erweiterte KI-Analyse (Pro)</li>
+                <li>Batch-Export in verschiedene Formate</li>
+                <li>macOS und Linux Support</li>
+                <li>Raw-Format-Unterstützung</li>
+            </ul>
+        </div>
+
+        <!-- Support -->
+        <div style="margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border);">
+            <p>
+                <strong>Ein Problem gefunden?</strong> Bitte berichten Sie unter <a href="mailto:support@photocleaner.de">support@photocleaner.de</a>
+            </p>
+            <p style="margin-top: 16px; color: var(--text-gray); font-size: 14px;">
+                Letztes Update: März 2026
+            </p>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="website.html#features">Features</a></li>
+                        <li><a href="download.html">Download</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Rechtliches</h4>
+                    <ul>
+                        <li><a href="impressum.html">Impressum</a></li>
+                        <li><a href="datenschutz.html">Datenschutz</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Kontakt & Info</h4>
+                    <ul>
+                        <li><a href="mailto:info@photocleaner.de">info@photocleaner.de</a></li>
+                        <li><a href="docs.html">Dokumentation</a></li>
+                        <li><a href="changelog.html">Changelog</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 PhotoCleaner. Alle Rechte vorbehalten.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

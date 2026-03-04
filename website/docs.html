@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PhotoCleaner Benutzerhandbuch: Schritt-für-Schritt Anleitung zur Duplikat-Erkennung, Qualitätsanalyse und Foto-Verwaltung. Einfach erklärt ohne Fach-Jargon.">
+    <meta name="keywords" content="PhotoCleaner Anleitung, Foto Duplikate finden Tutorial, Benutzerhandbuch Bildverwaltung">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/icon.png">
+    <title>PhotoCleaner Dokumentation - Benutzerhandbuch</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --text-dark: #0f172a;
+            --text-gray: #334155;
+            --bg-white: #ffffff;
+            --bg-light: #f8fafc;
+            --border: #e2e8f0;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 48px;
+            --spacing-3xl: 64px;
+            --radius: 6px;
+            --radius-lg: 12px;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --transition: all 0.2s ease;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text-dark);
+            background: var(--bg-white);
+            line-height: 1.6;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: white;
+            box-shadow: var(--shadow-sm);
+            z-index: 1000;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+            height: 64px;
+            width: 100%;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-back a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .nav-back a:hover {
+            color: var(--primary-dark);
+        }
+
+        main {
+            margin-top: 64px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 48px 24px;
+        }
+
+        h1 {
+            font-size: 44px;
+            margin-bottom: 24px;
+        }
+
+        h2 {
+            font-size: 28px;
+            margin-top: 48px;
+            margin-bottom: 24px;
+            color: var(--primary);
+        }
+
+        h3 {
+            font-size: 18px;
+            margin-top: 32px;
+            margin-bottom: 16px;
+        }
+
+        p {
+            margin-bottom: 16px;
+            color: var(--text-gray);
+        }
+
+        ul {
+            margin-left: 24px;
+            margin-bottom: 24px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .info-box {
+            background: var(--bg-light);
+            border-left: 4px solid var(--primary);
+            padding: 16px;
+            margin: 24px 0;
+            border-radius: 6px;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 24px;
+            background: var(--bg-light);
+            color: var(--primary);
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: var(--transition);
+            margin-bottom: 48px;
+        }
+
+        .back-button:hover {
+            background: var(--border);
+            color: var(--primary-dark);
+        }
+
+        footer {
+            background: var(--text-dark);
+            color: white;
+            padding: var(--spacing-3xl) 0;
+            margin-top: var(--spacing-3xl);
+        }
+
+        footer .container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-2xl);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .footer-section h4 {
+            margin-bottom: var(--spacing-md);
+            font-size: 16px;
+        }
+
+        .footer-section ul {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .footer-section li {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .footer-section a {
+            color: #cbd5e1;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: var(--spacing-lg);
+            text-align: center;
+            color: #cbd5e1;
+        }
+
+        /* Feedback Box */
+        .feedback-box {
+            background: var(--bg-light);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-2xl);
+            text-align: center;
+            margin: var(--spacing-3xl) 0;
+            border: 1px solid var(--border);
+        }
+
+        .feedback-box h3 {
+            color: var(--text-dark);
+            margin-bottom: var(--spacing-md);
+            font-size: 18px;
+        }
+
+        .feedback-buttons {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: center;
+            margin-top: var(--spacing-lg);
+        }
+
+        .feedback-buttons button {
+            padding: 10px 24px;
+            border: 1.5px solid var(--border);
+            background: white;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 14px;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        .feedback-buttons button:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--bg-light);
+        }
+
+        .feedback-thanks {
+            display: none;
+            color: var(--success);
+            font-weight: 600;
+            margin-top: var(--spacing-md);
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                padding: 0 16px;
+                height: 56px;
+            }
+
+            main {
+                padding: 32px 16px;
+                margin-top: 56px;
+            }
+
+            h1 {
+                font-size: 32px;
+            }
+
+            h2 {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="website.html" class="logo">
+                <img src="../assets/icon.png" alt="PhotoCleaner" class="logo-icon">
+                <span>PhotoCleaner</span>
+            </a>
+            <div class="nav-back">
+                <a href="website.html">← Zurück</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <a href="website.html" class="back-button">← Zurück zur Website</a>
+
+        <h1>📖 Dokumentation</h1>
+        <p style="font-size: 18px; color: var(--text-gray); margin-bottom: 48px;">Alles, was Sie über PhotoCleaner wissen müssen – schmerzlos und verständlich.</p>
+
+        <!-- Getting Started -->
+        <h2>🚀 Los geht's</h2>
+
+        <h3>Installation & Start</h3>
+        <ul>
+            <li>Laden Sie PhotoCleaner herunter</li>
+            <li>Starten Sie die Anwendung</li>
+            <li>Wählen Sie einen Ordner mit Fotos aus</li>
+            <li>Klicken Sie "Analysieren" um mit der Duplikat-Erkennung zu beginnen</li>
+        </ul>
+
+        <!-- Core Features -->
+        <h2>✨ Kernfunktionen</h2>
+
+        <h3>🎯 Duplikat-Erkennung</h3>
+        <p>
+            PhotoCleaner findet Fotos, die optisch ähnlich sind – nicht nur bitweise identische Dateien. 
+            Der Algorithmus analysiert Farben, Formen und Muster für genaue Ergebnisse.
+        </p>
+        <div class="info-box">
+            <p><strong>Wie funktioniert es?</strong> Die App vergleicht Ihre Fotos mittels Perceptual Hashing. Das bedeutet: Selbst leicht unterschiedliche Versionen desselben Fotos werden erkannt.</p>
+        </div>
+
+        <h3>👁️ Geschlossene Augen erkennen</h3>
+        <p>
+            Die App analysiert automatisch Fotos und erkennt, ob Personen die Augen geschlossen haben. 
+            Diese Information wird für Qualitätsbewertung und Auto-Auswahl verwendet.
+        </p>
+
+        <h3>⭐ Qualitätsbewertung</h3>
+        <p>
+            Jedes Foto erhält eine objektive Qualitätsnote basierend auf:
+        </p>
+        <ul>
+            <li>Schärfe (Fokus-Schärfe)</li>
+            <li>Belichtung (Hell/Dunkel-Balance)</li>
+            <li>Komposition (visueller Aufbau)</li>
+            <li>Gesichter & Augen-Erkennung</li>
+        </ul>
+
+        <h3>📁 Ordner-Analyse</h3>
+        <p>
+            Statt einzelner Dateien: Wählen Sie einen Ordner, und PhotoCleaner analysiert alle Subordner rekursiv. 
+            Perfekt für große Fotosammlungen.
+        </p>
+
+        <!-- Modes -->
+        <h2>🛡️ Sicherheitsmodi</h2>
+
+        <h3>SAFE Mode</h3>
+        <p>Nur offensichtliche Duplikate werden markiert. Konservativ. Ideal für Anfänger.</p>
+
+        <h3>REVIEW Mode</h3>
+        <p>Intelligente Vorschläge mit Ihrer Bestätigung. Optimal für größere Kontrolle.</p>
+
+        <h3>CLEANUP Mode</h3>
+        <p>Aggressive Filterung. Nur für erfahrene Nutzer mit guten Backups.</p>
+
+        <!-- Keyboard Shortcuts -->
+        <h2>⌨️ Keyboard Shortcuts</h2>
+        
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                <tr style="background: var(--bg-light);">
+                    <td style="padding: 12px; border: 1px solid var(--border);"><strong>Taste</strong></td>
+                    <td style="padding: 12px; border: 1px solid var(--border);"><strong>Aktion</strong></td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid var(--border);">SPACE</td>
+                    <td style="padding: 12px; border: 1px solid var(--border);">Markiert/Entmarkiert das aktuelle Foto</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid var(--border);">★</td>
+                    <td style="padding: 12px; border: 1px solid var(--border);">Markiert dieses Foto mit Stern (Favorit)</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid var(--border);">DEL</td>
+                    <td style="padding: 12px; border: 1px solid var(--border);">Sends to Trash</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid var(--border);">ENTER</td>
+                    <td style="padding: 12px; border: 1px solid var(--border);">Zeigt Detail-Preview</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid var(--border);">ESC</td>
+                    <td style="padding: 12px; border: 1px solid var(--border);">Schließt Preview</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Workflow -->
+        <h2>🔄 Standard-Workflow</h2>
+
+        <ol>
+            <li><strong>Öffnen:</strong> Start der Anwendung und Wahl des Ordners</li>
+            <li><strong>Analyse:</strong> App analysiert alle Fotos (dauert je nach Größe)</li>
+            <li><strong>Review:</strong> App zeigt vorgeschlagene Duplikate</li>
+            <li><strong>Auswählen:</strong> Sie bestätigen oder ändern die Auswahl</li>
+            <li><strong>Löschen/Export:</strong> Fotos werden gelöscht oder exportiert</li>
+        </ol>
+
+        <!-- Tips & Tricks -->
+        <h2>💡 Tipps & Tricks</h2>
+
+        <h3>Backup vor dem Löschen</h3>
+        <p>Immer ein Backup erstellen vor großen Lösch-Operationen. Die App unterstützt Papierkorb, aber ein Backup ist noch sicherer.</p>
+
+        <h3>Star-Funktion selbst nutzen</h3>
+        <p>Können Sie manuell Fotos mit Stern markieren, um die Auto-Selection zu trainieren. Ihre Preferenzen werden gelernt.</p>
+
+        <h3>Große Sammlungen teilen</h3>
+        <p>Bei 10.000+ Fotos: Ordnerstuktur nutzen und mehrere kleinere Analysen durchführen statt eine riesige auf einmal.</p>
+
+        <!-- Data & Security -->
+        <h2>🔒 Daten & Sicherheit</h2>
+
+        <div class="info-box">
+            <p><strong>✓ Lokal:</strong> Alle Fotos bleiben auf Ihrem Computer. Keine Cloud-Uploads.</p>
+        </div>
+
+        <div class="info-box">
+            <p><strong>✓ Offline:</strong> PhotoCleaner funktioniert vollständig ohne Internet. Ideal für Datenschutz und offline Arbeit.</p>
+        </div>
+
+        <div class="info-box">
+            <p><strong>✓ Keine Telemetrie:</strong> PhotoCleaner sammelt keine Daten über Sie oder Ihre Fotos.</p>
+        </div>
+
+        <!-- License Info -->
+        <h2>📜 Lizenzen</h2>
+
+        <h3>Kostenlose Version (FREE)</h3>
+        <ul>
+            <li>Vollständige Duplikat-Erkennung</li>
+            <li>Qualitätsbewertung</li>
+            <li>Auto-Auswahl</li>
+            <li>Unbegrenzte Nutzung</li>
+            <li>100% lokal und offline</li>
+        </ul>
+
+        <h3>Pro Version (PRO)</h3>
+        <ul>
+            <li>Alles aus Kostenlos</li>
+            <li>Erweiterte KI-Analyse</li>
+            <li>Batch-Verarbeitung</li>
+            <li>Batch-Export</li>
+            <li>Cloud-Backup (optional)</li>
+            <li>Prioritäts-Email-Support</li>
+        </ul>
+
+        <p style="margin-top: 24px;"><a href="website.html#pricing">→ Zur Preisseite</a></p>
+
+        <!-- Support -->
+        <h2>❓ Weitere Fragen?</h2>
+
+        <p>Haben Sie eine Frage, die hier nicht beantwortet wird?</p>
+        <ul>
+            <li><a href="faq.html">Häufig gestellte Fragen (FAQ)</a></li>
+            <li>📧 <a href="mailto:support@photocleaner.de">E-Mail Support</a></li>
+        </ul>
+
+        <!-- Feedback Box -->
+        <div class="feedback-box">
+            <h3>War diese Dokumentation hilfreich?</h3>
+            <p style="color: var(--text-gray); font-size: 14px;">Ihr Feedback hilft uns, die Dokumentation zu verbessern!</p>
+            <div class="feedback-buttons">
+                <button onclick="sendFeedback('helpful')">Ja, hilfreich 👍</button>
+                <button onclick="sendFeedback('not-helpful')">Nein, nicht hilfreich 👎</button>
+            </div>
+            <p class="feedback-thanks" id="feedbackThanks">✅ Vielen Dank für Ihr Feedback!</p>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="website.html#features">Features</a></li>
+                        <li><a href="download.html">Download</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Rechtliches</h4>
+                    <ul>
+                        <li><a href="impressum.html">Impressum</a></li>
+                        <li><a href="datenschutz.html">Datenschutz</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Kontakt & Info</h4>
+                    <ul>
+                        <li><a href="mailto:info@photocleaner.de">info@photocleaner.de</a></li>
+                        <li><a href="docs.html">Dokumentation</a></li>
+                        <li><a href="changelog.html">Changelog</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 PhotoCleaner. Alle Rechte vorbehalten.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function sendFeedback(type) {
+            // In production, send to analytics or backend
+            console.log('Feedback:', type);
+            
+            // Show thank you message
+            document.getElementById('feedbackThanks').style.display = 'block';
+            
+            // Hide buttons
+            document.querySelector('.feedback-buttons').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PhotoCleaner Datenschutz - DSGVO/GDPR Datenschutzerklärung">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/icon.png">
+    <title>PhotoCleaner - Datenschutz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --text-dark: #0f172a;
+            --text-gray: #334155;
+            --bg-white: #ffffff;
+            --bg-light: #f8fafc;
+            --border: #e2e8f0;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 48px;
+            --spacing-3xl: 64px;
+            --radius: 6px;
+            --radius-lg: 12px;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --transition: all 0.2s ease;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text-dark);
+            background: var(--bg-white);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: white;
+            box-shadow: var(--shadow-sm);
+            z-index: 1000;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+            height: 64px;
+            width: 100%;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-back a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .nav-back a:hover {
+            color: var(--primary-dark);
+        }
+
+        /* Main Content */
+        main {
+            margin-top: 64px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: var(--spacing-3xl) var(--spacing-lg);
+        }
+
+        h1 {
+            font-size: 44px;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        h2 {
+            font-size: 28px;
+            margin-top: var(--spacing-2xl);
+            margin-bottom: var(--spacing-lg);
+            color: var(--primary);
+        }
+
+        h3 {
+            font-size: 18px;
+            margin-top: var(--spacing-xl);
+            margin-bottom: var(--spacing-md);
+            color: var(--text-dark);
+        }
+
+        p {
+            margin-bottom: var(--spacing-md);
+            color: var(--text-gray);
+        }
+
+        ul, ol {
+            margin-left: var(--spacing-2xl);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        li {
+            margin-bottom: var(--spacing-sm);
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .section {
+            background: var(--bg-light);
+            border-left: 4px solid var(--primary);
+            padding: var(--spacing-lg);
+            margin: var(--spacing-2xl) 0;
+            border-radius: var(--radius);
+        }
+
+        .highlight-box {
+            background: #dcfce7;
+            border: 2px solid #22c55e;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            margin: var(--spacing-2xl) 0;
+        }
+
+        .highlight-box h3 {
+            color: #15803d;
+            margin-top: 0;
+        }
+
+        .highlight-box p {
+            color: #166534;
+        }
+
+        .important-box {
+            background: #dbeafe;
+            border-left: 4px solid var(--primary);
+            padding: var(--spacing-lg);
+            margin: var(--spacing-lg) 0;
+            border-radius: var(--radius);
+        }
+
+        .important-box strong {
+            color: var(--primary);
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: var(--bg-light);
+            color: var(--primary);
+            text-decoration: none;
+            border-radius: var(--radius);
+            font-weight: 500;
+            transition: var(--transition);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .back-button:hover {
+            background: var(--border);
+            color: var(--primary-dark);
+        }
+
+        /* Footer */
+        footer {
+            background: var(--text-dark);
+            color: white;
+            padding: var(--spacing-3xl) 0;
+            margin-top: var(--spacing-3xl);
+        }
+
+        footer .container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-2xl);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .footer-section h4 {
+            margin-bottom: var(--spacing-md);
+            font-size: 16px;
+        }
+
+        .footer-section ul {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .footer-section li {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .footer-section a {
+            color: #cbd5e1;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: var(--spacing-lg);
+            text-align: center;
+            color: #cbd5e1;
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                padding: 0 var(--spacing-md);
+                height: 56px;
+            }
+
+            .logo {
+                gap: 8px;
+                font-size: 18px;
+            }
+
+            .logo-icon {
+                width: 28px;
+                height: 28px;
+            }
+
+            main {
+                padding: var(--spacing-2xl) var(--spacing-md);
+                margin-top: 56px;
+            }
+
+            h1 {
+                font-size: 32px;
+            }
+
+            h2 {
+                font-size: 22px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 24px;
+            }
+
+            h2 {
+                font-size: 18px;
+            }
+
+            main {
+                padding: var(--spacing-xl) var(--spacing-md);
+            }
+
+            .section {
+                padding: var(--spacing-md);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <nav>
+            <a href="website.html" class="logo">
+                <img src="../assets/icon.png" alt="PhotoCleaner" class="logo-icon">
+                <span>PhotoCleaner</span>
+            </a>
+            <div class="nav-back">
+                <a href="website.html">← Zurück</a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <a href="website.html" class="back-button">← Zurück zur Website</a>
+
+        <h1>🔒 Datenschutz & Datenschutzerklärung</h1>
+        
+        <div class="highlight-box">
+            <h3>✅ 100% Lokale Verarbeitung</h3>
+            <p>
+                <strong>PhotoCleaner verarbeitet Ihre Fotos zu 100% lokal auf Ihrem Computer.</strong> 
+                Es findet <strong>kein Upload in die Cloud</strong> statt. Kein Tracking, kein Telemetry, keine Datensammlung. 
+                Ihre Daten verlassen Ihren Computer nicht.
+            </p>
+        </div>
+
+        <div class="section">
+            <p><strong>Letzte Aktualisierung:</strong> März 2026</p>
+        </div>
+
+        <!-- Übersicht -->
+        <h2>Übersicht der Datenverarbeitung</h2>
+        <div class="section">
+            <p>
+                Diese Datenschutzerklärung erklärt transparent, wie PhotoCleaner mit Ihren Daten umgeht. 
+                PhotoCleaner ist eine lokal installierte Windows-Anwendung, die auf Ihrem Computer läuft und keine Daten an externe Server sendet.
+            </p>
+
+            <h3>Kurzzusammenfassung (Tl;dr)</h3>
+            <ul>
+                <li>✅ Alle Fotos werden <strong>nur lokal</strong> verarbeitet</li>
+                <li>✅ <strong>Keine Cloud</strong> – keine Uploads</li>
+                <li>✅ <strong>Keine Telemetry</strong> – keine Überwachung</li>
+                <li>✅ <strong>Keine Datensammlung</strong> – keine Analysen</li>
+                <li>✅ <strong>Offline-first</strong> – funktioniert ohne Internet</li>
+                <li>✅ <strong>Lokale Datenbank</strong> – bleibt auf Ihrem Computer</li>
+            </ul>
+        </div>
+
+        <!-- Welche Daten werden verarbeitet? -->
+        <h2>Welche Daten werden verarbeitet?</h2>
+        
+        <h3>1. Fotodateien (lokal analysiert)</h3>
+        <div class="section">
+            <p>
+                PhotoCleaner analysiert Ihre Fotodateien lokal auf Ihrem Computer. Die Analyse umfasst:
+            </p>
+            <ul>
+                <li><strong>Bildanalyse:</strong> Erkennung von Duplikaten, Qualitätsbewertung, Augen-Erkennung</li>
+                <li><strong>Speicherort:</strong> Nur auf Ihrem Computer – kein Upload</li>
+                <li><strong>Datenspeichern:</strong> Ergebnisse werden in lokaler Datenbank gespeichert</li>
+                <li><strong>Zugriff:</strong> Nur Ihr Benutzer-Account kann auf diese Daten zugreifen</li>
+            </ul>
+            <p style="margin-top: var(--spacing-lg);">
+                <strong>Wichtig:</strong> Die Fotos selbst werden <strong>nicht</strong> in die Cloud hochgeladen.
+            </p>
+        </div>
+
+        <h3>2. EXIF-Metadaten</h3>
+        <div class="section">
+            <p>
+                Falls vorhanden, werden EXIF-Metadaten gelesen (Datum, Kamera-Modell, GPS-Koordinaten, etc.). 
+                Diese werden lokal analysiert und nur auf Ihrem Computer gespeichert.
+            </p>
+            <p>
+                <strong>EXIF-Daten:</strong> Wenn Sie möchten, können Sie diese vor dem Export entfernen.
+            </p>
+        </div>
+
+        <h3>3. Analyseergebnisse (lokale Datenbank)</h3>
+        <div class="section">
+            <p>
+                Analyseergebnisse (Duplikate, Qualitätsscores, Ihre Markierungen) werden in einer <strong>lokalen SQLite-Datenbank</strong> gespeichert:
+            </p>
+            <ul>
+                <li>Speicherort: Auf Ihrem Computer (%APPDATA%/PhotoCleaner/)</li>
+                <li>Sichtbar: Nur für Ihren Benutzer-Account</li>
+                <li>Löschbar: Sie können die Datenbank jederzeit manuell löschen</li>
+            </ul>
+        </div>
+
+        <h3>4. Lizenz-Information</h3>
+        <div class="section">
+            <p>
+                Lizenzinformationen werden lokal gespeichert. <strong>Keine Remote-Validierung erforderlich.</strong>
+            </p>
+            <ul>
+                <li>Offline-Lizenzverifizierung (kein Internet notwendig)</li>
+                <li>Lokal gespeicherte Lizenz-Schlüssel</li>
+                <li>Keine Übermittlung an externe Server</li>
+            </ul>
+        </div>
+
+        <!-- Welche Daten werden NICHT gesammelt? -->
+        <h2>Welche Daten werden NICHT gesammelt?</h2>
+        <div class="highlight-box">
+            <h3>Dies ist wichtig für Sie zu wissen:</h3>
+            <ul>
+                <li>❌ <strong>Keine IP-Adressen:</strong> Wir tracken nicht, wer die App nutzt</li>
+                <li>❌ <strong>Keine Browser-Daten:</strong> Kein Tracking von Nutzungsverhalten</li>
+                <li>❌ <strong>Keine Zeitstempel:</strong> Wir wissen nicht, wann Sie die App nutzen</li>
+                <li>❌ <strong>Keine Identität:</strong> Name, E-Mail werden nicht ohne Ihre Zustimmung gesammelt</li>
+                <li>❌ <strong>Keine Standorte:</strong> GPS-Daten werden nicht an uns übermittelt</li>
+                <li>❌ <strong>Keine Analysen:</strong> Kein Tracking welche Fotos Sie löschen</li>
+                <li>❌ <strong>Keine Telemetrie:</strong> Kein Crash-Reporting an externe Server</li>
+                <li>❌ <strong>Keine Werbung:</strong> Keine Ad-Netzwerke, keine Tracking-Pixel</li>
+            </ul>
+        </div>
+
+        <!-- Rechtliche Grundlagen (DSGVO) -->
+        <h2>Rechtliche Grundlagen (DSGVO/GDPR)</h2>
+        <div class="section">
+            <h3>Anwendbare Artikel</h3>
+            <p>PhotoCleaner unterliegt folgende Datenschutzbestimmungen:</p>
+            
+            <h3>Artikel 15 DSGVO – Auskunftspflicht</h3>
+            <p>
+                Sie haben das Recht, jederzeit eine Auskunft über Ihre personenbezogenen Daten zu erhalten. 
+                Kontaktieren Sie uns unter <a href="mailto:privacy@photocleaner.de">privacy@photocleaner.de</a>.
+            </p>
+
+            <h3>Artikel 16 DSGVO – Berichtigung</h3>
+            <p>
+                Sie haben das Recht, unrichtige personenbezogene Daten zu berichtigen.
+            </p>
+
+            <h3>Artikel 17 DSGVO – Löschungsrecht</h3>
+            <p>
+                Sie haben das Recht auf Löschung (»Recht auf Vergessenwerden«). 
+                Sie können Ihre Daten jederzeit lokal löschen.
+            </p>
+
+            <h3>Artikel 20 DSGVO – Datenportabilität</h3>
+            <p>
+                Sie haben das Recht, Ihre Daten in einem strukturierten, gängigen und maschinenlesbaren Format zu erhalten.
+            </p>
+
+            <h3>Artikel 21 DSGVO – Widerspruchsrecht</h3>
+            <p>
+                Sie haben das Recht, der Verarbeitung Ihrer Daten zu widersprechen.
+            </p>
+        </div>
+
+        <!-- Datenspeicherung -->
+        <h2>Datenspeicherung und Aufbewahrung</h2>
+        <div class="section">
+            <h3>Wie lange werden Daten gespeichert?</h3>
+            <ul>
+                <li><strong>Fotos:</strong> Der Ort des Speichers wird von IHNEN bestimmt – nicht von uns</li>
+                <li><strong>Analyseergebnisse:</strong> Solange Sie die Datenbank nicht löschen</li>
+                <li><strong>Papierkorb-Entries:</strong> Abhängig von Ihrer Windows-Papierkorb-Einstellung</li>
+            </ul>
+
+            <h3>Wie Sie Ihre Daten löschen können</h3>
+            <ul>
+                <li>Löschen Sie die Fotos direkt über die App oder Windows Explorer</li>
+                <li>Leeren Sie den Windows Papierkorb</li>
+                <li>Löschen Sie die PhotoCleaner-Datenbank (lokale Einstellungen)</li>
+                <li>Deinstallieren Sie die Anwendung vollständig</li>
+            </ul>
+        </div>
+
+        <!-- Sicherheit -->
+        <h2>Datensicherheit</h2>
+        <div class="section">
+            <h3>Wie schützen wir Ihre Daten?</h3>
+            <ul>
+                <li><strong>Lokale Verarbeitung:</strong> Keine Datenübertragung über Internet</li>
+                <li><strong>Offline-first:</strong> Funktioniert ohne Internetverbindung</li>
+                <li><strong>Verschlüsselung (optional):</strong> Sie können die lokale Datenbank optional verschlüsseln</li>
+                <li><strong>Windows-Dateisystem:</strong> NTFS-Berechtigungen schützen Ihre Daten</li>
+            </ul>
+
+            <h3>Ihre Verantwortung</h3>
+            <p>
+                Wir empfehlen Ihnen:
+            </p>
+            <ul>
+                <li>Regelmäßige Backups Ihrer wichtigen Fotos</li>
+                <li>Starkes Passwort für Ihren Windows-Account</li>
+                <li>Windows-Updates regelmäßig installieren</li>
+                <li>Antivirus-Software aktivieren</li>
+            </ul>
+        </div>
+
+        <!-- Drittanbieter-Dienste -->
+        <h2>Drittanbieter-Dienste und externe Links</h2>
+        <div class="section">
+            <h3>Die App selbst:</h3>
+            <ul>
+                <li>❌ Keine API-Aufrufe an externe Server</li>
+                <li>❌ Keine News-Feed oder Content-Streaming</li>
+                <li>❌ Keine Integration mit Cloud-Diensten (optional in Pro-Version, aber Ihre Wahl)</li>
+            </ul>
+
+            <h3>Diese Website:</h3>
+            <ul>
+                <li>❌ Keine Google Analytics oder ähnliche Tracker</li>
+                <li>❌ Keine Ad-Netzwerke</li>
+                <li>❌ Keine Third-Party Cookies</li>
+                <li>✅ Only First-Party Cookies (falls erforderlich)</li>
+            </ul>
+        </div>
+
+        <!-- Kontakt & Requests -->
+        <h2>Ihre Rechte und Kontakt</h2>
+        <div class="important-box">
+            <p>
+                <strong>Datenschutz-Anfragen:</strong> <a href="mailto:privacy@photocleaner.de">privacy@photocleaner.de</a>
+            </p>
+            <p>
+                <strong>Allgemeiner Support:</strong> <a href="mailto:support@photocleaner.de">support@photocleaner.de</a>
+            </p>
+        </div>
+
+        <div class="section">
+            <h3>Was können Sie tun?</h3>
+            <ul>
+                <li>Fragen stellen zur Datenverarbeitung</li>
+                <li>Auskunft über Ihre Daten anfordern</li>
+                <li>Datenberichtigung beantragen</li>
+                <li>Datenlöschung fordern (Art. 17 DSGVO)</li>
+                <li>Eine Beschwerde bei der Datenschutzbehörde einreichen</li>
+            </ul>
+        </div>
+
+        <!-- Compliance & Zertifikate -->
+        <h2>Compliance und Zertifikate</h2>
+        <div class="highlight-box">
+            <h3>✓ Rechtskonformität</h3>
+            <ul>
+                <li>✓ DSGVO (EU Datenschutz-Grundverordnung)</li>
+                <li>✓ GDPR (General Data Protection Regulation)</li>
+                <li>✓ BDSG (Bundesdatenschutzgesetz)</li>
+                <li>✓ TMG (Telemediengesetz)</li>
+                <li>✓ Windows-Datenschutz-Standards</li>
+            </ul>
+        </div>
+
+        <!-- Änderungen -->
+        <h2>Änderungen dieser Datenschutzerklärung</h2>
+        <div class="section">
+            <p>
+                Diese Datenschutzerklärung kann jederzeit aktualisiert werden. 
+                Die aktuelle Version ist immer auf dieser Seite verfügbar. 
+                <strong>Letzte Aktualisierung: März 2026</strong>
+            </p>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="website.html#features">Features</a></li>
+                        <li><a href="download.html">Download</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Rechtliches</h4>
+                    <ul>
+                        <li><a href="impressum.html">Impressum</a></li>
+                        <li><a href="datenschutz.html">Datenschutz</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Kontakt & Info</h4>
+                    <ul>
+                        <li><a href="mailto:privacy@photocleaner.de">privacy@photocleaner.de</a></li>
+                        <li><a href="docs.html">Dokumentation</a></li>
+                        <li><a href="changelog.html">Changelog</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 PhotoCleaner. Alle Rechte vorbehalten.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

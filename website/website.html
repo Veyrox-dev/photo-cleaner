@@ -1,0 +1,2187 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PhotoCleaner: Finde automatisch Duplikate in deiner Fotobibliothek. 100% lokale Verarbeitung, keine Cloud. KI-gestützte Qualitätsanalyse für Windows. Kostenlos verfügbar.">
+    <meta name="keywords" content="Foto Duplikate finden, Bildverwaltung Windows, Fotobibliothek aufräumen, Duplikat Erkennung, Foto Qualität analysieren">
+    <meta name="theme-color" content="#2563eb">
+    
+    <!-- Social Media Meta Tags -->
+    <meta property="og:title" content="PhotoCleaner - Intelligente Foto-Verwaltung für Windows">
+    <meta property="og:description" content="Finde automatisch Duplikate in deiner Fotobibliothek. 100% lokale Verarbeitung, keine Cloud. KI-gestützte Qualitätsanalyse. Kostenlos verfügbar.">
+    <meta property="og:image" content="https://photocleaner.de/assets/og-image.png">
+    <meta property="og:url" content="https://photocleaner.de">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="de_DE">
+    
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="PhotoCleaner - Intelligente Foto-Verwaltung">
+    <meta name="twitter:description" content="Automatische Duplikat-Erkennung für Fotos. 100% lokal, keine Cloud, DSGVO-konform.">
+    <meta name="twitter:image" content="https://photocleaner.de/assets/og-image.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/icon.png">
+    <link rel="apple-touch-icon" href="../assets/icon.png">
+    
+    <title>PhotoCleaner - Intelligente Foto-Verwaltung für Windows</title>
+    <style>
+        /* ============================================
+           DESIGN SYSTEM
+           ============================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Professional SaaS Palette */
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --primary-light: #3b82f6;
+            --accent: #0891b2;
+            --success: #059669;
+            --warning: #d97706;
+            --error: #dc2626;
+            
+            /* Neutrals - High Contrast */
+            --text-dark: #0f172a;
+            --text-gray: #334155;
+            --text-light: #64748b;
+            --bg-white: #ffffff;
+            --bg-light: #f8fafc;
+            --bg-darker: #f1f5f9;
+            --border: #e2e8f0;
+            
+            /* Spacing - 8px base */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 48px;
+            --spacing-3xl: 64px;
+            --spacing-4xl: 96px;
+            
+            /* Sizing */
+            --radius: 6px;
+            --radius-lg: 12px;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.12);
+            
+            /* Transitions */
+            --transition: all 0.2s ease;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            color: var(--text-dark);
+            line-height: 1.6;
+            background: var(--bg-white);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ============================================
+           TYPOGRAPHY
+           ============================================ */
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 700;
+            line-height: 1.25;
+            margin-bottom: var(--spacing-lg);
+            color: var(--text-dark);
+        }
+
+        h1 { font-size: clamp(28px, 6vw, 44px); }
+        h2 { font-size: clamp(24px, 5vw, 36px); }
+        h3 { font-size: clamp(18px, 3vw, 24px); }
+        h4 { font-size: 18px; }
+
+        p {
+            color: var(--text-gray);
+            margin-bottom: var(--spacing-md);
+            line-height: 1.7;
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        a:hover {
+            color: var(--primary-dark);
+        }
+
+        /* ============================================
+           BUTTONS
+           ============================================ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            color: white;
+        }
+
+        .btn-secondary {
+            border: 1.5px solid var(--primary);
+            color: var(--primary);
+            background: transparent;
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-lg {
+            padding: 12px 28px;
+            font-size: 15px;
+        }
+
+        /* ============================================
+           UTILITIES
+           ============================================ */
+        .container {
+            width: 100%;
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+        }
+
+        .section {
+            padding: var(--spacing-3xl) 0;
+        }
+
+        .section-light { background: var(--bg-white); }
+        .section-gray { background: var(--bg-light); }
+        .section-dark { background: var(--text-dark); color: white; }
+
+        .text-center { text-align: center; }
+        .text-white { color: white; }
+
+        .grid {
+            display: grid;
+            gap: var(--spacing-xl);
+            margin-top: var(--spacing-xl);
+        }
+
+        .grid-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+        /* ============================================
+           HEADER & NAVIGATION
+           ============================================ */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: white;
+            box-shadow: var(--shadow-sm);
+            z-index: 1000;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+            height: 64px;
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            display: block;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: var(--spacing-xl);
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-dark);
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .nav-cta {
+            display: flex;
+            gap: var(--spacing-md);
+            align-items: center;
+        }
+
+        /* Mobile Menu Button */
+        .mobile-menu-btn {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            z-index: 1001;
+        }
+
+        .mobile-menu-btn span {
+            width: 24px;
+            height: 2px;
+            background: var(--text-dark);
+            transition: var(--transition);
+            border-radius: 2px;
+        }
+
+        .mobile-menu-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+
+        .mobile-menu-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .mobile-menu-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(5px, -5px);
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-btn { display: flex; }
+            
+            .nav-links {
+                position: fixed;
+                top: 56px;
+                left: 0;
+                width: 100%;
+                background: white;
+                flex-direction: column;
+                padding: var(--spacing-lg);
+                box-shadow: var(--shadow-lg);
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                gap: var(--spacing-md);
+            }
+            
+            .nav-links.active {
+                transform: translateX(0);
+            }
+            
+            .nav-links li {
+                width: 100%;
+                text-align: left;
+            }
+            
+            .nav-links a {
+                display: block;
+                padding: var(--spacing-md);
+                border-radius: var(--radius);
+                transition: var(--transition);
+            }
+            
+            .nav-links a:hover {
+                background: var(--bg-light);
+            }
+            
+            nav { padding: 0 var(--spacing-md); height: 56px; }
+            .logo { font-size: 18px; }
+            .logo-icon { width: 28px; height: 28px; }
+            .nav-cta { gap: var(--spacing-sm); }
+            .btn { padding: 8px 16px; font-size: 13px; }
+        }
+
+        /* ============================================
+           HERO SECTION
+           ============================================ */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding-top: 64px;
+            padding-bottom: var(--spacing-3xl);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero .container {
+            max-width: 800px;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-mockup {
+            max-width: 700px;
+            margin: var(--spacing-2xl) auto 0;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-mockup img {
+            width: 100%;
+            height: auto;
+            border-radius: var(--radius-lg);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .hero-mockup-placeholder {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-3xl) var(--spacing-lg);
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            font-style: italic;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-2xl);
+            margin-top: var(--spacing-xl);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        .hero h1 {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .hero > .container > p {
+            color: white;
+            font-size: 20px;
+            margin-bottom: var(--spacing-2xl);
+            font-weight: 500;
+            line-height: 1.6;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 640px) {
+            .hero {
+                padding-top: 56px;
+                padding-bottom: var(--spacing-3xl);
+            }
+            .hero-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+            .hero-buttons .btn-lg {
+                width: 100%;
+            }
+        }
+
+        /* ============================================
+           STATS SECTION
+           ============================================ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-2xl);
+            margin-top: var(--spacing-2xl);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: clamp(28px, 4vw, 40px);
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-gray);
+            font-weight: 500;
+        }
+
+        /* ============================================
+           SECTION HEADER
+           ============================================ */
+        .section-header {
+            max-width: 700px;
+            margin: 0 auto var(--spacing-3xl);
+            text-align: center;
+        }
+
+        .section-header h2 {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .section-header p {
+            font-size: 16px;
+            color: var(--text-gray);
+        }
+
+        /* ============================================
+           PROBLEM SECTION
+           ============================================ */
+        .problem-content {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .problem-list {
+            list-style: none;
+            margin: var(--spacing-2xl) 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: var(--spacing-xl);
+        }
+
+        .problem-list li {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+            padding: var(--spacing-lg);
+            background: white;
+            border-radius: var(--radius-lg);
+            border: 1.5px solid var(--border);
+            color: var(--text-gray);
+            line-height: 1.8;
+        }
+
+        .problem-list li::before {
+            align-self: flex-start;
+            margin-top: 0;
+        }
+
+        .problem-list li::before {
+            content: "✕";
+            font-size: 18px;
+            color: var(--error);
+            font-weight: bold;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        /* ============================================
+           CORE FEATURES (6 KERNPUNKTE)
+           ============================================ */
+        .feature-card {
+            background: white;
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            border: 1.5px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .feature-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .feature-icon {
+            font-size: 40px;
+            margin-bottom: var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 56px;
+        }
+
+        .feature-card h3 {
+            margin-bottom: var(--spacing-sm);
+            font-size: 18px;
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: var(--text-gray);
+        }
+
+        /* ============================================
+           SECURITY SECTION
+           ============================================ */
+        .security-card {
+            background: white;
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            border: 1.5px solid var(--border);
+        }
+
+        .security-card h3 {
+            margin-bottom: var(--spacing-sm);
+            font-size: 18px;
+        }
+
+        .security-card p {
+            font-size: 14px;
+            color: var(--text-gray);
+        }
+
+        .security-icon {
+            font-size: 36px;
+            margin-bottom: var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 52px;
+        }
+
+        /* ============================================
+           TESTIMONIALS SECTION
+           ============================================ */
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--spacing-xl);
+            margin-top: var(--spacing-2xl);
+        }
+
+        .testimonial-card {
+            background: white;
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            border: 1.5px solid var(--border);
+            position: relative;
+        }
+
+        .testimonial-quote {
+            font-size: 40px;
+            color: var(--primary);
+            opacity: 0.2;
+            line-height: 1;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .testimonial-text {
+            color: var(--text-gray);
+            font-size: 15px;
+            line-height: 1.7;
+            margin-bottom: var(--spacing-lg);
+            font-style: italic;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .testimonial-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .testimonial-info h4 {
+            color: var(--text-dark);
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+
+        .testimonial-info p {
+            color: var(--text-light);
+            font-size: 13px;
+            margin-bottom: 0;
+        }
+
+        .testimonial-placeholder {
+            background: var(--bg-light);
+            border: 2px dashed var(--border);
+            padding: var(--spacing-2xl);
+            text-align: center;
+            color: var(--text-light);
+            font-style: italic;
+        }
+
+        /* ============================================
+           BACK TO TOP BUTTON
+           ============================================ */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            background: var(--primary-dark);
+            transform: translateY(-3px);
+        }
+
+        /* ============================================
+           USE CASES SECTION
+           ============================================ */
+        .use-cases-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-lg);
+            margin-top: var(--spacing-2xl);
+        }
+
+        .use-case-card {
+            background: white;
+            border-radius: 8px;
+            padding: var(--spacing-lg);
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            border: 1px solid #e5e7eb;
+        }
+
+        .use-case-card:hover {
+            box-shadow: 0 8px 16px rgba(37, 99, 235, 0.1);
+            transform: translateY(-4px);
+            border-color: var(--primary);
+        }
+
+        .use-case-icon {
+            font-size: 48px;
+            display: block;
+            margin-bottom: var(--spacing-md);
+            line-height: 1;
+        }
+
+        .use-case-card h3 {
+            color: var(--text-dark);
+            margin-bottom: var(--spacing-sm);
+            font-size: 18px;
+        }
+
+        .use-case-card p {
+            color: var(--text-gray);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* ============================================
+           NEWSLETTER SECTION
+           ============================================ */
+        .newsletter-section {
+            text-align: center;
+            padding: var(--spacing-2xl) var(--spacing-lg);
+        }
+
+        .newsletter-content {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .newsletter-content h3 {
+            font-size: 26px;
+            color: var(--text-dark);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .newsletter-content p {
+            color: var(--text-gray);
+            margin-bottom: var(--spacing-lg);
+            line-height: 1.6;
+        }
+
+        .newsletter-form {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .newsletter-form input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: var(--font-family);
+            transition: border-color 0.2s;
+        }
+
+        .newsletter-form input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .newsletter-form button {
+            padding: 12px 24px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .newsletter-form button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .newsletter-note {
+            font-size: 13px;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+
+        /* ============================================
+           SOCIAL LINKS
+           ============================================ */
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-lg);
+            flex-wrap: wrap;
+        }
+
+        .social-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 50%;
+            font-size: 24px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            color: var(--text-dark);
+        }
+
+        .social-link:hover {
+            border-color: var(--primary);
+            background: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        /* ============================================
+           COUNTDOWN TIMER
+           ============================================ */
+        .section-darker {
+            background: linear-gradient(135deg, #1e40af 0%, #0f172a 100%);
+            color: white;
+            padding: var(--spacing-3xl) 0;
+        }
+
+        .countdown-timer {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: var(--spacing-lg);
+            margin-top: var(--spacing-2xl);
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .countdown-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .countdown-number {
+            font-size: 40px;
+            font-weight: 800;
+            color: #3b82f6;
+            display: block;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .countdown-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 768px) {
+            .countdown-timer {
+                grid-template-columns: repeat(2, 1fr);
+                gap: var(--spacing-md);
+            }
+
+            .countdown-number {
+                font-size: 28px;
+            }
+        }
+
+        /* ============================================
+           TRUST BADGES
+           ============================================ */
+        .trust-badges {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: var(--spacing-2xl);
+            flex-wrap: wrap;
+            padding: var(--spacing-2xl) 0;
+            margin: var(--spacing-2xl) 0;
+        }
+
+        .trust-badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-lg);
+            background: white;
+            border-radius: var(--radius-lg);
+            border: 1.5px solid var(--border);
+            min-width: 140px;
+            transition: var(--transition);
+        }
+
+        .trust-badge:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .trust-badge-icon {
+            font-size: 32px;
+            line-height: 1;
+        }
+
+        .trust-badge-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dark);
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .trust-badge-subtext {
+            font-size: 11px;
+            color: var(--text-light);
+            text-align: center;
+        }
+
+        /* ============================================
+           PRICING COMPARISON TABLE
+           ============================================ */
+        .comparison-table {
+            width: 100%;
+            max-width: 900px;
+            margin: var(--spacing-3xl) auto 0;
+            border-collapse: collapse;
+            background: white;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+
+        .comparison-table thead {
+            background: var(--bg-light);
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: var(--spacing-lg);
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comparison-table th {
+            font-weight: 700;
+            color: var(--text-dark);
+            font-size: 15px;
+        }
+
+        .comparison-table th:first-child {
+            width: 40%;
+        }
+
+        .comparison-table td {
+            font-size: 14px;
+            color: var(--text-gray);
+        }
+
+        .comparison-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .comparison-table .check {
+            color: var(--success);
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .comparison-table .cross {
+            color: var(--text-light);
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        @media (max-width: 768px) {
+            .trust-badges {
+                gap: var(--spacing-lg);
+            }
+
+            .trust-badge {
+                min-width: 120px;
+                padding: var(--spacing-md);
+            }
+
+            .comparison-table {
+                font-size: 13px;
+            }
+
+            .comparison-table th,
+            .comparison-table td {
+                padding: var(--spacing-md);
+            }
+        }
+
+        /* ============================================
+           PRICING SECTION
+           ============================================ */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+            gap: var(--spacing-xl);
+            margin-top: var(--spacing-2xl);
+        }
+
+        .pricing-card {
+            background: white;
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            border: 1.5px solid var(--border);
+            transition: var(--transition);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pricing-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+        }
+
+        .pricing-card.featured {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-lg);
+            border-width: 2px;
+        }
+
+        .pricing-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .pricing-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-top: var(--spacing-md);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .pricing-price {
+            font-size: clamp(28px, 3vw, 40px);
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .pricing-desc {
+            color: var(--text-gray);
+            font-size: 13px;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .pricing-features {
+            list-style: none;
+            flex: 1;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .pricing-features li {
+            padding: var(--spacing-md) 0;
+            color: var(--text-gray);
+            font-size: 14px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .pricing-features li::before {
+            content: "✓ ";
+            color: var(--success);
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .pricing-features li.disabled {
+            opacity: 0.5;
+        }
+
+        .pricing-features li.disabled::before {
+            content: "✕ ";
+            color: var(--border);
+        }
+
+        .pricing-card .btn {
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .pricing-card.featured {
+                border-width: 1.5px;
+            }
+        }
+
+        /* ============================================
+           CONTACT SECTION
+           ============================================ */
+        .contact-center {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .contact-form {
+            background: white;
+            padding: var(--spacing-2xl);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: var(--spacing-sm);
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            font-family: inherit;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            margin-top: 4px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            font-size: 14px;
+            color: var(--text-gray);
+            line-height: 1.5;
+            cursor: pointer;
+        }
+
+        .checkbox-group a {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        .form-error {
+            color: var(--error);
+            font-size: 13px;
+            margin-top: var(--spacing-xs);
+            display: none;
+        }
+
+        .form-group.error input,
+        .form-group.error select,
+        .form-group.error textarea {
+            border-color: var(--error);
+        }
+
+        .form-group.error .form-error {
+            display: block;
+        }
+
+        @media (max-width: 640px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ============================================
+           CTA SECTION
+           ============================================ */
+        .cta-content {
+            max-width: 700px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .cta-content h2 {
+            color: white;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .cta-content p {
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: var(--spacing-2xl);
+            font-size: 16px;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* ============================================
+           FOOTER
+           ============================================ */
+        footer {
+            background: #1f2937;
+            color: white;
+            padding: var(--spacing-3xl) 0 var(--spacing-lg);
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--spacing-2xl);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .footer-section h4 {
+            font-size: 16px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section li {
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .footer-section a {
+            color: #d1d5db;
+            font-size: 14px;
+            text-decoration: none;
+            transition: var(--transition);
+            display: inline-block;
+        }
+
+        .footer-section a:hover {
+            color: white;
+            transform: translateX(4px);
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: var(--spacing-lg);
+            text-align: center;
+            font-size: 14px;
+            color: #9ca3af;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            animation: fadeIn 0.2s;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: var(--spacing-2xl);
+            border-radius: var(--radius-lg);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            animation: slideUp 0.3s;
+        }
+
+        .modal-icon {
+            font-size: 64px;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .modal-content h3 {
+            color: var(--text-dark);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .modal-content p {
+            color: var(--text-gray);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .footer-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .footer-grid {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-xl);
+            }
+        }
+
+        /* ============================================
+           RESPONSIVE DESIGN
+           ============================================ */
+        @media (max-width: 768px) {
+            .section {
+                padding: var(--spacing-2xl) 0;
+            }
+
+            .grid-2, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+
+            .problem-list {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 0 var(--spacing-md);
+            }
+
+            .section-header {
+                margin-bottom: var(--spacing-2xl);
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+
+            .cta-buttons .btn-lg {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 { font-size: 26px; }
+            h2 { font-size: 20px; }
+            h3 { font-size: 16px; }
+
+            .container {
+                padding: 0 var(--spacing-md);
+            }
+
+            .section {
+                padding: var(--spacing-2xl) 0;
+            }
+
+            .grid {
+                gap: var(--spacing-lg);
+            }
+
+            .feature-card,
+            .security-card,
+            .pricing-card,
+            .contact-box {
+                padding: var(--spacing-lg);
+            }
+
+            .btn-lg {
+                width: 100%;
+            }
+
+            .problem-list li {
+                gap: var(--spacing-sm);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER & NAVIGATION -->
+    <header>
+        <nav>
+            <a href="/" class="logo">
+                <img src="../assets/icon.png" alt="PhotoCleaner" class="logo-icon">
+                <span>PhotoCleaner</span>
+            </a>
+            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#pricing">Preise</a></li>
+                <li><a href="faq.html">FAQ</a></li>
+                <li><a href="#contact">Kontakt</a></li>
+            </ul>
+            <div class="nav-cta">
+                <a href="#pricing" class="btn btn-secondary">Mehr erfahren</a>
+                <a href="download.html" class="btn btn-primary btn-lg">Download</a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- HERO SECTION -->
+    <section id="home" class="section hero">
+        <div class="container">
+            <div class="hero-content">
+                <span class="badge">Für Windows • Made in Germany</span>
+                <h1>Intelligente Duplikat-Erkennung für deine Fotobibliothek</h1>
+                <p>Finde und verwalte automatisch Duplikate in großen Fotosammlungen. Alles bleibt auf deinem PC, keine Cloud, maximale Datensicherheit.</p>
+                <div class="hero-buttons">
+                    <a href="download.html" class="btn btn-primary btn-lg">Kostenlos herunterladen</a>
+                    <a href="docs.html" class="btn btn-lg" style="background: rgba(255, 255, 255, 0.2); border: 1.5px solid white; color: white; font-weight: 600;">Dokumentation</a>
+                </div>
+            </div>
+            <!-- App Screenshot/Mockup Placeholder -->
+            <div class="hero-mockup">
+                <div class="hero-mockup-placeholder">
+                    🖼️ App-Screenshot folgt hier (in Entwicklung)
+                </div>
+                <!-- Uncomment when screenshot is ready:
+                <img src="../assets/app-screenshot.png" alt="PhotoCleaner App Screenshot">
+                -->
+            </div>
+        </div>
+    </section>
+
+    <!-- COUNTDOWN TIMER SECTION -->
+    <section class="section section-darker">
+        <div class="container">
+            <div style="text-align: center; margin-bottom: var(--spacing-2xl);">
+                <h2 style="color: white; margin-bottom: var(--spacing-md);">🚀 Launch in Phase</h2>
+                <p style="color: rgba(255, 255, 255, 0.9); font-size: 16px;">PhotoCleaner Version 1.0 kommt am 3. Oktober 2026</p>
+            </div>
+            <div class="countdown-timer" id="countdown">
+                <div class="countdown-item">
+                    <span class="countdown-number" id="days">0</span>
+                    <span class="countdown-label">Tage</span>
+                </div>
+                <div class="countdown-item">
+                    <span class="countdown-number" id="hours">0</span>
+                    <span class="countdown-label">Stunden</span>
+                </div>
+                <div class="countdown-item">
+                    <span class="countdown-number" id="minutes">0</span>
+                    <span class="countdown-label">Minuten</span>
+                </div>
+                <div class="countdown-item">
+                    <span class="countdown-number" id="seconds">0</span>
+                    <span class="countdown-label">Sekunden</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- STATS SECTION -->
+    <section class="section section-light">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number">100%</div>
+                    <p class="stat-label">Bleibt auf deinem PC</p>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">99.8%</div>
+                    <p class="stat-label">Duplikat-Erkennungsgenauigkeit</p>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">10 Std</div>
+                    <p class="stat-label">Arbeit gespart</p>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">89%</div>
+                    <p class="stat-label">Weniger Sortierarbeit</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PROBLEM SECTION -->
+    <section class="section section-light">
+        <div class="container problem-content">
+            <div class="section-header">
+                <h2>Das Problem</h2>
+                <p>Große Fotosammlungen sind ein Verwaltungsnightmare</p>
+            </div>
+            <ul class="problem-list">
+                <li>Hunderte ähnlicher Fotos manuell durchsuchen und vergleichen</li>
+                <li>Wertvoller Speicherplatz wird durch Duplikate verschwendet</li>
+                <li>Schwierig zu entscheiden, welches Foto von mehreren ähnlichen behalten werden soll</li>
+                <li>Zeitaufwändige manuelle Verwaltung großer Ordnerstrukturen</li>
+                <li>Risiko, wichtige Fotos versehentlich zu löschen</li>
+                <li>Keine Struktur für systematische Photo-Organisation</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- CORE FEATURES SECTION (6 KERNPUNKTE) -->
+    <section id="features" class="section section-gray">
+        <div class="container">
+            <div class="section-header">
+                <h2>Kernfunktionen</h2>
+                <p>Entwickelt für alle, die ihre Fotobibliothek smart organisieren wollen</p>
+            </div>
+            <div class="grid grid-3">
+                <div class="feature-card">
+                    <span class="feature-icon">🎯</span>
+                    <h3>Intelligente Duplikat-Erkennung</h3>
+                    <p>Findet optisch ähnliche Bilder mit smarter Bilderkennung – nicht nur exakt identische Dateien.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">👁️</span>
+                    <h3>Geschlossene Augen erkennen</h3>
+                    <p>Automatische Analyse erkennt Fotos mit geschlossenen Augen – nutzt diese Informationen für Qualitätsbewertung.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">⭐</span>
+                    <h3>Qualitätsbewertung</h3>
+                    <p>Analysiert Schärfe, Belichtung, Komposition und andere Faktoren für objektive Foto-Qualitätsbeurteilung.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">📁</span>
+                    <h3>Analyse ganzer Ordnerstrukturen</h3>
+                    <p>Verarbeitet komplette Verzeichnisse und Unterordner in einem Durchgang – keine umständliche einzelne Dateiauswahl.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">✋</span>
+                    <h3>Strukturierte Vorauswahl</h3>
+                    <p>Du kontrollierst jede Entscheidung. Kein automatisches Löschen – nur intelligente Vorschläge zur Überprüfung.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">🖥️</span>
+                    <h3>100 % lokale Verarbeitung</h3>
+                    <p>Alles läuft auf deinem PC. Keine Cloud, keine Uploads, keine externen Server. Maximaler Datenschutz.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TRUST BADGES SECTION -->
+    <section class="section section-light">
+        <div class="container">
+            <div class="trust-badges">
+                <div class="trust-badge">
+                    <div class="trust-badge-icon">🇩🇪</div>
+                    <div class="trust-badge-text">Made in<br>Germany</div>
+                    <div class="trust-badge-subtext">Entwickelt in DE</div>
+                </div>
+                <div class="trust-badge">
+                    <div class="trust-badge-icon">🔒</div>
+                    <div class="trust-badge-text">DSGVO-<br>konform</div>
+                    <div class="trust-badge-subtext">100% compliant</div>
+                </div>
+                <div class="trust-badge">
+                    <div class="trust-badge-icon">⚡</div>
+                    <div class="trust-badge-text">Keine<br>Cloud</div>
+                    <div class="trust-badge-subtext">Lokal & Offline</div>
+                </div>
+                <div class="trust-badge">
+                    <div class="trust-badge-icon">🛡️</div>
+                    <div class="trust-badge-text">Keine<br>Telemetrie</div>
+                    <div class="trust-badge-subtext">Zero Tracking</div>
+                </div>
+                <div class="trust-badge">
+                    <div class="trust-badge-icon">💻</div>
+                    <div class="trust-badge-text">Windows<br>nativ</div>
+                    <div class="trust-badge-subtext">Optimiert</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECURITY SECTION -->
+    <section id="security" class="section section-gray">
+        <div class="container">
+            <div class="section-header">
+                <h2>Sicherheit und Datenschutz</h2>
+                <p>Transparente, sachliche Fakten zu deinen Daten</p>
+            </div>
+            <div class="grid grid-3">
+                <div class="security-card">
+                    <span class="security-icon">🔒</span>
+                    <h3>Lokale Verarbeitung</h3>
+                    <p>Alle Fotos werden lokal auf deinem Computer verarbeitet. Es gibt keinen Upload auf externe Server.</p>
+                </div>
+                <div class="security-card">
+                    <span class="security-icon">⚙️</span>
+                    <h3>Keine Cloud</h3>
+                    <p>Deine Daten verlassen deinen Computer nicht. Keine Abhängigkeit von Cloud-Services.</p>
+                </div>
+                <div class="security-card">
+                    <span class="security-icon">♻️</span>
+                    <h3>Papierkorb-Integration</h3>
+                    <p>Gelöschte Dateien gehen in den Windows-Papierkorb. Du kannst sie jederzeit wiederherstellen.</p>
+                </div>
+                <div class="security-card">
+                    <span class="security-icon">📋</span>
+                    <h3>Keine Datensammlung</h3>
+                    <p>Keine Telemetrie, keine Tracker, keine Datensammelei. Keine Überwachung.</p>
+                </div>
+                <div class="security-card">
+                    <span class="security-icon">📡</span>
+                    <h3>Offline-Betrieb</h3>
+                    <p>Funktioniert vollständig ohne Internetverbindung. Volle Kontrolle über deine Daten.  </p>
+                </div>
+                <div class="security-card">
+                    <span class="security-icon">✓</span>
+                    <h3>Volle Transparenz</h3>
+                    <p>Du siehst exakt, was gelöscht wird. Jede Aktion ist nachvollziehbar und rückgängig machbar.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TESTIMONIALS SECTION -->
+    <section class="section section-light">
+        <div class="container">
+            <div class="section-header">
+                <h2>Was Nutzer sagen</h2>
+                <p>Erfahrungen von Fotografen und Familien, die PhotoCleaner nutzen</p>
+            </div>
+            <div class="testimonials-grid">
+                <!-- Testimonial 1 - Placeholder -->
+                <div class="testimonial-card testimonial-placeholder">
+                    <div class="testimonial-quote">“</div>
+                    <div class="testimonial-text">
+                        Testimonial folgt nach dem Launch – hier werden echte Nutzererfahrungen erscheinen.
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">?</div>
+                        <div class="testimonial-info">
+                            <h4>Placeholder</h4>
+                            <p>Hobbyfotograf</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Testimonial 2 - Placeholder -->
+                <div class="testimonial-card testimonial-placeholder">
+                    <div class="testimonial-quote">“</div>
+                    <div class="testimonial-text">
+                        Nach dem Launch werden hier echte Bewertungen von zufriedenen Nutzern angezeigt.
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">?</div>
+                        <div class="testimonial-info">
+                            <h4>Placeholder</h4>
+                            <p>Familienvater</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Testimonial 3 - Placeholder -->
+                <div class="testimonial-card testimonial-placeholder">
+                    <div class="testimonial-quote">“</div>
+                    <div class="testimonial-text">
+                        Hier erscheinen später authentische Rückmeldungen von echten PhotoCleaner-Nutzern.
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">?</div>
+                        <div class="testimonial-info">
+                            <h4>Placeholder</h4>
+                            <p>Content Creator</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRICING SECTION -->
+    <section id="pricing" class="section section-light">
+        <div class="container">
+            <div class="section-header">
+                <h2>Einfache Preisgestaltung</h2>
+                <p>Eine kostenlose Version und ein Pro-Abonnement für erweiterte Funktionen</p>
+            </div>
+            <div class="pricing-grid">
+                <!-- Free Plan -->
+                <div class="pricing-card">
+                    <h3 class="pricing-name">Kostenlos</h3>
+                    <div class="pricing-price">€0</div>
+                    <p class="pricing-desc">Unbegrenzte Nutzung</p>
+                    <ul class="pricing-features">
+                        <li>Duplikat-Erkennung</li>
+                        <li>Qualitätsbewertung</li>
+                        <li>Ordner-Analyse</li>
+                        <li>Papierkorb-Integration</li>
+                        <li class="disabled">Cloud-Backup</li>
+                        <li class="disabled">Prioritäts-Support</li>
+                    </ul>
+                    <a href="download.html" class="btn btn-secondary btn-lg">Download</a>
+                </div>
+
+                <!-- Pro Plan -->
+                <div class="pricing-card featured">
+                    <span class="pricing-badge">Empfohlen</span>
+                    <h3 class="pricing-name">Pro</h3>
+                    <div class="pricing-price">€9.99</div>
+                    <p class="pricing-desc">Pro Monat</p>
+                    <ul class="pricing-features">
+                        <li>Alles aus Kostenlos</li>
+                        <li>Erweiterte KI-Analyse</li>
+                        <li>Batch-Verarbeitung</li>
+                        <li>Batch-Export</li>
+                        <li>Cloud-Backup (optional)</li>
+                        <li>Prioritäts-Support via Email</li>
+                    </ul>
+                    <a href="https://buy.stripe.com/test_7sY28r7yX0xS47a8bP00000" class="btn btn-primary btn-lg" target="_blank" rel="noopener">Pro aktivieren</a>
+                </div>
+            </div>
+
+            <!-- Feature Comparison Table -->
+            <div class="section-header" style="margin-top: var(--spacing-4xl); margin-bottom: var(--spacing-2xl);">
+                <h3 style="font-size: 24px;">Detaillierter Feature-Vergleich</h3>
+                <p style="font-size: 14px;">Alle Funktionen im Überblick</p>
+            </div>
+            
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th style="text-align: center;">Kostenlos</th>
+                        <th style="text-align: center;">Pro</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Duplikat-Erkennung</strong></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Qualitätsbewertung</strong></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Geschlossene Augen erkennen</strong></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Ordner-Analyse</strong></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Papierkorb-Integration</strong></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Offline-Betrieb</strong></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                    </tr>
+                    <tr style="background: var(--bg-light);">
+                        <td><strong>Erweiterte KI-Analyse</strong></td>
+                        <td style="text-align: center;"><span class="cross">✕</span></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                    </tr>
+                    <tr style="background: var(--bg-light);">
+                        <td><strong>Batch-Verarbeitung (mehrere Ordner)</strong></td>
+                        <td style="text-align: center;"><span class="cross">✕</span></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                    </tr>
+                    <tr style="background: var(--bg-light);">
+                        <td><strong>Batch-Export (CSV, JSON)</strong></td>
+                        <td style="text-align: center;"><span class="cross">✕</span></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                    </tr>
+                    <tr style="background: var(--bg-light);">
+                        <td><strong>Cloud-Backup (optional)</strong></td>
+                        <td style="text-align: center;"><span class="cross">✕</span></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                    </tr>
+                    <tr style="background: var(--bg-light);">
+                        <td><strong>Prioritäts-Support (Email)</strong></td>
+                        <td style="text-align: center;"><span class="cross">✕</span></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                    </tr>
+                    <tr style="background: var(--bg-light);">
+                        <td><strong>Erweiterte Filter & Sortierung</strong></td>
+                        <td style="text-align: center;"><span class="cross">✕</span></td>
+                        <td style="text-align: center;"><span class="check">✓</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- CONTACT SECTION -->
+    <section id="contact" class="section section-light">
+        <div class="container contact-center">
+            <h2>Kontakt</h2>
+            <p style="text-align: center; margin-bottom: var(--spacing-2xl);">Hast du Fragen, Feedback oder brauchst du Support? Kontaktiere uns!</p>
+            
+            <form class="contact-form" id="contactForm" action="https://formsubmit.co/support@photocleaner.de" method="POST">
+                <!-- FormSubmit Configuration -->
+                <input type="hidden" name="_subject" value="Neue Nachricht von PhotoCleaner Website">
+                <input type="hidden" name="_captcha" value="false">
+                <input type="hidden" name="_template" value="table">
+                <input type="text" name="_honey" style="display:none">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="firstName">Vorname *</label>
+                        <input type="text" id="firstName" name="Vorname" required>
+                        <span class="form-error">Bitte gib deinen Vornamen ein</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName">Nachname *</label>
+                        <input type="text" id="lastName" name="Nachname" required>
+                        <span class="form-error">Bitte gib deinen Nachnamen ein</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">E-Mail *</label>
+                    <input type="email" id="email" name="email" required>
+                    <span class="form-error">Bitte gib eine gültige E-Mail-Adresse ein</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="category">Kategorie *</label>
+                    <select id="category" name="Kategorie" required>
+                        <option value="">Bitte wählen...</option>
+                        <option value="Feature-Anfrage">✨ Feature-Anfrage</option>
+                        <option value="Vorschlag">💡 Vorschlag</option>
+                        <option value="Bug Report">🐛 Bug Report</option>
+                        <option value="Rückmeldung">💬 Rückmeldung</option>
+                        <option value="Support">🆘 Support</option>
+                    </select>
+                    <span class="form-error">Bitte wähle eine Kategorie</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="message">Nachricht *</label>
+                    <textarea id="message" name="Nachricht" required></textarea>
+                    <span class="form-error">Bitte gib eine Nachricht ein</span>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="privacy" name="_privacy_accepted" required>
+                    <label for="privacy">
+                        Ich habe die <a href="datenschutz.html" target="_blank">Datenschutzerklärung</a> gelesen und akzeptiere diese. *
+                    </label>
+                </div>
+                <span class="form-error" id="privacyError" style="display: none;">Du musst die Datenschutzerklärung akzeptieren</span>
+
+                <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;">Absenden</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- ERFOLGSGESCHICHTEN / USE CASES SECTION -->
+    <section class="section section-light">
+        <div class="container">
+            <div class="section-header">
+                <h2>Typische Anwendungsfälle</h2>
+                <p>So hilft PhotoCleaner verschiedenen Nutzergruppen</p>
+            </div>
+            <div class="use-cases-grid">
+                <div class="use-case-card">
+                    <span class="use-case-icon">📷</span>
+                    <h3>Hobbyfotografen</h3>
+                    <p>Verwalte deine Fotosammlung professionell. Entdecke ähnliche Aufnahmen vom gleichen Motiv und behalte nur die Besten.</p>
+                </div>
+                <div class="use-case-card">
+                    <span class="use-case-icon">👨‍👩‍👧‍👦</span>
+                    <h3>Familie & Private Nutzer</h3>
+                    <p>Archiviere Familienerinnerungen sauber. Entferne unscharfe Aufnahmen automatisch und spare Speicherplatz.</p>
+                </div>
+                <div class="use-case-card">
+                    <span class="use-case-icon">💼</span>
+                    <h3>Content Creator</h3>
+                    <p>Organisiere große Foto-Libraries für Projekte. Finde Duplikate schnell und fahre mit der Bearbeitung fort.</p>
+                </div>
+                <div class="use-case-card">
+                    <span class="use-case-icon">🖥️</span>
+                    <h3>Professionelle Fotografen</h3>
+                    <p>Verwalte Tausende von Schussfolgen. Bewahre die besten Bilder auf und archiviere alternative Aufnahmen automatisiert.</p>
+                </div>
+                <div class="use-case-card">
+                    <span class="use-case-icon">📦</span>
+                    <h3>Speicherplatz sparen</h3>
+                    <p>Entferne Duplikate und unscharfe Fotos. Gib Speicherplatz auf deiner Festplatte frei und beschleunige dein System.</p>
+                </div>
+                <div class="use-case-card">
+                    <span class="use-case-icon">🔐</span>
+                    <h3>Datenschutz-bewusste Nutzer</h3>
+                    <p>Verwende ein Tool, das deine Daten nicht in die Cloud hochlädt. Alles läuft lokal und komplett offline.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- NEWSLETTER SECTION -->
+    <section class="section section-gray">
+        <div class="container">
+            <div class="newsletter-section">
+                <div class="newsletter-content">
+                    <h3>📧 Immer up-to-date bleiben</h3>
+                    <p>Erhalte Updates zu neuen Features, wichtigen Sicherheitsupdates und exklusiven Tipps direkt in dein Postfach.</p>
+                    <form class="newsletter-form" action="https://formsubmit.co/info@photocleaner.de" method="POST" id="newsletterForm">
+                        <input type="hidden" name="_subject" value="Neue Newsletter-Anmeldung PhotoCleaner">
+                        <input type="hidden" name="_captcha" value="false">
+                        <input type="hidden" name="_template" value="table">
+                        <input type="text" name="_honey" style="display:none">
+                        <input type="hidden" name="Anmeldetyp" value="Newsletter">
+                        <input type="email" name="email" placeholder="Deine E-Mail-Adresse" required>
+                        <button type="submit">Newsletter abonnieren</button>
+                    </form>
+                    <p class="newsletter-note">✓ Keine Spam, max. 1x pro Monat. Jederzeit abmeldbar.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h4>Produkt</h4>
+                    <ul>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#pricing">Preise</a></li>
+                        <li><a href="download.html">Download</a></li>
+                        <li><a href="changelog.html">Changelog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Ressourcen</h4>
+                    <ul>
+                        <li><a href="docs.html">Dokumentation</a></li>
+                        <li><a href="faq.html">FAQ</a></li>
+                        <li><a href="#contact">Kontakt</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Rechtliches</h4>
+                    <ul>
+                        <li><a href="impressum.html">Impressum</a></li>
+                        <li><a href="datenschutz.html">Datenschutz</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Unternehmen</h4>
+                    <ul>
+                        <li><a href="#home">Über uns</a></li>
+                        <li><a href="mailto:info@photocleaner.de">info@photocleaner.de</a></li>
+                        <li><a href="mailto:support@photocleaner.de">support@photocleaner.de</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 PhotoCleaner. Alle Rechte vorbehalten.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Back to Top Button -->
+    <button class="back-to-top" id="backToTop" aria-label="Nach oben">↑</button>
+
+    <!-- Success Modal -->
+    <div class="modal" id="successModal">
+        <div class="modal-content">
+            <div class="modal-icon">✅</div>
+            <h3>Nachricht gesendet!</h3>
+            <p>Vielen Dank für deine Nachricht. Wir werden uns so schnell wie möglich bei dir melden.</p>
+            <button class="btn btn-primary" onclick="closeModal()">Schließen</button>
+        </div>
+    </div>
+
+    <script>
+        // Mobile Menu Toggle
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const navLinks = document.getElementById('navLinks');
+
+        mobileMenuBtn.addEventListener('click', function() {
+            mobileMenuBtn.classList.toggle('active');
+            navLinks.classList.toggle('active');
+        });
+
+        // Close mobile menu when clicking on a link
+        navLinks.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function() {
+                mobileMenuBtn.classList.remove('active');
+                navLinks.classList.remove('active');
+            });
+        });
+
+        // Back to Top Button
+        const backToTopBtn = document.getElementById('backToTop');
+        
+        window.addEventListener('scroll', function() {
+            if (window.pageYOffset > 300) {
+                backToTopBtn.classList.add('visible');
+            } else {
+                backToTopBtn.classList.remove('visible');
+            }
+        });
+
+        backToTopBtn.addEventListener('click', function() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // Form Validation and Submission
+        const contactForm = document.getElementById('contactForm');
+        const successModal = document.getElementById('successModal');
+
+        contactForm.addEventListener('submit', function(e) {
+            // Clear all previous errors
+            document.querySelectorAll('.form-group').forEach(group => {
+                group.classList.remove('error');
+            });
+            document.getElementById('privacyError').style.display = 'none';
+            
+            let isValid = true;
+            
+            // Validate First Name
+            const firstName = document.getElementById('firstName');
+            if (!firstName.value.trim()) {
+                firstName.closest('.form-group').classList.add('error');
+                isValid = false;
+            }
+            
+            // Validate Last Name
+            const lastName = document.getElementById('lastName');
+            if (!lastName.value.trim()) {
+                lastName.closest('.form-group').classList.add('error');
+                isValid = false;
+            }
+            
+            // Validate Email
+            const email = document.getElementById('email');
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!email.value.trim() || !emailRegex.test(email.value)) {
+                email.closest('.form-group').classList.add('error');
+                isValid = false;
+            }
+            
+            // Validate Category
+            const category = document.getElementById('category');
+            if (!category.value) {
+                category.closest('.form-group').classList.add('error');
+                isValid = false;
+            }
+            
+            // Validate Message
+            const message = document.getElementById('message');
+            if (!message.value.trim()) {
+                message.closest('.form-group').classList.add('error');
+                isValid = false;
+            }
+            
+            // Validate Privacy Checkbox
+            const privacy = document.getElementById('privacy');
+            if (!privacy.checked) {
+                document.getElementById('privacyError').style.display = 'block';
+                isValid = false;
+            }
+            
+            // If form is not valid, prevent submission
+            if (!isValid) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // If valid, form will be submitted to FormSubmit.co
+            // FormSubmit will handle the email sending and redirect
+        });
+
+        function closeModal() {
+            successModal.classList.remove('active');
+        }
+
+        // Close modal when clicking outside
+        successModal.addEventListener('click', function(e) {
+            if (e.target === successModal) {
+                closeModal();
+            }
+        });
+
+        // ============================================
+        // Countdown Timer to October 3, 2026
+        // ============================================
+        const launchDate = new Date('October 3, 2026 00:00:00').getTime();
+
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const distance = launchDate - now;
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            document.getElementById('days').textContent = days;
+            document.getElementById('hours').textContent = hours;
+            document.getElementById('minutes').textContent = minutes;
+            document.getElementById('seconds').textContent = seconds;
+
+            if (distance < 0) {
+                document.getElementById('countdown').innerHTML = '<p style="text-align: center; color: #3b82f6; font-weight: 700; font-size: 20px; grid-column: 1 / -1;">🎉 PhotoCleaner ist jetzt verfügbar!</p>';
+            }
+        }
+
+        // Update countdown every second
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+    </script>
+</body>
+</html>
