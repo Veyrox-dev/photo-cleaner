@@ -44,6 +44,9 @@ coverage.xml
 # Project specific
 .cache/
 .trash/
+.env
+.env.*
+!.env.example
 test_*/
 *_organized/
 photo_cleaner.db

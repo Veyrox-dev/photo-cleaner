@@ -6,7 +6,6 @@ und Upgrade-Informationen.
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer
@@ -33,11 +32,8 @@ from photo_cleaner.license import (
     LicenseManager,
     LicenseType,
 )
-from photo_cleaner.license_client import (
-    LicenseManager as CloudLicenseManager,
-    LicenseConfig as CloudLicenseConfig,
-)
 from photo_cleaner.i18n import t
+from photo_cleaner.services.license_service import LicenseService
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +44,7 @@ class LicenseDialog(QDialog):
     def __init__(self, license_manager: LicenseManager, parent=None):
         super().__init__(parent)
         self.license_manager = license_manager
-        self.cloud_license_manager: CloudLicenseManager | None = self._create_cloud_manager()
+        self.license_service = LicenseService(license_manager)
         self.setWindowTitle(f"PhotoCleaner - {t('license_management')}")
         self.setMinimumWidth(600)
         self.setMinimumHeight(500)
@@ -61,29 +57,6 @@ class LicenseDialog(QDialog):
         )
         self.setup_ui()
         self.refresh_status()
-
-    def _create_cloud_manager(self) -> CloudLicenseManager | None:
-        """Erzeuge Supabase-Lizenzmanager aus Umgebungsvariablen."""
-        # Mit dem Online-Lizenzsystem werden Credentials über Supabase verwaltet
-        # .env Datei wird nicht mehr benötigt
-        
-        # Get from environment (either from .env or system env)
-        project_url = os.getenv("SUPABASE_PROJECT_URL")
-        anon_key = os.getenv("SUPABASE_ANON_KEY")
-        
-        # PRODUCTION FALLBACK: Hardcoded credentials for v0.5.3 release
-        # This ensures the app works even without .env file on end-user machines
-        if not project_url or not anon_key:
-            logger.info("Using embedded Supabase credentials for production deployment")
-            project_url = "https://uxkbolrinptxyullfowo.supabase.co"
-            anon_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4a2JvbHJpbnB0eHl1bGxmb3dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0NDIyNTksImV4cCI6MjA4NTAxODI1OX0.Q5oGEihWIrcEWykA08r0TYN-Xc7gxklvFUP5YOuCtOg"
-        
-        try:
-            config = CloudLicenseConfig(project_url=project_url, anon_key=anon_key)
-            return CloudLicenseManager(config)
-        except (ImportError, AttributeError, ValueError) as e:
-            logger.warning("Could not init cloud license manager: %s", e, exc_info=True)
-            return None
 
     def setup_ui(self):
         """Baut die UI auf."""
@@ -247,7 +220,7 @@ class LicenseDialog(QDialog):
     
     def _update_current_plan_indicator(self, label: QLabel):
         """Update current plan indicator in features tab."""
-        status = self.license_manager.get_license_status()
+        status = self.license_service.get_license_status()
         license_type = status.get("license_type", "FREE").upper()
         valid = status.get("valid", False)
         
@@ -262,7 +235,7 @@ class LicenseDialog(QDialog):
 
     def refresh_status(self):
         """Aktualisiert Status-Anzeigen."""
-        status = self.license_manager.get_license_status()
+        status = self.license_service.get_license_status()
 
         # Status-Label
         license_type = status.get("license_type", "FREE").upper()
@@ -334,7 +307,7 @@ class LicenseDialog(QDialog):
             )
             return
 
-        if not self.cloud_license_manager:
+        if not self.license_service.is_cloud_configured():
             QMessageBox.critical(
                 self,
                 t("license_configuration"),
@@ -343,14 +316,9 @@ class LicenseDialog(QDialog):
             return
 
         try:
-            success, message = self.cloud_license_manager.activate_with_key(license_key)
+            success, message = self.license_service.activate_with_key(license_key)
             if success:
                 QMessageBox.information(self, t("license_activate_success"), message or t("license_activate_success"))
-                try:
-                    self.license_manager.refresh()
-                except (OSError, IOError, ValueError) as e:
-                    logger.warning("License manager refresh failed: %s", e, exc_info=True)
-                
                 # BUG FIX: Live-Update des UI ohne Dialog-Neuöffnung
                 self._live_refresh_ui()
             else:
@@ -384,7 +352,7 @@ class LicenseDialog(QDialog):
         )
 
         if reply == QMessageBox.Yes:
-            if self.license_manager.remove_license():
+            if self.license_service.remove_license():
                 QMessageBox.information(self, t("action_success"), t("license_removed_success"))
                 self.refresh_status()
             else:

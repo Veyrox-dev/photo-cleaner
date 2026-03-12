@@ -11,7 +11,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import platform
 import shutil
 import subprocess
@@ -22,8 +21,9 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from photo_cleaner.license.cloud_config import get_cloud_license_config
 from photo_cleaner.license.crypto_utils import CRYPTOGRAPHY_AVAILABLE, verify_ed25519_signature
-from photo_cleaner.license_client import LicenseClient as CloudLicenseClient, LicenseConfig as CloudLicenseConfig
+from photo_cleaner.license_client import LicenseClient as CloudLicenseClient
 
 from photo_cleaner.config import AppConfig
 
@@ -193,20 +193,13 @@ class LicenseManager:
         self._load_license()
 
     def _get_cloud_usage_client(self) -> CloudLicenseClient | None:
-        project_url = os.getenv("SUPABASE_PROJECT_URL")
-        anon_key = os.getenv("SUPABASE_ANON_KEY")
-
-        if not project_url or not anon_key:
-            logger.info("Using embedded Supabase credentials for production deployment")
-            project_url = "https://uxkbolrinptxyullfowo.supabase.co"
-            anon_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4a2JvbHJpbnB0eHl1bGxmb3dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0NDIyNTksImV4cCI6MjA4NTAxODI1OX0.Q5oGEihWIrcEWykA08r0TYN-Xc7gxklvFUP5YOuCtOg"
-
-        try:
-            config = CloudLicenseConfig(project_url=project_url, anon_key=anon_key)
-            return CloudLicenseClient(config)
-        except (ValueError, OSError, ImportError) as e:
-            logger.warning("Could not init cloud license client: %s", e, exc_info=True)
+        config = get_cloud_license_config(
+            missing_message="Cloud license client not initialized: SUPABASE_PROJECT_URL/SUPABASE_ANON_KEY missing",
+            error_message="Could not init cloud license client: %s",
+        )
+        if config is None:
             return None
+        return CloudLicenseClient(config)
 
     def _load_cloud_snapshot(self) -> bool:
         """Load online license snapshot (if present) and map to local license info.

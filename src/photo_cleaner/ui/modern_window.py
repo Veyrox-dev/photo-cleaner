@@ -5824,25 +5824,14 @@ class ModernMainWindow(QMainWindow):
         
         CRITICAL FIX: Only count files that actually exist on disk (is_deleted = 0).
         """
-        res = self.actions.ui_get_progress()
+        res = self.actions.ui_get_active_progress()
         if not res.get("ok"):
             return
-        
-        # Get only files that exist (not marked as deleted)
-        try:
-            cur = self.conn.execute("SELECT COUNT(*) FROM files WHERE is_deleted = 0")
-            total = (cur.fetchone() or [0])[0]
-            
-            cur = self.conn.execute("SELECT COUNT(*) FROM files WHERE is_deleted = 0 AND file_status = 'KEEP'")
-            keep_count = (cur.fetchone() or [0])[0]
-            
-            cur = self.conn.execute("SELECT COUNT(*) FROM files WHERE is_deleted = 0 AND file_status IN ('KEEP', 'DELETE')")
-            decided = (cur.fetchone() or [0])[0]
-            
-            open_files = total - decided
-        except (sqlite3.DatabaseError, sqlite3.OperationalError) as e:
-            logger.error(f"Error updating progress: {e}", exc_info=True)
-            return
+
+        total = int(res.get("files_total", 0) or 0)
+        keep_count = int(res.get("files_keep", 0) or 0)
+        decided = int(res.get("files_decided", 0) or 0)
+        open_files = int(res.get("files_open", 0) or 0)
         
         pct = int((decided / total) * 100) if total else 0
         

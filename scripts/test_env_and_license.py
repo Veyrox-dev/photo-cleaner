@@ -147,14 +147,7 @@ try:
         cloud_mgr = CloudLicenseManager(config)
         print("✓ Cloud License Manager initialized successfully")
     else:
-        print("⚠ Using fallback Supabase credentials")
-        # These are the embedded fallback credentials
-        from photo_cleaner.license.cloud_license import CloudLicenseManager, CloudLicenseConfig
-        fallback_url = "https://uxkbolrinptxyullfowo.supabase.co"
-        fallback_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4a2JvbHJpbnB0eHl1bGxmb3dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0NDIyNTksImV4cCI6MjA4NTAxODI1OX0.Q5oGEihWIrcEWykA08r0TYN-Xc7gxklvFUP5YOuCtOg"
-        config = CloudLicenseConfig(project_url=fallback_url, anon_key=fallback_key)
-        cloud_mgr = CloudLicenseManager(config)
-        print("✓ Cloud License Manager initialized with embedded credentials")
+        print("⚠ Cloud credentials missing - skipping cloud manager initialization")
 except Exception as e:
     print(f"⚠ Cloud License Manager test skipped: {type(e).__name__}")
     print(f"  (This is OK - not critical for offline operation)")
@@ -169,13 +162,13 @@ license_ok = license_file.exists() or activation_marker.exists()
 
 print(f"Environment Variables (.env):     {'✓ OK' if env_ok else '✗ MISSING'}")
 print(f"License Files (local):             {'✓ OK' if license_ok else '✗ MISSING'}")
-print(f"Overall:                           {'✓ READY' if env_ok else '⚠ USING FALLBACK'}")
+print(f"Overall:                           {'✓ READY' if env_ok else '⚠ LIMITED (OFFLINE ONLY)'}")
 
 print("\nNotes:")
 if not env_ok:
     print("  • .env file not found or incomplete")
-    print("  • License system will use embedded Supabase credentials")
-    print("  • This is normal for production deployment")
+    print("  • Cloud license features remain disabled until credentials are configured")
+    print("  • Offline/local license checks still work")
 if license_ok:
     print("  • License files found locally")
     print("  • License activation is cached on this machine")

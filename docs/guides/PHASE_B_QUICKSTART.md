@@ -8,8 +8,8 @@
 # Speichere ihn lokal (nicht committen!)
 
 # Setze die Keys als Umgebungsvariablen (PowerShell):
-$env:SUPABASE_PROJECT_URL = "https://uxkbolrinptxyullfowo.supabase.co"
-$env:SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4a2JvbHJpbnB0eHl1bGxmb3dvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTQ0MjI1OSwiZXhwIjoyMDg1MDE4MjU5fQ.FvLwxEYoa3Npth55nKziaCJD8bZHl8BuW9Msqc6UWAU"
+$env:SUPABASE_PROJECT_URL = "https://<your-project-ref>.supabase.co"
+$env:SUPABASE_SERVICE_ROLE_KEY = "<your-service-role-key>"
 
 # Erstelle 5 aktive Test-Lizenzen + 1 abgelaufen + 1 gesperrt:
 python create_test_licenses.py --count 5 --expired --suspended
@@ -70,7 +70,7 @@ cd c:\Users\chris\projects\photo-cleaner
 supabase login
 
 # Verbinde mit deinem Projekt
-supabase link --project-ref uxkbolrinptxyullfowo
+supabase link --project-ref <your-project-ref>
 ```
 
 ### 3.3 Edge Function erstellen
@@ -126,8 +126,8 @@ import os
 
 # Config aus .env
 config = LicenseConfig(
-    project_url=os.getenv("SUPABASE_PROJECT_URL", "https://uxkbolrinptxyullfowo.supabase.co"),
-    anon_key=os.getenv("SUPABASE_ANON_KEY", "sb_publishable_ekEUCJkHRCOvNcnMoO_q2w_RrhDWpBl"),
+    project_url=os.getenv("SUPABASE_PROJECT_URL", "https://<your-project-ref>.supabase.co"),
+    anon_key=os.getenv("SUPABASE_ANON_KEY", "<your-anon-key>"),
 )
 
 manager = LicenseManager(config, cache_dir=Path.home() / ".photocleaner_test")

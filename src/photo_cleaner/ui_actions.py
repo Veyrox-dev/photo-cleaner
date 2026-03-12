@@ -289,6 +289,16 @@ class UIActions:
             logger.error(f"Progress snapshot failed: {e}", exc_info=True)
             return err("UNKNOWN", str(e))
 
+    def ui_get_active_progress(self) -> dict:
+        try:
+            return ok(**self.progress_svc.snapshot_active())
+        except (KeyError, ValueError, TypeError) as e:
+            logger.error(f"Invalid active progress data: {e}")
+            return err("INVALID_STATE", str(e))
+        except Exception as e:
+            logger.error(f"Active progress snapshot failed: {e}", exc_info=True)
+            return err("UNKNOWN", str(e))
+
     # --- Capabilities ---
     def ui_get_capabilities(self) -> dict:
         try:

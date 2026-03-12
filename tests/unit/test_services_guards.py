@@ -218,6 +218,12 @@ def test_progress_counts_and_groups(tmp_path):
     assert snap["groups_total"] == 2
     assert snap["groups_done"] == 1  # g1 has UNSURE, g2 is decided
 
+    active = progress.snapshot_active()
+    assert active["files_total"] == 3
+    assert active["files_decided"] == 2
+    assert active["files_open"] == 1
+    assert active["files_keep"] == 1
+
 
 # G. UI-Facade responses
 
@@ -239,11 +245,33 @@ def test_ui_facade_basic(tmp_path):
     prog = ui.ui_get_progress()
     assert prog["ok"] is True and "files_total" in prog
 
+    active_prog = ui.ui_get_active_progress()
+    assert active_prog["ok"] is True and "files_total" in active_prog
+
     caps = ui.ui_get_capabilities()
     assert caps["ok"] is True and "can_delete" in caps
 
     unsure_list = ui.ui_list_unsure()
     assert unsure_list["ok"] is True
+
+
+def test_active_progress_excludes_deleted_files(tmp_path):
+    conn = setup_db(tmp_path)
+    seed_file(conn, "l1.jpg", status=FileStatus.KEEP, is_deleted=False)
+    seed_file(conn, "l2.jpg", status=FileStatus.DELETE, is_deleted=True)
+    seed_file(conn, "l3.jpg", status=FileStatus.UNDECIDED, is_deleted=False)
+
+    files, history, mode_svc, progress, rule_sim, status_svc, ui = make_services(conn)
+
+    snap = progress.snapshot_active()
+    assert snap["files_total"] == 2
+    assert snap["files_keep"] == 1
+    assert snap["files_decided"] == 1
+    assert snap["files_open"] == 1
+
+    facade = ui.ui_get_active_progress()
+    assert facade["ok"] is True
+    assert facade["files_total"] == 2
 
 
 # H. Edge cases: undo stack action-level

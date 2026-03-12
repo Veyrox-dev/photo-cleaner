@@ -23,3 +23,29 @@ class ProgressService:
             "groups_total": groups.get("groups_total"),
             "groups_done": groups.get("groups_done"),
         }
+
+    def snapshot_active(self) -> dict:
+        """Progress snapshot that only counts files not marked as deleted."""
+        cur = self.files.conn.execute("SELECT COUNT(*) FROM files WHERE is_deleted = 0")
+        total = (cur.fetchone() or [0])[0]
+
+        cur = self.files.conn.execute(
+            "SELECT COUNT(*) FROM files WHERE is_deleted = 0 AND UPPER(COALESCE(file_status,'')) = 'KEEP'"
+        )
+        keep_count = (cur.fetchone() or [0])[0]
+
+        cur = self.files.conn.execute(
+            "SELECT COUNT(*) FROM files WHERE is_deleted = 0 AND UPPER(COALESCE(file_status,'')) IN ('KEEP', 'DELETE')"
+        )
+        decided = (cur.fetchone() or [0])[0]
+
+        open_files = total - decided
+        groups = self.files.group_progress()
+        return {
+            "files_total": total,
+            "files_decided": decided,
+            "files_open": open_files,
+            "files_keep": keep_count,
+            "groups_total": groups.get("groups_total"),
+            "groups_done": groups.get("groups_done"),
+        }

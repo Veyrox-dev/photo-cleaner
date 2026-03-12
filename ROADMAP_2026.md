@@ -1,9 +1,87 @@
 # PhotoCleaner - Roadmap 2026 (REVISITED)
 
-**Aktualisiert:** 23. Februar 2026 (Haar-Cascade Bundling Fixed + Phase 4.1 ✅ COMPLETE)  
-**Status:** Phase 4.1 CRITICAL STABILIZATION - ✅ COMPLETE | Phase 4.2 QA Testing - Next  
+**Aktualisiert:** 04. März 2026 (Security P0 Hardening + Website-Reorganization)  
+**Status:** Phase 4.1 ✅ COMPLETE | Security P0 ✅ COMPLETE | Phase 4.2 QA Testing + P1 Refactor in Progress  
 **Ziel:** v1.0.0 Launch im November 2026 (revised timing)  
 **Timeline:** 9 Monate mit Fokus auf STABILITÄTSRISIKEN
+
+---
+
+## 🧭 EXECUTION-MODUS (ab 2026-03-04)
+
+Aktive operative To-do-Liste: `docs/EXECUTION_BACKLOG_20260304.md`  
+Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
+
+### Aktueller Sprintfokus (NOW)
+- [ ] Secret Rotation (extern/manuell)
+- [ ] Frozen-Build Smoke-Test auf 5+ clean Windows Maschinen (extern/manuell)
+- [x] P1 Slice #1: License Service Adapter umgesetzt
+- [x] P1 Slice #2: Progress-Workflow in `modern_window.py` über Service/Facade entkoppelt
+- [x] Lizenz-/Activation-Regression-Checks ergänzt (7 gezielte Unit-Tests grün)
+- [x] `quality_analyzer` Submodul-Split Slice 1: Datenmodelle nach `pipeline/analysis/models.py` extrahiert (36 fokussierte Tests grün)
+- [x] `quality_analyzer` Submodul-Split Slice 2: Face-Detection nach `pipeline/analysis/face_detector.py` extrahiert (36 fokussierte Tests grün)
+- [x] `quality_analyzer` Submodul-Split Slice 3: Scoring-Logik nach `pipeline/analysis/quality_scorer.py` extrahiert (36 fokussierte Tests grün)
+- [x] `quality_analyzer` Submodul-Split Slice 4: EXIF/Metadata-Logik nach `pipeline/analysis/exif_extractor.py` extrahiert (36 fokussierte Tests grün)
+
+---
+
+## ✅ STATUS-UPDATE MÄRZ 2026 (Execution Sync)
+
+### Neu abgeschlossen seit letztem Update
+- [x] **Website-Struktur bereinigt:** Alle Root-HTML-Seiten nach `website/` verschoben, Asset-Pfade korrigiert
+- [x] **P0 Security Hardening (Secrets):** Hardcoded Supabase-Fallbacks aus Runtime entfernt (`license_manager.py`, `license_dialog.py`)
+- [x] **Repository-Hygiene:** `.env` aus Tracking entfernt, `.env.example` ergänzt, `.gitignore` gehärtet
+- [x] **Guardrails:** CI Secret-Scan Workflow + lokale Pre-Commit Secret-Scans ergänzt
+- [x] **Dokumentation bereinigt:** Sensitive Beispiele in Guides auf Platzhalter umgestellt
+- [x] **P1 Maintainability Slice #1:** Cloud-Lizenz-Config/Activation-Logik in Service-Layer zentralisiert (`services/license_service.py`)
+- [x] **P1 Architecture Slice #2:** Progress-Workflow UI→Service Adapter in `modern_window.py`
+- [x] **P1 Quality Analyzer Slice #1:** DatenModelle extrahiert → `pipeline/analysis/models.py` (4 classes, reusable)
+- [x] **P1 Quality Analyzer Slice #2:** Face Detection extrahiert → `pipeline/analysis/face_detector.py` (1,238 lines, FaceDetector class)
+- [x] **P1 Quality Analyzer Slice #3:** Scoring Logik extrahiert → `pipeline/analysis/quality_scorer.py` (18+ methods, 660 lines)
+- [x] **P1 Quality Analyzer Slice #4:** EXIF/Metadata extrahiert → `pipeline/analysis/exif_extractor.py` (ExifExtractor + Wrapper-Kompatibilität)
+
+### Offene kritische Punkte (extern/manuell)
+- [ ] **Secret Rotation durchführen:** Bereits exponierte Supabase Keys sofort rotieren (außerhalb Repo)
+- [ ] **Frozen-Build Smoke-Test auf 5+ Clean Windows Maschinen** final abschließen
+
+### Nächste Ziele (März, priorisiert)
+1. **Sprint 1 abschließen (Backlog NOW):** Secret rotation, smoke-tests, P1 Slice #2, Regression-Checks
+2. **P1 Architektur Phase 2:** Slice 4+ (EXIF-Extraktion, Metadaten-Modulo, modern_window Refactoring)
+3. **P1 Qualität:** Selektive Regression-Tests + QA-Baseline auf aktuellen Code-Stand anheben
+
+### Architektur-Refactoring Roadmap (Quality Analyzer Slices)
+- [x] **Slice 1 (COMPLETE):** Data Models extraction → `pipeline/analysis/models.py`
+- [x] **Slice 2 (COMPLETE):** Face Detection extraction → `pipeline/analysis/face_detector.py` (1,238 lines)
+- [x] **Slice 3 (COMPLETE):** Scoring Logic extraction → `pipeline/analysis/quality_scorer.py` (18+ methods, 730 lines)
+- [x] **Slice 4 (COMPLETE):** EXIF/Metadata extraction → `pipeline/analysis/exif_extractor.py`
+- [ ] **Slice 5 (IN PROGRESS):** remaining QualityAnalyzer compression + modern_window.py start (6310 → ???)
+
+#### Slice 5 Progress (2026-03-12)
+- [x] Mini-slice 5.1: Haar cascade resolver in eigenes Modul extrahiert → `pipeline/analysis/haar_cascade_resolver.py`
+- [x] Mini-slice 5.1: Doppelte Haar-Cascade-Initialisierung aus `quality_analyzer.py` entfernt (Single Source in `FaceDetector`)
+- [x] Mini-slice 5.2: Face-Mesh-Resolver nach `pipeline/analysis/face_mesh_resolver.py` extrahiert und `face_detector.py` vom `quality_analyzer`-Import entkoppelt
+- [x] Validierung: 36/36 fokussierte Analyzer-Tests grün
+
+#### Slice 4 Details: EXIF & Metadata Extractor
+**Ziel:** Extrahiere EXIF-Parsing und Metadaten-Logik in dediziertes Modul
+**Scope:** ~300-400 Zeilen aus quality_analyzer.py
+**Expected Extraction Methods:**
+- `_get_exif_orientation_from_pil()` - EXIF-Orientierungsdaten
+- `_extract_exif_data_from_pil()` - Umfassende EXIF-Extraktion  
+- `_rotate_image_from_exif()` - Bildrotation basierend auf EXIF
+- `CameraProfile.extract_camera_model()` - Kamera-Modell-Erkennung
+- Helper methods für ISO, Aperture, Focal Length, Exposure Time parsing
+
+**Dependencies:** PIL/Pillow, numpy (optional)
+**Integration:** QualityAnalyzer delegiert zu ExifExtractor für all EXIF-Operationen
+
+**Exit Criteria:**
+- ✅ 36/36 focused tests passing
+- ✅ quality_analyzer.py weitere ~350 Zeilen reduziert
+- ✅ ExifExtractor vollständig dokumentiert
+- ✅ Lazy-Loading von PIL unterstützt
+
+**Status:** ✅ Complete (2026-03-12) – implemented, integrated, validated with 36/36 focused tests
 
 ---
 
