@@ -58,6 +58,7 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
    - [x] Slice 4: EXIF/Metadata-Block extrahiert nach `pipeline/analysis/exif_extractor.py`
    - [x] Slice 5.1: Haar-Cascade-Resolver nach `pipeline/analysis/haar_cascade_resolver.py` extrahiert; doppelte Cascade-Initialisierung in `QualityAnalyzer` entfernt
    - [x] Slice 5.2: Face-Mesh-Resolver nach `pipeline/analysis/face_mesh_resolver.py` extrahiert; `face_detector.py` von `quality_analyzer.py` entkoppelt
+   - [x] Slice 5.3: Veraltete Face-Mesh-Altlasten (`_FACE_MESH_*`, lokaler Wrapper) aus `quality_analyzer.py` bereinigt
 9. [ ] `modern_window.py` weiter in views/controllers/workflows teilen
 10. [ ] Legacy-UI Pfade sichtbar als deprecation markieren
 11. [ ] Website gemeinsame CSS/JS-Bundles einführen
@@ -83,3 +84,4 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 - 2026-03-12: `quality_analyzer` Split Slice 4 umgesetzt (`pipeline/analysis/exif_extractor.py`), EXIF-Methoden über Wrapper in `QualityAnalyzer` kompatibel gehalten. Validierung: 36/36 fokussierte Tests grün.
 - 2026-03-12: `quality_analyzer` Split Slice 5.1 umgesetzt (`pipeline/analysis/haar_cascade_resolver.py`), Haar-Pfadauflösung zentralisiert und Cascade-Laden als Single Source in `FaceDetector` konsolidiert. Validierung: 36/36 fokussierte Tests grün.
 - 2026-03-12: `quality_analyzer` Split Slice 5.2 umgesetzt (`pipeline/analysis/face_mesh_resolver.py`), Face-Mesh-Konstruktorauflösung zentralisiert und `face_detector.py` vom Monolith-Import entkoppelt. Validierung: 36/36 fokussierte Tests grün.
+- 2026-03-12: `quality_analyzer` Split Slice 5.3 umgesetzt (`pipeline/quality_analyzer.py`), obsolete Face-Mesh-States/Wrapper entfernt nach Resolver-Auslagerung. Validierung: 36/36 fokussierte Tests grün.

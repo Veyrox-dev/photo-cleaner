@@ -40,7 +40,6 @@ from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
 from photo_cleaner.pipeline.analysis import CameraProfile, ExifExtractor, FaceQuality, PersonEyeStatus, QualityResult, QualityScorer
-from photo_cleaner.pipeline.analysis.face_mesh_resolver import resolve_face_mesh_ctor
 from photo_cleaner.pipeline.analysis.haar_cascade_resolver import resolve_haar_cascade_dir
 import photo_cleaner.pipeline.analysis.face_detector as face_detector_module
 from photo_cleaner.pipeline.analysis.face_detector import FaceDetector
@@ -78,12 +77,6 @@ _MTCNN_IMPORT_ERROR = None
 _MTCNN_WARNING_LOGGED = False  # Flag to log MTCNN warning only once
 _MEDIAPIPE_IMPORT_ERROR = None
 _MEDIAPIPE_DRAWING_DISABLED = False
-
-# Cache MediaPipe Face Mesh constructor resolution to avoid repeated import attempts
-_FACE_MESH_CTOR = None
-_FACE_MESH_IMPORT_ERROR = None
-_FACE_MESH_RESOLVED = False
-_FACE_MESH_WARNED = False
 
 
 def _install_mediapipe_drawing_stubs() -> bool:
@@ -271,11 +264,6 @@ from photo_cleaner.config import AppConfig
 from photo_cleaner.pipeline.scoring_constants import ScoringConstants  # BUG-M1 FIX
 
 logger = logging.getLogger(__name__)
-
-
-def _resolve_face_mesh_ctor():
-    return resolve_face_mesh_ctor(mediapipe_available=MEDIAPIPE_AVAILABLE, mp_module=_mp)
-
 
 def _resolve_haar_cascade_dir() -> Path | None:
     return resolve_haar_cascade_dir(cv2_available=CV2_AVAILABLE, cv2_module=_cv2)

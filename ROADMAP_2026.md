@@ -60,6 +60,7 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [x] Mini-slice 5.1: Haar cascade resolver in eigenes Modul extrahiert → `pipeline/analysis/haar_cascade_resolver.py`
 - [x] Mini-slice 5.1: Doppelte Haar-Cascade-Initialisierung aus `quality_analyzer.py` entfernt (Single Source in `FaceDetector`)
 - [x] Mini-slice 5.2: Face-Mesh-Resolver nach `pipeline/analysis/face_mesh_resolver.py` extrahiert und `face_detector.py` vom `quality_analyzer`-Import entkoppelt
+- [x] Mini-slice 5.3: Veraltete lokale Face-Mesh-States/Wrapper aus `quality_analyzer.py` entfernt (nach Resolver-Extraktion)
 - [x] Validierung: 36/36 fokussierte Analyzer-Tests grün
 
 #### Slice 4 Details: EXIF & Metadata Extractor
