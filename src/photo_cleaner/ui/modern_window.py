@@ -103,6 +103,7 @@ from photo_cleaner.session_manager import SessionManager
 from photo_cleaner.ui.indexing_thread import IndexingThread  # v0.5.3
 from photo_cleaner.ui.workflows.indexing_workflow_controller import IndexingWorkflowController
 from photo_cleaner.ui.workflows.rating_workflow_controller import RatingWorkflowController
+from photo_cleaner.ui.workflows.selection_workflow_controller import SelectionWorkflowController
 from photo_cleaner.cache.image_cache_manager import ImageCacheManager  # v0.5.3
 from photo_cleaner.ui.thumbnail_lazy import ThumbnailLoader, SmartThumbnailCache  # Thumbnail async loading
 
@@ -2389,6 +2390,7 @@ class ModernMainWindow(QMainWindow):
         self._progress_update_ts = 0.0
         self._indexing_workflow = IndexingWorkflowController(self, self._center_progress_dialog_text)
         self._rating_workflow = RatingWorkflowController(self, RatingWorkerThread, QApplication.processEvents)
+        self._selection_workflow = SelectionWorkflowController()
         self.cache_manager = ImageCacheManager(self.conn)
         
         # PHASE 4 FIX 1: Initialize CameraCalibrator for ML learning
@@ -5566,11 +5568,11 @@ class ModernMainWindow(QMainWindow):
 
     def _get_selected_indices(self) -> List[int]:
         """Compatibility helper for shortcuts; returns bounded, sorted indices for current group."""
-        if not self.current_group:
-            return []
-        selected_indices, _ = self._get_group_selection_state(self.current_group)
-        max_idx = len(self.files_in_group)
-        return [i for i in sorted(selected_indices) if 0 <= i < max_idx]
+        return self._selection_workflow.get_selected_indices(
+            self.current_group,
+            len(self.files_in_group),
+            self._get_group_selection_state,
+        )
     
     def _save_group_selection_state(self, group_id: str, selected_indices: Optional[set[int]] = None, last_selected_index: int = -1):
         """Save selection state for a specific group."""
@@ -5581,55 +5583,42 @@ class ModernMainWindow(QMainWindow):
     def _update_selection_ui(self):
         """Update UI based on selection state of current group."""
         selected_indices, _ = self._get_group_selection_state(self.current_group or "")
-        count = len(selected_indices)
-        
-        if count == 0:
-            self.selection_count_label.setText(t("selection_none_bold"))
-            self.compare_btn.setEnabled(False)
-            self.compare_btn.setText(t("compare_select_two"))
-            self.compare_btn.hide()  # Hide when no selection
-            self.keep_btn.hide()
-            self.del_btn.hide()
-            self.unsure_btn.hide()
-        elif count == 1:
-            self.selection_count_label.setText(t("selection_one_image"))
-            self.compare_btn.setEnabled(False)
-            self.compare_btn.setText(t("compare_need_two"))
-            self.compare_btn.hide()  # Hide when only 1 image
-            self.keep_btn.show()
-            self.del_btn.show()
-            self.unsure_btn.show()
-        elif count == 2:
-            self.selection_count_label.setText(t("selection_two_images"))
-            self.compare_btn.setEnabled(True)
-            self.compare_btn.setText(t("compare_side_by_side"))
-            self.compare_btn.show()  # Show compare button when 2 images selected
+        state = self._selection_workflow.build_selection_ui_state(len(selected_indices), t)
+
+        self.selection_count_label.setText(state.count_text)
+        self.compare_btn.setEnabled(state.compare_enabled)
+        self.compare_btn.setText(state.compare_text)
+        if state.compare_visible:
+            self.compare_btn.show()
+        else:
+            self.compare_btn.hide()
+
+        if state.action_buttons_visible:
             self.keep_btn.show()
             self.del_btn.show()
             self.unsure_btn.show()
         else:
-            self.selection_count_label.setText(t("selection_n_images").format(count=count))
-            self.compare_btn.setEnabled(False)
-            self.compare_btn.setText(t("compare_select_exactly_two"))
-            self.compare_btn.hide()  # Hide when 3+ images
-            self.keep_btn.show()
-            self.del_btn.show()
-            self.unsure_btn.show()
+            self.keep_btn.hide()
+            self.del_btn.hide()
+            self.unsure_btn.hide()
     
     def _open_comparison(self):
         """Öffne Seite-an-Seite-Vergleich in eigenständigem Fenster."""
-        selected_indices, _ = self._get_group_selection_state(self.current_group or "")
-        if len(selected_indices) != 2:
+        pair = self._selection_workflow.get_comparison_pair_indices(
+            self.current_group,
+            len(self.files_in_group),
+            self._get_group_selection_state,
+        )
+        if pair is None:
             QMessageBox.warning(
                 self,
                 t("invalid_selection"),
                 t("select_exactly_two_images")
             )
             return
-        
-        indices = sorted(list(selected_indices))
-        file_row_1 = self.files_in_group[indices[0]]
-        file_row_2 = self.files_in_group[indices[1]]
+
+        file_row_1 = self.files_in_group[pair[0]]
+        file_row_2 = self.files_in_group[pair[1]]
         
         try:
             # Eigenständiges Fenster (nicht modal) - erscheint in Taskleiste
@@ -5647,21 +5636,25 @@ class ModernMainWindow(QMainWindow):
         
         BUG #10 FIX: Validate input before batch operation.
         """
-        selected_indices, _ = self._get_group_selection_state(self.current_group or "")
+        selected_indices = self._selection_workflow.get_selected_indices(
+            self.current_group,
+            len(self.files_in_group),
+            self._get_group_selection_state,
+        )
         if not selected_indices:
             self._show_status_message(t("no_images_selected_error"), error=True)
             return
-        
-        # Sammle Paths mit Validierung
-        paths_to_update = []
+
+        paths_to_update = self._selection_workflow.collect_valid_existing_paths(
+            selected_indices,
+            self.files_in_group,
+        )
         for idx in selected_indices:
-            if idx < len(self.files_in_group):
-                file_path = self.files_in_group[idx].path
-                # BUG #10 FIX: Validate path before adding
-                if file_path and file_path.exists():
-                    paths_to_update.append(file_path)
-                else:
-                    logger.warning(f"Skipping invalid/missing file: {file_path}")
+            if idx < 0 or idx >= len(self.files_in_group):
+                continue
+            file_path = self.files_in_group[idx].path
+            if not file_path or not file_path.exists():
+                logger.warning(f"Skipping invalid/missing file: {file_path}")
         
         if not paths_to_update:
             self._show_status_message(t("no_valid_images_to_update"), error=True)

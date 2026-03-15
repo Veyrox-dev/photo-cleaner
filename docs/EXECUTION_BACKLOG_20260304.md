@@ -70,6 +70,7 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
    - [x] 6.1 Workflow-Seams markieren (Import, Rating, Selection, Dialogs)
    - [x] 6.2 Ersten Controller extrahieren (ohne UX-Änderung)
    - [x] 6.3 Fokussierte Regression-Tests ergänzen
+   - [x] 6.4 Zweiten Controller extrahieren (Rating-Workflow: Thread-Wiring + Start)
 10. [ ] Legacy-UI Pfade sichtbar als deprecation markieren
 11. [ ] Website gemeinsame CSS/JS-Bundles einführen
 12. [ ] MSI-Installer Track aufsetzen (Vertrauenswürdigkeit Distribution)
@@ -110,3 +111,4 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 - 2026-03-15: Backlog-Sync: Slice 6 als nächster Top-Down-Block priorisiert; Supabase HTTP 503 explizit geparkt; MSI-Installer-Track als neues Sprintziel ergänzt.
 - 2026-03-15: Slice 6.1/6.2 gestartet: erster Workflow-Controller extrahiert (`ui/workflows/indexing_workflow_controller.py`), `modern_window.py` delegiert Indexing-/Post-Indexing-Dialog+Thread-Wiring ohne UX-Änderung.
 - 2026-03-15: Slice 6.3 abgeschlossen: fokussierte Tests ergänzt (`tests/unit/test_indexing_workflow_controller.py`), Validierung: 3/3 grün.
+- 2026-03-15: Slice 6.4 abgeschlossen: zweiter Workflow-Controller extrahiert (`ui/workflows/rating_workflow_controller.py`), Rating-Thread-Wiring/Start aus `modern_window.py` delegiert; Validierung: 6/6 fokussierte Workflow-Controller-Tests grün.
