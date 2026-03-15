@@ -54,5 +54,7 @@ def verify_ed25519_signature(payload: Dict[str, Any], signature_b64: str) -> boo
         public_key.verify(signature, message)
         return True
     except Exception as e:
-        logger.warning("Signature verification failed: %s", e)
+        # Invalid signatures are expected in some flows (e.g. stale/partial payloads).
+        # Keep this at debug level to avoid log spam in normal runtime.
+        logger.debug("Signature verification failed: %s", e)
         return False

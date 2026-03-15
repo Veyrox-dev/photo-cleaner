@@ -597,5 +597,24 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Graceful Ctrl+C handling: attempt Qt cleanup to avoid
+        # "QThread: Destroyed while thread is still running" warnings.
+        try:
+            from PySide6.QtWidgets import QApplication
+
+            app = QApplication.instance()
+            if app is not None:
+                for widget in app.topLevelWidgets():
+                    try:
+                        widget.close()
+                    except Exception:
+                        pass
+                app.quit()
+                app.processEvents()
+        except Exception:
+            pass
+        sys.exit(130)
 

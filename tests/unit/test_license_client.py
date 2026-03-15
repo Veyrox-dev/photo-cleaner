@@ -309,6 +309,32 @@ class TestLicenseClient:
         assert loaded_data is None
         assert "Offline-Cache" in error
 
+    def test_load_cached_snapshot_missing_signature_removes_orphan_snapshot(self, client):
+        """Unsigned orphan snapshot should be removed to avoid repeated warning loops."""
+        license_id = "TEST-001"
+        snapshot = {
+            "license_id": license_id,
+            "data": {"license_id": license_id, "status": "active", "plan": "basic"},
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+        with open(client.snapshot_file, "w") as f:
+            json.dump(snapshot, f)
+
+        success, loaded_data, error = client._load_cached_snapshot(license_id)
+
+        assert success is False
+        assert loaded_data is None
+        assert "Offline-Cache" in error
+        assert not client.snapshot_file.exists()
+
+    def test_resolve_cache_signature_prefers_existing_sidecar(self, client):
+        """Wenn Payload keine Signatur hat, soll vorhandene Sidecar-Signatur genutzt werden."""
+        client.signature_file.write_text("sidecar_sig", encoding="utf-8")
+
+        resolved = client._resolve_cache_signature({"license_id": "TEST-001"})
+
+        assert resolved == "sidecar_sig"
+
 
 class TestLicenseManager:
     """Tests für High-Level LicenseManager."""
@@ -358,6 +384,38 @@ class TestLicenseManager:
         assert success is True
         assert "aktiviert" in message.lower() or "activated" in message.lower()
         assert manager.current_license_id == "TEST-001"
+
+    @patch.object(LicenseClient, "exchange_license_key")
+    @patch.object(LicenseClient, "fetch_license")
+    @patch.object(LicenseClient, "enforce_limits")
+    def test_activate_with_key_uses_exchange_payload_when_fetch_fails(self, mock_enforce, mock_fetch, mock_exchange, manager, monkeypatch):
+        """Aktivierung soll mit gueltigem Exchange-Payload auch ohne fetch() gelingen."""
+        license_data = {
+            "license_id": "TEST-001",
+            "status": "active",
+            "plan": "pro",
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        }
+        manager.client._last_exchange_payload = {
+            "license_id": "TEST-001",
+            "license_data": license_data,
+            "signature": "sig",
+        }
+
+        monkeypatch.setattr(
+            "photo_cleaner.license_client.verify_ed25519_signature",
+            lambda payload, sig: True,
+        )
+
+        mock_exchange.return_value = (True, "TEST-001", "")
+        mock_fetch.return_value = (False, None, "Kein gueltiger Offline-Cache vorhanden")
+        mock_enforce.return_value = (True, "")
+
+        success, message = manager.activate_with_key("TEST-KEY-001")
+
+        assert success is True
+        assert "aktiviert" in message.lower() or "activated" in message.lower()
+        mock_fetch.assert_not_called()
     
     @patch.object(LicenseClient, "exchange_license_key")
     def test_activate_with_key_invalid_key(self, mock_exchange, manager):

@@ -6266,12 +6266,17 @@ class ModernMainWindow(QMainWindow):
             for group_id, group_snapshot in session.image_groups.items():
                 selected_set = set(group_snapshot.selected_indices)
                 self._group_selection_state[group_id] = (selected_set, group_snapshot.last_selected_index)
-            
-            QMessageBox.information(
-                self,
-                "Session restored",
-                f"Previous session loaded with {len(session.image_groups)} groups.\n\nUse Ctrl+Z/Ctrl+Y for undo/redo."
-            )
+
+            # Do not block startup with a modal dialog; this also avoids terminal
+            # KeyboardInterrupt crashes while the dialog is waiting for input.
+            try:
+                if hasattr(self, "status_bar") and self.status_bar is not None:
+                    self.status_bar.showMessage(
+                        f"Session restored: {len(session.image_groups)} groups (Ctrl+Z/Ctrl+Y)",
+                        6000,
+                    )
+            except Exception as e:
+                logger.debug(f"Could not show session restore status message: {e}")
     
     def _setup_auto_save(self) -> None:
         """Setup timer for auto-saving session."""

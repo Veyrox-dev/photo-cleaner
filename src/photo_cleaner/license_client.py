@@ -153,9 +153,37 @@ class LicenseClient:
         self.salt_file = self.cache_dir / "device.salt"
         self.snapshot_file = self.cache_dir / "license_snapshot.json"
         self.signature_file = self.cache_dir / "license_signature"
+        self._last_exchange_payload: Dict[str, Any] | None = None
+        self._orphan_cache_warned = False
         
         if requests is None:
             logger.warning("requests library not available; license exchange will fail")
+
+    def _resolve_cache_signature(self, license_doc: Dict[str, Any]) -> Optional[str]:
+        """Resolve best available signature for snapshot caching.
+
+        Priority:
+        1) Signature included in current payload
+        2) Existing sidecar signature from last verified cache
+        3) Signature from last successful exchange payload
+        """
+        payload_sig = license_doc.get("signature") if isinstance(license_doc, dict) else None
+        if isinstance(payload_sig, str) and payload_sig.strip():
+            return payload_sig.strip()
+
+        try:
+            if self.signature_file.exists():
+                existing = self.signature_file.read_text(encoding="utf-8").strip()
+                if existing:
+                    return existing
+        except Exception as e:
+            logger.debug(f"Could not read signature sidecar: {e}")
+
+        payload = self._last_exchange_payload or {}
+        exchange_sig = payload.get("signature")
+        if isinstance(exchange_sig, str) and exchange_sig.strip():
+            return exchange_sig.strip()
+        return None
     
     def exchange_license_key(
         self,
@@ -205,6 +233,11 @@ class LicenseClient:
             data = resp.json()
             if data.get("ok"):
                 license_id = data.get("license_id")
+                self._last_exchange_payload = {
+                    "license_id": license_id,
+                    "license_data": data.get("license_data"),
+                    "signature": data.get("signature"),
+                }
                 # Cache Snapshot lokal
                 self._cache_snapshot(license_id, data.get("license_data"), data.get("signature"))
                 return True, license_id, ""
@@ -217,6 +250,24 @@ class LicenseClient:
         except Exception as e:
             logger.error(f"Unexpected error in exchange_license_key: {e}")
             return False, None, f"Error: {str(e)}"
+
+    def get_last_exchanged_license(self, license_id: str) -> Tuple[bool, Optional[Dict[str, Any]], str]:
+        """Return license payload from last successful exchange if present and valid."""
+        payload = self._last_exchange_payload or {}
+        if payload.get("license_id") != license_id:
+            return False, None, "Kein passender Exchange-Payload vorhanden"
+
+        license_data = payload.get("license_data")
+        signature = payload.get("signature")
+
+        if not isinstance(license_data, dict):
+            return False, None, "Exchange-Payload ohne Lizenzdaten"
+        if not signature or not isinstance(signature, str):
+            return False, None, "Exchange-Payload ohne Signatur"
+        if not verify_ed25519_signature(license_data, signature):
+            return False, None, "Exchange-Payload Signatur ungueltig"
+
+        return True, license_data, ""
     
     def fetch_license(self, license_id: str) -> Tuple[bool, Optional[Dict[str, Any]], str]:
         """
@@ -252,7 +303,8 @@ class LicenseClient:
             if data and len(data) > 0:
                 license_doc = data[0]
                 # Aktualisiere Cache bei erfolgreichem Online-Fetch
-                self._cache_snapshot(license_id, license_doc, license_doc.get("signature"))
+                cache_sig = self._resolve_cache_signature(license_doc)
+                self._cache_snapshot(license_id, license_doc, cache_sig)
                 return True, license_doc, ""
             else:
                 # Fallback zu Cache bei No Results
@@ -408,10 +460,10 @@ class LicenseClient:
     ) -> None:
         """Speichere Lizenz-Snapshot lokal mit Signatur."""
         if not signature:
-            logger.warning("Snapshot signature missing; skipping cache write")
+            logger.debug("Snapshot signature missing; skipping cache write")
             return
         if not verify_ed25519_signature(license_data, signature):
-            logger.warning("Snapshot signature invalid; skipping cache write")
+            logger.warning("Snapshot signature invalid; keeping previous cache")
             return
         try:
             snapshot = {
@@ -456,8 +508,31 @@ class LicenseClient:
                         except Exception as e:
                             logger.debug(f"Could not persist migrated snapshot signature: {e}")
 
+            # Recovery path: if sidecar/embedded signature is missing, try the last
+            # successful exchange signature for the current in-memory session.
             if not signature:
-                logger.warning("Cached snapshot has no signature; ignoring offline cache")
+                payload = self._last_exchange_payload or {}
+                exchange_sig = payload.get("signature")
+                if isinstance(exchange_sig, str) and exchange_sig.strip():
+                    license_data = snapshot.get("data") or {}
+                    if verify_ed25519_signature(license_data, exchange_sig.strip()):
+                        signature = exchange_sig.strip()
+                        try:
+                            self.signature_file.write_text(signature, encoding="utf-8")
+                            logger.info("Recovered missing cache signature from exchange payload")
+                        except Exception as e:
+                            logger.debug(f"Could not persist recovered cache signature: {e}")
+
+            if not signature:
+                # Orphan snapshot without signature is unusable and creates recurring warnings.
+                # Remove it once so subsequent retries fail fast without log spam.
+                if not self._orphan_cache_warned:
+                    logger.warning("Cached snapshot has no signature; removing orphaned cache")
+                    self._orphan_cache_warned = True
+                try:
+                    self.snapshot_file.unlink(missing_ok=True)
+                except Exception as e:
+                    logger.debug(f"Could not remove orphaned snapshot cache: {e}")
                 return False, None, "Kein gueltiger Offline-Cache vorhanden"
             
             cached_license_id = snapshot.get("license_id")
@@ -538,11 +613,14 @@ class LicenseManager:
         
         if not success:
             return False, f"Aktivierung fehlgeschlagen: {error}"
-        
-        # Fetch Lizenz-Daten
-        success, license_data, error = self.client.fetch_license(license_id)
+
+        # Prefer verified license payload from successful exchange to avoid an
+        # immediate second network dependency.
+        success, license_data, _ = self.client.get_last_exchanged_license(license_id)
         if not success:
-            return False, f"Konnte Lizenzdaten nicht laden: {error}"
+            success, license_data, error = self.client.fetch_license(license_id)
+            if not success:
+                return False, "Konnte Lizenzdaten online nicht laden. Bitte Netzwerk und Supabase-Konfiguration prüfen."
         
         # Enforce Limits
         device_id = DeviceInfo.get_device_id(self.client.salt_file)
