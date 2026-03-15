@@ -327,6 +327,31 @@ class TestLicenseClient:
         assert "Offline-Cache" in error
         assert not client.snapshot_file.exists()
 
+    def test_load_cached_snapshot_invalid_signature_cleans_cache_pair(self, client, monkeypatch):
+        """Invalid signature should clean snapshot + sidecar to avoid warning loops."""
+        license_id = "TEST-001"
+        snapshot = {
+            "license_id": license_id,
+            "data": {"license_id": license_id, "status": "active", "plan": "basic"},
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+        with open(client.snapshot_file, "w") as f:
+            json.dump(snapshot, f)
+        client.signature_file.write_text("invalid_sig", encoding="utf-8")
+
+        monkeypatch.setattr(
+            "photo_cleaner.license_client.verify_ed25519_signature",
+            lambda payload, sig: False,
+        )
+
+        success, loaded_data, error = client._load_cached_snapshot(license_id)
+
+        assert success is False
+        assert loaded_data is None
+        assert "Signatur" in error
+        assert not client.snapshot_file.exists()
+        assert not client.signature_file.exists()
+
     def test_resolve_cache_signature_prefers_existing_sidecar(self, client):
         """Wenn Payload keine Signatur hat, soll vorhandene Sidecar-Signatur genutzt werden."""
         client.signature_file.write_text("sidecar_sig", encoding="utf-8")

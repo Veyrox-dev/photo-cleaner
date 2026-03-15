@@ -1,3 +1,5 @@
+/// <reference lib="deno.ns" />
+
 /**
  * Supabase Edge Function: exchange-license-key
  * Produktiver Pfad: Liest Lizenzen aus der DB, prüft Status/Expiry/Device-Limit

@@ -239,7 +239,12 @@ class LicenseClient:
                     "signature": data.get("signature"),
                 }
                 # Cache Snapshot lokal
-                self._cache_snapshot(license_id, data.get("license_data"), data.get("signature"))
+                self._cache_snapshot(
+                    license_id,
+                    data.get("license_data"),
+                    data.get("signature"),
+                    source="edge.exchange_license_key",
+                )
                 return True, license_id, ""
 
             return False, None, data.get("error", "Unknown error")
@@ -302,9 +307,23 @@ class LicenseClient:
             
             if data and len(data) > 0:
                 license_doc = data[0]
-                # Aktualisiere Cache bei erfolgreichem Online-Fetch
-                cache_sig = self._resolve_cache_signature(license_doc)
-                self._cache_snapshot(license_id, license_doc, cache_sig)
+                # Aktualisiere Cache nur mit serverseitig mitgelieferter Signatur.
+                # Unsignierte Payloads (oder nur Sidecar-Fallback) koennen sonst
+                # zu wiederholten Verify-Warnungen fuehren.
+                payload_sig = license_doc.get("signature") if isinstance(license_doc, dict) else None
+                if isinstance(payload_sig, str) and payload_sig.strip():
+                    self._cache_snapshot(
+                        license_id,
+                        license_doc,
+                        payload_sig.strip(),
+                        source="rest.fetch_license",
+                    )
+                else:
+                    logger.info(
+                        "License REST payload has no signature; keeping existing cache "
+                        "(license_id=%s). Expected when REST row has no 'signature' field.",
+                        license_id,
+                    )
                 return True, license_doc, ""
             else:
                 # Fallback zu Cache bei No Results
@@ -313,7 +332,11 @@ class LicenseClient:
         
         except Exception as e:
             # Catch both real and mocked RequestException, plus other errors
-            logger.warning(f"Offline or network error fetching license: {e}, trying cache")
+            logger.warning(
+                "Offline or network error fetching license (license_id=%s): %s; trying cache",
+                license_id,
+                e,
+            )
             return self._load_cached_snapshot(license_id)
 
     def consume_free_images(self, device_id: str, amount: int) -> Tuple[bool, Optional[int], str]:
@@ -457,13 +480,34 @@ class LicenseClient:
         license_id: str,
         license_data: Dict[str, Any],
         signature: Optional[str] = None,
+        *,
+        source: str = "unknown",
     ) -> None:
         """Speichere Lizenz-Snapshot lokal mit Signatur."""
         if not signature:
-            logger.debug("Snapshot signature missing; skipping cache write")
+            logger.debug(
+                "Snapshot signature missing; skipping cache write (source=%s, license_id=%s)",
+                source,
+                license_id,
+            )
             return
         if not verify_ed25519_signature(license_data, signature):
-            logger.warning("Snapshot signature invalid; keeping previous cache")
+            sig_len = len(signature) if isinstance(signature, str) else 0
+            length_hint = ""
+            if sig_len and sig_len < 80:
+                length_hint = (
+                    " Observed signature looks too short for Ed25519 Base64 "
+                    "(expected usually ~88 chars). This often means old HMAC/legacy signer or truncated value."
+                )
+            logger.warning(
+                "Snapshot signature invalid; keeping previous cache "
+                "(source=%s, license_id=%s, signature_len=%s). "
+                "Check Supabase LICENSE_SIGNING_PRIVATE_KEY against app PUBLIC_KEY_PEM.%s",
+                source,
+                license_id,
+                sig_len,
+                length_hint,
+            )
             return
         try:
             snapshot = {
@@ -527,7 +571,12 @@ class LicenseClient:
                 # Orphan snapshot without signature is unusable and creates recurring warnings.
                 # Remove it once so subsequent retries fail fast without log spam.
                 if not self._orphan_cache_warned:
-                    logger.warning("Cached snapshot has no signature; removing orphaned cache")
+                    logger.warning(
+                        "Cached snapshot has no signature; removing orphaned cache "
+                        "(snapshot=%s, signature=%s).",
+                        self.snapshot_file,
+                        self.signature_file,
+                    )
                     self._orphan_cache_warned = True
                 try:
                     self.snapshot_file.unlink(missing_ok=True)
@@ -552,6 +601,20 @@ class LicenseClient:
             
             license_data = snapshot.get("data")
             if not verify_ed25519_signature(license_data or {}, signature):
+                # Self-heal: invalid cache/signature pair is unusable and would
+                # otherwise trigger repeated warnings on every offline retry.
+                logger.warning(
+                    "Cached snapshot signature invalid; purging cache pair "
+                    "(snapshot=%s, signature=%s, license_id=%s).",
+                    self.snapshot_file,
+                    self.signature_file,
+                    license_id,
+                )
+                try:
+                    self.snapshot_file.unlink(missing_ok=True)
+                    self.signature_file.unlink(missing_ok=True)
+                except Exception as e:
+                    logger.debug(f"Could not remove invalid snapshot cache: {e}")
                 return False, None, "Snapshot-Signatur ungueltig"
             logger.info(f"Using cached license (age: {age.days}d {age.seconds//3600}h)")
             return True, license_data, f"[Offline] Cache aktiv (Grace: {self.config.grace_period_days}d)"
