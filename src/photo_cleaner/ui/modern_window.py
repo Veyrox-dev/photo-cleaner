@@ -102,6 +102,7 @@ from photo_cleaner.ui_actions import UIActions
 from photo_cleaner.session_manager import SessionManager
 from photo_cleaner.ui.indexing_thread import IndexingThread  # v0.5.3
 from photo_cleaner.ui.workflows.indexing_workflow_controller import IndexingWorkflowController
+from photo_cleaner.ui.workflows.rating_workflow_controller import RatingWorkflowController
 from photo_cleaner.cache.image_cache_manager import ImageCacheManager  # v0.5.3
 from photo_cleaner.ui.thumbnail_lazy import ThumbnailLoader, SmartThumbnailCache  # Thumbnail async loading
 
@@ -2387,6 +2388,7 @@ class ModernMainWindow(QMainWindow):
         self._indexing_results: Optional[dict] = None
         self._progress_update_ts = 0.0
         self._indexing_workflow = IndexingWorkflowController(self, self._center_progress_dialog_text)
+        self._rating_workflow = RatingWorkflowController(self, RatingWorkerThread, QApplication.processEvents)
         self.cache_manager = ImageCacheManager(self.conn)
         
         # PHASE 4 FIX 1: Initialize CameraCalibrator for ML learning
@@ -2739,31 +2741,24 @@ class ModernMainWindow(QMainWindow):
 
         logger.info("[DUPFINDER] Creating RatingWorkerThread...")
         thread_create_start = time.monotonic()
-        self._rating_thread = RatingWorkerThread(self.db_path, self.top_n, self.mtcnn_status)
-        self._rating_thread.progress.connect(self._on_rating_progress)
-        self._rating_thread.finished.connect(self._on_rating_finished)
-        self._rating_thread.error.connect(self._on_rating_error)
+        self._rating_thread = self._rating_workflow.create_and_wire_rating_thread(
+            self.db_path,
+            self.top_n,
+            self.mtcnn_status,
+            on_progress=self._on_rating_progress,
+            on_finished=self._on_rating_finished,
+            on_error=self._on_rating_error,
+        )
         thread_create_time = time.monotonic() - thread_create_start
         logger.info(f"[DUPFINDER] RatingWorkerThread created in {thread_create_time:.3f}s")
         
         logger.info("[DUPFINDER] Starting RatingWorkerThread...")
         thread_start_time = time.monotonic()
-        self._rating_thread.start()
+        self._rating_workflow.start_rating_thread(self._rating_thread, progress)
         thread_start_elapsed = time.monotonic() - thread_start_time
         logger.info(f"[DUPFINDER] RatingWorkerThread.start() returned after {thread_start_elapsed:.3f}s")
-        
-        # Ensure dialog is explicitly shown and visible
-        if progress and not progress.isVisible():
-            logger.info("[DUPFINDER] Dialog not visible - showing explicitly")
-            progress.show()
-        
-        # Force Qt event loop to process dialog update BEFORE worker initializes models
-        logger.info("[DUPFINDER] Processing Qt events to ensure dialog displays...")
-        from PySide6.QtWidgets import QApplication
-        process_start = time.monotonic()
-        QApplication.processEvents()
-        process_time = time.monotonic() - process_start
-        logger.info(f"[DUPFINDER] processEvents() completed in {process_time:.3f}s")
+
+        logger.info("[DUPFINDER] Rating workflow started (dialog visibility + Qt event processing delegated)")
         
         handler_time = time.monotonic() - handler_start
         logger.info(f"[DUPFINDER] _on_duplicate_finder_finished() FINISHED in {handler_time:.3f}s (thread should be running)")
