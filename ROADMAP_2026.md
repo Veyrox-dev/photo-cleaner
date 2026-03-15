@@ -72,7 +72,8 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [x] 6.2: Ersten Controller-Extraktionspfad definieren (ohne UX-Änderung)
 - [x] 6.3: Mini-Slice implementieren + fokussierte Regression-Tests
 - [x] 6.4: Zweiten Mini-Slice implementieren (Rating-Workflow-Controller) und dokumentieren
-- [ ] 6.5: Nächsten Mini-Slice planen (Selection-/Dialog-Workflow) und technische Schulden dokumentieren
+- [x] 6.5: Selection-/Dialog-Workflow-Controller implementieren und validieren
+- [ ] 6.6: Nächsten Mini-Slice planen (Export-/Delete-Dialog-Flow) und technische Schulden dokumentieren
 
 #### Slice 6 Progress (2026-03-15)
 - [x] Mini-slice 6.1: Workflow-Seams identifiziert (Indexing + Post-Indexing als erster Extraktionskandidat)
@@ -81,7 +82,9 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [x] Mini-slice 6.3: Fokussierte Regression-Tests ergänzt → `tests/unit/test_indexing_workflow_controller.py` (3/3 grün)
 - [x] Mini-slice 6.4: Zweiter Workflow-Controller extrahiert → `ui/workflows/rating_workflow_controller.py`
 - [x] Mini-slice 6.4: `modern_window.py` delegiert Rating-Thread-Wiring + Start/Dialog-Event-Flush an Controller (ohne UX-Änderung)
-- [x] Validierung: Workflow-Controller fokussiert 6/6 Tests grün (`test_indexing_workflow_controller.py` + `test_rating_workflow_controller.py`)
+- [x] Mini-slice 6.5: Dritter Workflow-Controller extrahiert → `ui/workflows/selection_workflow_controller.py`
+- [x] Mini-slice 6.5: `modern_window.py` delegiert Selection-UI-State, Comparison-Validierung und Status-Target-Sammlung an Controller (ohne UX-Änderung)
+- [x] Validierung: Workflow-Controller fokussiert 10/10 Tests grün (`test_indexing_workflow_controller.py` + `test_rating_workflow_controller.py` + `test_selection_workflow_controller.py`)
 
 #### Slice 5 Progress (2026-03-12)
 - [x] Mini-slice 5.1: Haar cascade resolver in eigenes Modul extrahiert → `pipeline/analysis/haar_cascade_resolver.py`

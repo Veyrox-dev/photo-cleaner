@@ -71,6 +71,7 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
    - [x] 6.2 Ersten Controller extrahieren (ohne UX-Änderung)
    - [x] 6.3 Fokussierte Regression-Tests ergänzen
    - [x] 6.4 Zweiten Controller extrahieren (Rating-Workflow: Thread-Wiring + Start)
+   - [x] 6.5 Dritten Controller extrahieren (Selection/Dialog-Workflow)
 10. [ ] Legacy-UI Pfade sichtbar als deprecation markieren
 11. [ ] Website gemeinsame CSS/JS-Bundles einführen
 12. [ ] MSI-Installer Track aufsetzen (Vertrauenswürdigkeit Distribution)
@@ -112,3 +113,4 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 - 2026-03-15: Slice 6.1/6.2 gestartet: erster Workflow-Controller extrahiert (`ui/workflows/indexing_workflow_controller.py`), `modern_window.py` delegiert Indexing-/Post-Indexing-Dialog+Thread-Wiring ohne UX-Änderung.
 - 2026-03-15: Slice 6.3 abgeschlossen: fokussierte Tests ergänzt (`tests/unit/test_indexing_workflow_controller.py`), Validierung: 3/3 grün.
 - 2026-03-15: Slice 6.4 abgeschlossen: zweiter Workflow-Controller extrahiert (`ui/workflows/rating_workflow_controller.py`), Rating-Thread-Wiring/Start aus `modern_window.py` delegiert; Validierung: 6/6 fokussierte Workflow-Controller-Tests grün.
+- 2026-03-15: Slice 6.5 abgeschlossen: dritter Workflow-Controller extrahiert (`ui/workflows/selection_workflow_controller.py`), Selection-/Comparison-/Status-Target-Logik aus `modern_window.py` delegiert; Validierung: 10/10 fokussierte Workflow-Controller-Tests grün.
