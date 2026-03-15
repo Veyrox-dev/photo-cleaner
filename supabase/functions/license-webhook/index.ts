@@ -1,5 +1,3 @@
-/// <reference lib="deno.ns" />
-
 // ============================================================
 // PhotoCleaner - Automatic License Generation Webhook
 // ============================================================
@@ -13,8 +11,19 @@
 // 4. Sendet Email mit Aktivierungs-Link
 // ============================================================
 
+declare const Deno: {
+  env: {
+    get(name: string): string | undefined;
+  };
+};
+
+// TypeScript in non-Deno workspaces cannot resolve URL imports.
+// Runtime (Supabase Edge Functions) resolves these correctly.
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+// @ts-ignore
 import { Pool } from "https://deno.land/x/postgres@v0.17.0/mod.ts";
 
 const corsHeaders = {
@@ -47,7 +56,7 @@ interface PurchaseData {
 
 const RETRY_BACKOFF_MS = [500, 1000, 2000, 2000];
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // CORS Preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -217,12 +226,14 @@ serve(async (req) => {
       JSON.stringify({ received: true }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
     console.error("Webhook error:", error);
     return new Response(
       JSON.stringify({
-        error: error.message,
-        stack: error.stack,
+        error: message,
+        stack,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
