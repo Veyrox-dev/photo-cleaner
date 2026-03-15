@@ -66,17 +66,25 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
    - [x] Slice 5.8 (größer): Batch-Orchestrierung von `analyze_batch()` nach `pipeline/analysis/batch_runner.py` extrahiert und in `QualityAnalyzer` verdrahtet
    - [x] Slice 5.9 (größer): Runtime-Dependency-Bootstrap/Lazy-Import-Logik nach `pipeline/analysis/runtime_dependencies.py` extrahiert und `quality_analyzer.py` umgestellt
    - [x] Slice 5.10 (größer): Stage-/Capability-Resolver nach `pipeline/analysis/capability_resolver.py` extrahiert und in `QualityAnalyzer` verdrahtet
-9. [ ] `modern_window.py` weiter in views/controllers/workflows teilen
+9. [ ] Slice 6 starten: `modern_window.py` top-down in views/controllers/workflows teilen
+   - [x] 6.1 Workflow-Seams markieren (Import, Rating, Selection, Dialogs)
+   - [x] 6.2 Ersten Controller extrahieren (ohne UX-Änderung)
+   - [x] 6.3 Fokussierte Regression-Tests ergänzen
 10. [ ] Legacy-UI Pfade sichtbar als deprecation markieren
 11. [ ] Website gemeinsame CSS/JS-Bundles einführen
+12. [ ] MSI-Installer Track aufsetzen (Vertrauenswürdigkeit Distribution)
+   - [ ] Entscheidung: WiX Toolset vs Inno Setup
+   - [ ] Reproduzierbaren MSI-Build-Command definieren
+   - [ ] Install/Upgrade/Uninstall Smoke-Test auf clean Windows vorbereiten
 
 ---
 
 ## LATER (Sprint 3+)
 
-12. [ ] Naming-/Terminologie-Guide finalisieren (Code Englisch, UI via i18n)
-13. [ ] Weitere QA-Baselines (10k/50k/100k) mit Vergleichsreport konsolidieren
-14. [ ] Launch-Readiness Re-Score nach P1/P2 Fortschritt
+13. [ ] Supabase HTTP-503 Root-Cause Sprint (bewusst geparkt bis Slice 6.1-6.3 abgeschlossen)
+14. [ ] Naming-/Terminologie-Guide finalisieren (Code Englisch, UI via i18n)
+15. [ ] Weitere QA-Baselines (10k/50k/100k) mit Vergleichsreport konsolidieren
+16. [ ] Launch-Readiness Re-Score nach P1/P2 Fortschritt
 
 ---
 
@@ -99,3 +107,6 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 - 2026-03-13: `quality_analyzer` Split Slice 5.8 umgesetzt (`pipeline/analysis/batch_runner.py`), `analyze_batch()`-ThreadPool-Orchestrierung extrahiert und in `QualityAnalyzer` integriert. Validierung: 36/36 fokussierte Tests grün.
 - 2026-03-15: `quality_analyzer` Split Slice 5.9 umgesetzt (`pipeline/analysis/runtime_dependencies.py`), Runtime-Dependency-Bootstrap/Lazy-Import-Status aus `quality_analyzer.py` extrahiert und per Snapshot-Bridge kompatibel gehalten. Validierung: 36/36 fokussierte Tests grün.
 - 2026-03-15: `quality_analyzer` Split Slice 5.10 umgesetzt (`pipeline/analysis/capability_resolver.py`), Stage-/Capability-Logik extrahiert und in `QualityAnalyzer` delegiert. Validierung: 36/36 fokussierte Tests grün.
+- 2026-03-15: Backlog-Sync: Slice 6 als nächster Top-Down-Block priorisiert; Supabase HTTP 503 explizit geparkt; MSI-Installer-Track als neues Sprintziel ergänzt.
+- 2026-03-15: Slice 6.1/6.2 gestartet: erster Workflow-Controller extrahiert (`ui/workflows/indexing_workflow_controller.py`), `modern_window.py` delegiert Indexing-/Post-Indexing-Dialog+Thread-Wiring ohne UX-Änderung.
+- 2026-03-15: Slice 6.3 abgeschlossen: fokussierte Tests ergänzt (`tests/unit/test_indexing_workflow_controller.py`), Validierung: 3/3 grün.

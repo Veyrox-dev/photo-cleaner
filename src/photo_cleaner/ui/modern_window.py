@@ -101,6 +101,7 @@ from photo_cleaner.ui.thumbnail_cache import get_thumbnail
 from photo_cleaner.ui_actions import UIActions
 from photo_cleaner.session_manager import SessionManager
 from photo_cleaner.ui.indexing_thread import IndexingThread  # v0.5.3
+from photo_cleaner.ui.workflows.indexing_workflow_controller import IndexingWorkflowController
 from photo_cleaner.cache.image_cache_manager import ImageCacheManager  # v0.5.3
 from photo_cleaner.ui.thumbnail_lazy import ThumbnailLoader, SmartThumbnailCache  # Thumbnail async loading
 
@@ -2385,6 +2386,7 @@ class ModernMainWindow(QMainWindow):
         self._rating_error_message: Optional[str] = None
         self._indexing_results: Optional[dict] = None
         self._progress_update_ts = 0.0
+        self._indexing_workflow = IndexingWorkflowController(self, self._center_progress_dialog_text)
         self.cache_manager = ImageCacheManager(self.conn)
         
         # PHASE 4 FIX 1: Initialize CameraCalibrator for ML learning
@@ -2565,54 +2567,20 @@ class ModernMainWindow(QMainWindow):
     
     def _start_async_indexing(self):
         """Start async indexing in background thread (v0.5.3)."""
-        from photo_cleaner.core.indexer import PhotoIndexer
-        from photo_cleaner.db.schema import Database
-        import time
-        
         logger.info("Starting async indexing...")
-        
-        # BUG #3 FIX: Create separate DB instance for indexer (thread-safe)
-        # Each thread needs its own SQLite connection to prevent "database locked" errors
-        indexer_db = Database(self.db_path)
-        indexer_db.connect()  # Initialize connection
-        indexer = PhotoIndexer(indexer_db, max_workers=None)
-        
-        # Create progress dialog
-        progress = QProgressDialog(
-            "Bilder werden analysiert...",
-            "Abbrechen",
-            0, 100,
-            self
-        )
-        progress.setWindowTitle(t("image_analysis_async"))
-        progress.setWindowModality(Qt.WindowModal)
-        progress.setMinimumDuration(0)
-        progress.setValue(0)
-        progress.setMinimumWidth(460)
-        progress.setMinimumHeight(140)
-        progress.setStyleSheet(
-            "QLabel { padding: 6px 8px; }"
-            "QProgressBar { min-height: 18px; text-align: center; }"
-        )
-        self._center_progress_dialog_text(progress)
+
+        # BUG #3 FIX remains: controller builds a separate DB-backed indexer for thread safety
+        indexer = self._indexing_workflow.build_indexer(self.db_path)
+
+        progress = self._indexing_workflow.create_indexing_progress_dialog()
         self._indexing_progress_dialog = progress
-        
-        # Create and start indexing thread
-        self.indexing_thread = IndexingThread(
+
+        self.indexing_thread = self._indexing_workflow.create_indexing_thread(
             self.input_folder,
             indexer,
-            use_incremental=True,  # v0.5.3 incremental mode
-        )
-        
-        # Connect signals
-        self.indexing_thread.progress.connect(
-            lambda curr, total, msg: self._on_indexing_progress(curr, total, msg, progress)
-        )
-        self.indexing_thread.finished.connect(
-            lambda results: self._on_indexing_finished(results, progress)
-        )
-        self.indexing_thread.error.connect(
-            lambda err: self._on_indexing_error(err, progress)
+            on_progress=lambda curr, total, msg: self._on_indexing_progress(curr, total, msg, progress),
+            on_finished=lambda results: self._on_indexing_finished(results, progress),
+            on_error=lambda err: self._on_indexing_error(err, progress),
         )
         
         # Connect cancel button
@@ -2697,7 +2665,6 @@ class ModernMainWindow(QMainWindow):
 
     def _start_post_indexing_analysis(self, results: dict) -> None:
         """Build duplicate groups and rate images without blocking the UI."""
-        import time
         start_time = time.monotonic()
         logger.info("[UI] _start_post_indexing_analysis() STARTED")
         
@@ -2716,25 +2683,9 @@ class ModernMainWindow(QMainWindow):
         self._post_indexing_duplicate_images = 0
 
         logger.info("[UI] Creating post-indexing progress dialog...")
-        progress = QProgressDialog(
-            "Duplikate werden gesucht...",
-            t("cancel"),
-            0,
-            0,
-            self,
+        progress = self._indexing_workflow.create_post_indexing_progress_dialog(
+            on_cancel=self._cancel_post_indexing,
         )
-        progress.setWindowTitle(t("image_analysis"))
-        progress.setWindowModality(Qt.WindowModal)
-        progress.setMinimumDuration(0)
-        progress.setValue(0)
-        progress.setMinimumWidth(460)
-        progress.setMinimumHeight(140)
-        progress.setStyleSheet(
-            "QLabel { padding: 6px 8px; }"
-            "QProgressBar { min-height: 18px; text-align: center; }"
-        )
-        self._center_progress_dialog_text(progress)
-        progress.canceled.connect(self._cancel_post_indexing)
         self._post_indexing_progress_dialog = progress
 
         logger.info("[UI] Starting DuplicateFinderThread...")

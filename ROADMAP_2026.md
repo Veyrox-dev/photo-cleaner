@@ -1,7 +1,7 @@
 # PhotoCleaner - Roadmap 2026 (REVISITED)
 
-**Aktualisiert:** 04. März 2026 (Security P0 Hardening + Website-Reorganization)  
-**Status:** Phase 4.1 ✅ COMPLETE | Security P0 ✅ COMPLETE | Phase 4.2 QA Testing + P1 Refactor in Progress  
+**Aktualisiert:** 15. März 2026 (Execution Sync: Slice 5 abgeschlossen, Slice 6 vorbereitet, 503-Thema geparkt, MSI-Track ergänzt)  
+**Status:** Phase 4.1 ✅ COMPLETE | Security P0 ✅ COMPLETE | Phase 4.2 QA Testing + P1 Refactor (Slice 6 als Nächstes)  
 **Ziel:** v1.0.0 Launch im November 2026 (revised timing)  
 **Timeline:** 9 Monate mit Fokus auf STABILITÄTSRISIKEN
 
@@ -15,6 +15,9 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 ### Aktueller Sprintfokus (NOW)
 - [ ] Secret Rotation (extern/manuell)
 - [ ] Frozen-Build Smoke-Test auf 5+ clean Windows Maschinen (extern/manuell)
+- [ ] P1 Slice #6: `modern_window.py` Refactoring starten (views/controllers/workflows, top-down)
+- [ ] Distribution-Track starten: MSI-Installer-Konzept + erster Build-Pfad
+- [ ] Supabase Licensing HTTP 503 Investigation bewusst verschoben (Parkplatz bis nach Slice 6 Start)
 - [x] P1 Slice #1: License Service Adapter umgesetzt
 - [x] P1 Slice #2: Progress-Workflow in `modern_window.py` über Service/Facade entkoppelt
 - [x] Lizenz-/Activation-Regression-Checks ergänzt (7 gezielte Unit-Tests grün)
@@ -44,10 +47,17 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [ ] **Secret Rotation durchführen:** Bereits exponierte Supabase Keys sofort rotieren (außerhalb Repo)
 - [ ] **Frozen-Build Smoke-Test auf 5+ Clean Windows Maschinen** final abschließen
 
+### Geparkte Themen (bewusst verschoben)
+- [ ] **Supabase Licensing HTTP 503 / Exchange-Stabilität**
+   - Status: bewusst auf später verschoben, damit der Top-Down-Roadmap-Flow nicht unterbrochen wird
+   - Re-Entry: direkt nach erstem Slice-6-Paket (views/controllers/workflows)
+   - Scope bei Wiederaufnahme: Edge-Function-Retry/Timeouts, DB/Policy-Diagnostik, Monitoring/Alerts
+
 ### Nächste Ziele (März, priorisiert)
-1. **Sprint 1 abschließen (Backlog NOW):** Secret rotation, smoke-tests, P1 Slice #2, Regression-Checks
-2. **P1 Architektur Phase 2:** Slice 4+ (EXIF-Extraktion, Metadaten-Modulo, modern_window Refactoring)
-3. **P1 Qualität:** Selektive Regression-Tests + QA-Baseline auf aktuellen Code-Stand anheben
+1. **Sprint 1 sauber schließen (Backlog NOW):** Secret rotation + 5x clean-machine smoke-tests
+2. **P1 Architektur top-down weiterführen:** Slice 6 in `modern_window.py` starten und in kleine testbare Mini-Slices schneiden
+3. **Vertrauenswürdiger Release-Kanal:** MSI-Installer als zusätzliches Auslieferungsziel vorbereiten
+4. **Danach Re-Entry geparkter Cloud-Themen:** HTTP 503/Supabase root-cause sprint
 
 ### Architektur-Refactoring Roadmap (Quality Analyzer Slices)
 - [x] **Slice 1 (COMPLETE):** Data Models extraction → `pipeline/analysis/models.py`
@@ -55,7 +65,19 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [x] **Slice 3 (COMPLETE):** Scoring Logic extraction → `pipeline/analysis/quality_scorer.py` (18+ methods, 730 lines)
 - [x] **Slice 4 (COMPLETE):** EXIF/Metadata extraction → `pipeline/analysis/exif_extractor.py`
 - [x] **Slice 5 (COMPLETE):** remaining QualityAnalyzer compression abgeschlossen
-- [ ] **Slice 6 (IN PROGRESS):** `modern_window.py` Refactoring starten (views/controllers/workflows)
+- [ ] **Slice 6 (NEXT):** `modern_window.py` Refactoring starten (views/controllers/workflows)
+
+#### Slice 6 Startplan (ab 2026-03-15)
+- [x] 6.1: Workflow-Seams in `modern_window.py` markieren (Import, Rating, Selection, Dialog-Trigger)
+- [x] 6.2: Ersten Controller-Extraktionspfad definieren (ohne UX-Änderung)
+- [x] 6.3: Mini-Slice implementieren + fokussierte Regression-Tests
+- [ ] 6.4: Nächsten Mini-Slice planen und technische Schulden dokumentieren
+
+#### Slice 6 Progress (2026-03-15)
+- [x] Mini-slice 6.1: Workflow-Seams identifiziert (Indexing + Post-Indexing als erster Extraktionskandidat)
+- [x] Mini-slice 6.2: Erster Workflow-Controller extrahiert → `ui/workflows/indexing_workflow_controller.py`
+- [x] Mini-slice 6.2: `modern_window.py` delegiert Dialog- und Thread-Wiring für Indexing/Post-Indexing an Controller (ohne UX-Änderung)
+- [x] Mini-slice 6.3: Fokussierte Regression-Tests ergänzt → `tests/unit/test_indexing_workflow_controller.py` (3/3 grün)
 
 #### Slice 5 Progress (2026-03-12)
 - [x] Mini-slice 5.1: Haar cascade resolver in eigenes Modul extrahiert → `pipeline/analysis/haar_cascade_resolver.py`
@@ -449,6 +471,8 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
    - [ ] Sign EXE (if applicable)
 
 2. **Installation Testing**
+   - [ ] MSI-Installer bauen (primärer Installer-Track für mehr Trust)
+   - [ ] Tooling-Entscheidung festziehen (WiX Toolset vs Inno Setup) + reproduzierbarer Build-Command
    - [ ] Test installer on virgin Windows 10
    - [ ] Test installer on virgin Windows 11
    - [ ] Test upgrade from v0.8.x to v1.0.0
