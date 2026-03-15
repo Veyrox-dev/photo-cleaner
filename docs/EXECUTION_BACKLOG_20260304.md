@@ -59,6 +59,13 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
    - [x] Slice 5.1: Haar-Cascade-Resolver nach `pipeline/analysis/haar_cascade_resolver.py` extrahiert; doppelte Cascade-Initialisierung in `QualityAnalyzer` entfernt
    - [x] Slice 5.2: Face-Mesh-Resolver nach `pipeline/analysis/face_mesh_resolver.py` extrahiert; `face_detector.py` von `quality_analyzer.py` entkoppelt
    - [x] Slice 5.3: Veraltete Face-Mesh-Altlasten (`_FACE_MESH_*`, lokaler Wrapper) aus `quality_analyzer.py` bereinigt
+   - [x] Slice 5.4: Lokale Face-Mesh-Cache/Config-Hash-Reste aus `quality_analyzer.py` entfernt; Warmup delegiert an `FaceDetector`
+   - [x] Slice 5.5 (größer): Image-Preprocessing-Cluster (Load/Fallback/Downsampling) nach `pipeline/analysis/image_preprocessor.py` extrahiert und in `analyze_image()` verdrahtet
+   - [x] Slice 5.6 (größer): EXIF/Orientation/Metadaten-Cluster nach `pipeline/analysis/metadata_enricher.py` extrahiert und in `analyze_image()` verdrahtet
+   - [x] Slice 5.7 (größer): Core-Execution-Cluster (Gray/Scoring/Face/Total) nach `pipeline/analysis/analysis_executor.py` extrahiert und in `analyze_image()` verdrahtet
+   - [x] Slice 5.8 (größer): Batch-Orchestrierung von `analyze_batch()` nach `pipeline/analysis/batch_runner.py` extrahiert und in `QualityAnalyzer` verdrahtet
+   - [x] Slice 5.9 (größer): Runtime-Dependency-Bootstrap/Lazy-Import-Logik nach `pipeline/analysis/runtime_dependencies.py` extrahiert und `quality_analyzer.py` umgestellt
+   - [x] Slice 5.10 (größer): Stage-/Capability-Resolver nach `pipeline/analysis/capability_resolver.py` extrahiert und in `QualityAnalyzer` verdrahtet
 9. [ ] `modern_window.py` weiter in views/controllers/workflows teilen
 10. [ ] Legacy-UI Pfade sichtbar als deprecation markieren
 11. [ ] Website gemeinsame CSS/JS-Bundles einführen
@@ -85,3 +92,10 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 - 2026-03-12: `quality_analyzer` Split Slice 5.1 umgesetzt (`pipeline/analysis/haar_cascade_resolver.py`), Haar-Pfadauflösung zentralisiert und Cascade-Laden als Single Source in `FaceDetector` konsolidiert. Validierung: 36/36 fokussierte Tests grün.
 - 2026-03-12: `quality_analyzer` Split Slice 5.2 umgesetzt (`pipeline/analysis/face_mesh_resolver.py`), Face-Mesh-Konstruktorauflösung zentralisiert und `face_detector.py` vom Monolith-Import entkoppelt. Validierung: 36/36 fokussierte Tests grün.
 - 2026-03-12: `quality_analyzer` Split Slice 5.3 umgesetzt (`pipeline/quality_analyzer.py`), obsolete Face-Mesh-States/Wrapper entfernt nach Resolver-Auslagerung. Validierung: 36/36 fokussierte Tests grün.
+- 2026-03-13: `quality_analyzer` Split Slice 5.4 umgesetzt (`pipeline/quality_analyzer.py`), lokale Face-Mesh-Cache/Config-Hash-Verwaltung entfernt und `warmup()` auf `FaceDetector`-Preload umgestellt. Validierung: 36/36 fokussierte Tests grün.
+- 2026-03-13: `quality_analyzer` Split Slice 5.5 umgesetzt (`pipeline/analysis/image_preprocessor.py`), großer Image-Preprocessing-Block aus `analyze_image()` (Load/Fallback/Downsampling) extrahiert. Validierung: 36/36 fokussierte Tests grün.
+- 2026-03-13: `quality_analyzer` Split Slice 5.6 umgesetzt (`pipeline/analysis/metadata_enricher.py`), EXIF/Orientation/Metadaten-Block aus `analyze_image()` extrahiert; Kompatibilität (`CameraProfile`-Export aus `quality_analyzer`) beibehalten. Validierung: 36/36 fokussierte Tests grün.
+- 2026-03-13: `quality_analyzer` Split Slice 5.7 umgesetzt (`pipeline/analysis/analysis_executor.py`), Core-Execution-Block (Gray/Scoring/Face/Total) aus `analyze_image()` extrahiert. Validierung: 36/36 fokussierte Tests grün.
+- 2026-03-13: `quality_analyzer` Split Slice 5.8 umgesetzt (`pipeline/analysis/batch_runner.py`), `analyze_batch()`-ThreadPool-Orchestrierung extrahiert und in `QualityAnalyzer` integriert. Validierung: 36/36 fokussierte Tests grün.
+- 2026-03-15: `quality_analyzer` Split Slice 5.9 umgesetzt (`pipeline/analysis/runtime_dependencies.py`), Runtime-Dependency-Bootstrap/Lazy-Import-Status aus `quality_analyzer.py` extrahiert und per Snapshot-Bridge kompatibel gehalten. Validierung: 36/36 fokussierte Tests grün.
+- 2026-03-15: `quality_analyzer` Split Slice 5.10 umgesetzt (`pipeline/analysis/capability_resolver.py`), Stage-/Capability-Logik extrahiert und in `QualityAnalyzer` delegiert. Validierung: 36/36 fokussierte Tests grün.

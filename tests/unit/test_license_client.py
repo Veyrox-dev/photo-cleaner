@@ -266,6 +266,49 @@ class TestLicenseClient:
         assert success is True
         assert loaded_data["license_id"] == license_id
 
+    def test_load_cached_snapshot_uses_embedded_signature_when_sidecar_missing(self, client, signature_ok):
+        """Fallback: eingebettete Signatur im Snapshot soll weiter funktionieren."""
+        license_id = "TEST-001"
+        license_data = {
+            "license_id": license_id,
+            "status": "active",
+            "plan": "basic",
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        }
+
+        snapshot = {
+            "license_id": license_id,
+            "data": license_data,
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "signature": "embedded_test_sig",
+        }
+        with open(client.snapshot_file, "w") as f:
+            json.dump(snapshot, f)
+
+        success, loaded_data, error = client._load_cached_snapshot(license_id)
+
+        assert success is True
+        assert loaded_data is not None
+        assert loaded_data["license_id"] == license_id
+        assert client.signature_file.exists()
+
+    def test_load_cached_snapshot_missing_signature_returns_generic_cache_error(self, client):
+        """Ohne Signatur soll ein allgemeiner Offline-Cache-Fehler kommen."""
+        license_id = "TEST-001"
+        snapshot = {
+            "license_id": license_id,
+            "data": {"license_id": license_id, "status": "active", "plan": "basic"},
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+        with open(client.snapshot_file, "w") as f:
+            json.dump(snapshot, f)
+
+        success, loaded_data, error = client._load_cached_snapshot(license_id)
+
+        assert success is False
+        assert loaded_data is None
+        assert "Offline-Cache" in error
+
 
 class TestLicenseManager:
     """Tests für High-Level LicenseManager."""

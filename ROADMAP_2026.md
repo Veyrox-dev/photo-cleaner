@@ -54,13 +54,21 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [x] **Slice 2 (COMPLETE):** Face Detection extraction → `pipeline/analysis/face_detector.py` (1,238 lines)
 - [x] **Slice 3 (COMPLETE):** Scoring Logic extraction → `pipeline/analysis/quality_scorer.py` (18+ methods, 730 lines)
 - [x] **Slice 4 (COMPLETE):** EXIF/Metadata extraction → `pipeline/analysis/exif_extractor.py`
-- [ ] **Slice 5 (IN PROGRESS):** remaining QualityAnalyzer compression + modern_window.py start (6310 → ???)
+- [x] **Slice 5 (COMPLETE):** remaining QualityAnalyzer compression abgeschlossen
+- [ ] **Slice 6 (IN PROGRESS):** `modern_window.py` Refactoring starten (views/controllers/workflows)
 
 #### Slice 5 Progress (2026-03-12)
 - [x] Mini-slice 5.1: Haar cascade resolver in eigenes Modul extrahiert → `pipeline/analysis/haar_cascade_resolver.py`
 - [x] Mini-slice 5.1: Doppelte Haar-Cascade-Initialisierung aus `quality_analyzer.py` entfernt (Single Source in `FaceDetector`)
 - [x] Mini-slice 5.2: Face-Mesh-Resolver nach `pipeline/analysis/face_mesh_resolver.py` extrahiert und `face_detector.py` vom `quality_analyzer`-Import entkoppelt
 - [x] Mini-slice 5.3: Veraltete lokale Face-Mesh-States/Wrapper aus `quality_analyzer.py` entfernt (nach Resolver-Extraktion)
+- [x] Mini-slice 5.4: Lokale Face-Mesh-Cache/Config-Hash-Reste aus `quality_analyzer.py` entfernt; `warmup()` auf `FaceDetector`-Preload umgestellt
+- [x] Mini-slice 5.5 (größer): Bild-Lade-/Downsampling-Block aus `analyze_image()` nach `pipeline/analysis/image_preprocessor.py` extrahiert und integriert
+- [x] Mini-slice 5.6 (größer): EXIF/Orientation/Metadaten-Block aus `analyze_image()` nach `pipeline/analysis/metadata_enricher.py` extrahiert und integriert
+- [x] Mini-slice 5.7 (größer): Core-Execution-Block (Gray/Scoring/Face/Total) aus `analyze_image()` nach `pipeline/analysis/analysis_executor.py` extrahiert
+- [x] Mini-slice 5.8 (größer): `analyze_batch()`-Orchestrierung nach `pipeline/analysis/batch_runner.py` extrahiert und in `QualityAnalyzer` integriert
+- [x] Mini-slice 5.9 (größer): Runtime-Dependency-Bootstrap/Lazy-Import-Logik nach `pipeline/analysis/runtime_dependencies.py` extrahiert
+- [x] Mini-slice 5.10 (größer): Eye-Stage-/Capability-Resolver nach `pipeline/analysis/capability_resolver.py` extrahiert und in `QualityAnalyzer` verdrahtet
 - [x] Validierung: 36/36 fokussierte Analyzer-Tests grün
 
 #### Slice 4 Details: EXIF & Metadata Extractor

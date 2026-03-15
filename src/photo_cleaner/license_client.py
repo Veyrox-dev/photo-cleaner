@@ -439,18 +439,32 @@ class LicenseClient:
             if not self.snapshot_file.exists():
                 return False, None, "Kein Cache vorhanden und offline"
 
-            if not self.signature_file.exists():
-                return False, None, "Snapshot-Signatur fehlt"
-
-            signature = self.signature_file.read_text(encoding="utf-8").strip()
-            
             with open(self.snapshot_file, "r") as f:
                 snapshot = json.load(f)
+
+            signature = ""
+            if self.signature_file.exists():
+                signature = self.signature_file.read_text(encoding="utf-8").strip()
+            else:
+                # Backward compatibility: older snapshots may carry signature inline.
+                embedded_signature = snapshot.get("signature")
+                if isinstance(embedded_signature, str):
+                    signature = embedded_signature.strip()
+                    if signature:
+                        try:
+                            self.signature_file.write_text(signature, encoding="utf-8")
+                        except Exception as e:
+                            logger.debug(f"Could not persist migrated snapshot signature: {e}")
+
+            if not signature:
+                logger.warning("Cached snapshot has no signature; ignoring offline cache")
+                return False, None, "Kein gueltiger Offline-Cache vorhanden"
             
             cached_license_id = snapshot.get("license_id")
             if cached_license_id != license_id:
                 return False, None, f"Cache für andere Lizenz ({cached_license_id})"
             
+            age = timedelta(0)
             fetched_at_str = snapshot.get("fetched_at")
             if fetched_at_str:
                 fetched_at = datetime.fromisoformat(fetched_at_str)
