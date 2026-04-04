@@ -76,16 +76,16 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
    - [x] 6.7 Slice konsolidieren (technische Schulden + Abschlusskriterien dokumentiert)
 10. [x] Legacy-UI Pfade sichtbar als deprecation markieren
 11. [x] Website gemeinsame CSS/JS-Bundles einführen
-12. [ ] MSI-Installer Track aufsetzen (Vertrauenswürdigkeit Distribution)
-   - [ ] Entscheidung: WiX Toolset vs Inno Setup
-   - [ ] Reproduzierbaren MSI-Build-Command definieren
-   - [ ] Install/Upgrade/Uninstall Smoke-Test auf clean Windows vorbereiten
+12. [x] MSI-Installer Track aufsetzen (Vertrauenswürdigkeit Distribution)
+   - [x] Entscheidung: WiX Toolset (v4) als MSI-Tooling
+   - [x] Reproduzierbaren MSI-Build-Command definiert (`powershell -ExecutionPolicy Bypass -File scripts/build_msi.ps1`)
+   - [x] Install/Upgrade/Uninstall Smoke-Test auf clean Windows vorbereitet (`docs/guides/MSI_BUILD.md`)
 
 ---
 
 ## LATER (Sprint 3+)
 
-13. [ ] Supabase HTTP-503 Root-Cause Sprint (bewusst geparkt bis Slice 6.1-6.3 abgeschlossen)
+13. [ ] Supabase HTTP-503 Root-Cause Sprint (bewusst geparkt bis erster MSI-Build-Pfad validiert ist)
 14. [ ] Naming-/Terminologie-Guide finalisieren (Code Englisch, UI via i18n)
 15. [ ] Weitere QA-Baselines (10k/50k/100k) mit Vergleichsreport konsolidieren
 16. [ ] Launch-Readiness Re-Score nach P1/P2 Fortschritt
@@ -120,3 +120,4 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 - 2026-04-04: Punkt 10 abgeschlossen: Legacy-UI-Pfade (`ui/main_window.py`, `ui/cleanup_ui.py`) sichtbar als deprecated markiert (Docstring + Runtime-Warnung + Log-Hinweis auf `ModernMainWindow`).
 - 2026-04-04: Slice 6.7 abgeschlossen: Slice-6-Konsolidierung dokumentiert (Controller-Set + technische Schulden + Abschlusskriterien); Slice 6 im Backlog formal auf COMPLETE gesetzt.
 - 2026-04-04: Punkt 11 abgeschlossen: gemeinsames Website-Bundle eingeführt (`website/assets/site-bundle.css`, `website/assets/site-bundle.js`) und in alle Website-Seiten eingebunden.
+- 2026-04-04: Punkt 12 abgeschlossen: MSI-Track mit WiX v4 aufgesetzt (`installer/PhotoCleaner.wxs`, `scripts/build_msi.ps1`) und Build/Smoke-Test-Guide dokumentiert (`docs/guides/MSI_BUILD.md`).

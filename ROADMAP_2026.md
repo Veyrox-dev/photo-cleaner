@@ -15,9 +15,9 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 ### Aktueller Sprintfokus (NOW)
 - [ ] Secret Rotation (extern/manuell)
 - [ ] Frozen-Build Smoke-Test auf 5+ clean Windows Maschinen (extern/manuell)
-- [ ] P1 Slice #6: `modern_window.py` Refactoring starten (views/controllers/workflows, top-down)
-- [ ] Distribution-Track starten: MSI-Installer-Konzept + erster Build-Pfad
-- [ ] Supabase Licensing HTTP 503 Investigation bewusst verschoben (Parkplatz bis nach Slice 6 Start)
+- [x] P1 Slice #6: `modern_window.py` Refactoring (views/controllers/workflows, top-down) abgeschlossen
+- [x] Distribution-Track gestartet: MSI-Installer-Konzept + erster Build-Pfad (WiX v4 + reproduzierbarer Build-Command)
+- [ ] Supabase Licensing HTTP 503 Investigation bewusst verschoben (Parkplatz bis nach MSI-Track-Start)
 - [x] P1 Slice #1: License Service Adapter umgesetzt
 - [x] P1 Slice #2: Progress-Workflow in `modern_window.py` über Service/Facade entkoppelt
 - [x] Lizenz-/Activation-Regression-Checks ergänzt (7 gezielte Unit-Tests grün)
@@ -50,7 +50,7 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 ### Geparkte Themen (bewusst verschoben)
 - [ ] **Supabase Licensing HTTP 503 / Exchange-Stabilität**
    - Status: bewusst auf später verschoben, damit der Top-Down-Roadmap-Flow nicht unterbrochen wird
-   - Re-Entry: direkt nach erstem Slice-6-Paket (views/controllers/workflows)
+   - Re-Entry: direkt nach erstem MSI-Build-Pfad (WiX + Smoke-Test-Vorbereitung)
    - Scope bei Wiederaufnahme: Edge-Function-Retry/Timeouts, DB/Policy-Diagnostik, Monitoring/Alerts
 
 ### Nächste Ziele (März, priorisiert)

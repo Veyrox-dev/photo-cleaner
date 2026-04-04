@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Name="PhotoCleaner"
+    Manufacturer="PhotoCleaner"
+    Version="$(var.ProductVersion)"
+    UpgradeCode="4B7E4C19-DF2A-44C6-A9FB-4AA35A2A97C4"
+    Language="1031"
+    Scope="perMachine">
+
+    <MajorUpgrade
+      DowngradeErrorMessage="A newer version of PhotoCleaner is already installed." />
+
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="PhotoCleaner" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ProgramMenuDir" Name="PhotoCleaner" />
+    </StandardDirectory>
+
+    <Feature Id="MainFeature" Title="PhotoCleaner" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="StartMenuShortcutComponent" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="..\dist\PhotoCleaner\**" />
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <DirectoryRef Id="ProgramMenuDir">
+      <Component Id="StartMenuShortcutComponent" Guid="*">
+        <Shortcut
+          Id="StartMenuShortcut"
+          Name="PhotoCleaner"
+          Target="[INSTALLFOLDER]PhotoCleaner.exe"
+          WorkingDirectory="INSTALLFOLDER" />
+        <RemoveFolder Id="RemoveProgramMenuDir" On="uninstall" />
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\PhotoCleaner"
+          Name="Installed"
+          Type="integer"
+          Value="1"
+          KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+</Wix>
