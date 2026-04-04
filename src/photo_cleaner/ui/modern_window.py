@@ -104,6 +104,7 @@ from photo_cleaner.ui.indexing_thread import IndexingThread  # v0.5.3
 from photo_cleaner.ui.workflows.indexing_workflow_controller import IndexingWorkflowController
 from photo_cleaner.ui.workflows.rating_workflow_controller import RatingWorkflowController
 from photo_cleaner.ui.workflows.selection_workflow_controller import SelectionWorkflowController
+from photo_cleaner.ui.workflows.export_delete_workflow_controller import ExportDeleteWorkflowController
 from photo_cleaner.cache.image_cache_manager import ImageCacheManager  # v0.5.3
 from photo_cleaner.ui.thumbnail_lazy import ThumbnailLoader, SmartThumbnailCache  # Thumbnail async loading
 
@@ -2391,6 +2392,7 @@ class ModernMainWindow(QMainWindow):
         self._indexing_workflow = IndexingWorkflowController(self, self._center_progress_dialog_text)
         self._rating_workflow = RatingWorkflowController(self, RatingWorkerThread, QApplication.processEvents)
         self._selection_workflow = SelectionWorkflowController()
+        self._export_delete_workflow = ExportDeleteWorkflowController()
         self.cache_manager = ImageCacheManager(self.conn)
         
         # PHASE 4 FIX 1: Initialize CameraCalibrator for ML learning
@@ -6000,24 +6002,24 @@ class ModernMainWindow(QMainWindow):
     def _finalize_and_export(self):
         """Finalisieren und exportiere behaltene Bilder (streaming ZIP)."""
         from photo_cleaner.exporter import StreamingExporter
-        
-        if not self.output_path:
-            QMessageBox.warning(self, "Kein Ausgabeordner", "Kein Ausgabeordner festgelegt. Export nicht möglich.")
-            return
-        
+
         cur = self.conn.execute(
             "SELECT COUNT(*) FROM files WHERE file_status = 'KEEP' AND is_deleted = 0"
         )
         keep_count = cur.fetchone()[0]
-        
-        if keep_count == 0:
-            QMessageBox.information(self, t("no_selection_msg"), "Keine Bilder als BEHALTEN markiert.")
+
+        decision = self._export_delete_workflow.build_export_decision(self.output_path, keep_count, t)
+        if not decision.can_continue:
+            if decision.level == "warning":
+                QMessageBox.warning(self, decision.title, decision.message)
+            else:
+                QMessageBox.information(self, decision.title, decision.message)
             return
-        
+
         reply = QMessageBox.question(
             self,
-            "Finalisieren?",
-            f"{keep_count} Bild(er) als BEHALTEN markiert.\n\nExportieren nach:\n{self.output_path}\n\nFortfahren?",
+            decision.title,
+            decision.message,
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
@@ -6061,30 +6063,17 @@ class ModernMainWindow(QMainWindow):
 
             progress.close()
 
-            if cancelled:
-                QMessageBox.information(
-                    self,
-                    "Export abgebrochen",
-                    "Der Export wurde abgebrochen. Teilresultate können im ZIP liegen.",
-                )
-                return
-
-            if failure_count == 0:
-                QMessageBox.information(
-                    self,
-                    "Export Erfolgreich",
-                    f"✓ {success_count} Bild(er) exportiert als ZIP:\n{archive_path}",
-                )
+            result_message = self._export_delete_workflow.build_export_result_message(
+                success_count,
+                failure_count,
+                errors,
+                archive_path,
+                cancelled,
+            )
+            if result_message.level == "warning":
+                QMessageBox.warning(self, result_message.title, result_message.message)
             else:
-                error_text = "\n".join(errors[:5])
-                if len(errors) > 5:
-                    error_text += f"\n... und {len(errors) - 5} weitere"
-
-                QMessageBox.warning(
-                    self,
-                    "Export Teilweise Fehlgeschlagen",
-                    f"✓ {success_count} erfolgreich\n✗ {failure_count} Fehler\n\n{error_text}\n\nZIP: {archive_path}",
-                )
+                QMessageBox.information(self, result_message.title, result_message.message)
         except (OSError, IOError, ValueError) as e:
             logger.error(f"Export failed: {e}", exc_info=True)
             QMessageBox.critical(self, "Export Fehlgeschlagen", f"Fehler: {e}")
@@ -6092,14 +6081,15 @@ class ModernMainWindow(QMainWindow):
     def _confirm_delete_marked(self):
         """Bestätige und lösche alle als DELETE markierten Dateien (DB-Markierung)."""
         delete_paths = self.files.list_by_status([FileStatus.DELETE])
-        if not delete_paths:
-            QMessageBox.information(self, t("no_deletions"), "Keine Bilder sind zum Löschen markiert.")
+        decision = self._export_delete_workflow.build_delete_decision(len(delete_paths), t)
+        if not decision.can_continue:
+            QMessageBox.information(self, decision.title, decision.message)
             return
 
         reply = QMessageBox.question(
             self,
-            "Löschen bestätigen",
-            f"{len(delete_paths)} Bild(er) sind als LÖSCHEN markiert.\n\nJetzt löschen?",
+            decision.title,
+            decision.message,
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
@@ -6108,15 +6098,11 @@ class ModernMainWindow(QMainWindow):
             return
 
         result = self.actions.ui_batch_delete(delete_paths)
-        if result.get("ok"):
-            deleted_ids = result.get("deleted_ids", [])
-            skipped_locked = result.get("skipped_locked", [])
-            msg = f"✓ {len(deleted_ids)} Bild(er) gelöscht."
-            if skipped_locked:
-                msg += f"\n{len(skipped_locked)} Datei(en) wurden übersprungen (gesperrt)."
-            QMessageBox.information(self, t("delete_completed"), msg)
+        result_message = self._export_delete_workflow.build_delete_result_message(result, t)
+        if result_message.level == "warning":
+            QMessageBox.warning(self, result_message.title, result_message.message)
         else:
-            QMessageBox.warning(self, "Löschen fehlgeschlagen", result.get("message", "Unbekannter Fehler"))
+            QMessageBox.information(self, result_message.title, result_message.message)
 
         self.refresh_groups()
         self._update_progress()

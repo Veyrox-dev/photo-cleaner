@@ -66,14 +66,16 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
    - [x] Slice 5.8 (größer): Batch-Orchestrierung von `analyze_batch()` nach `pipeline/analysis/batch_runner.py` extrahiert und in `QualityAnalyzer` verdrahtet
    - [x] Slice 5.9 (größer): Runtime-Dependency-Bootstrap/Lazy-Import-Logik nach `pipeline/analysis/runtime_dependencies.py` extrahiert und `quality_analyzer.py` umgestellt
    - [x] Slice 5.10 (größer): Stage-/Capability-Resolver nach `pipeline/analysis/capability_resolver.py` extrahiert und in `QualityAnalyzer` verdrahtet
-9. [ ] Slice 6 starten: `modern_window.py` top-down in views/controllers/workflows teilen
+9. [x] Slice 6 starten: `modern_window.py` top-down in views/controllers/workflows teilen
    - [x] 6.1 Workflow-Seams markieren (Import, Rating, Selection, Dialogs)
    - [x] 6.2 Ersten Controller extrahieren (ohne UX-Änderung)
    - [x] 6.3 Fokussierte Regression-Tests ergänzen
    - [x] 6.4 Zweiten Controller extrahieren (Rating-Workflow: Thread-Wiring + Start)
    - [x] 6.5 Dritten Controller extrahieren (Selection/Dialog-Workflow)
-10. [ ] Legacy-UI Pfade sichtbar als deprecation markieren
-11. [ ] Website gemeinsame CSS/JS-Bundles einführen
+   - [x] 6.6 Vierten Controller extrahieren (Export/Delete-Dialog-Flow)
+   - [x] 6.7 Slice konsolidieren (technische Schulden + Abschlusskriterien dokumentiert)
+10. [x] Legacy-UI Pfade sichtbar als deprecation markieren
+11. [x] Website gemeinsame CSS/JS-Bundles einführen
 12. [ ] MSI-Installer Track aufsetzen (Vertrauenswürdigkeit Distribution)
    - [ ] Entscheidung: WiX Toolset vs Inno Setup
    - [ ] Reproduzierbaren MSI-Build-Command definieren
@@ -114,3 +116,7 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 - 2026-03-15: Slice 6.3 abgeschlossen: fokussierte Tests ergänzt (`tests/unit/test_indexing_workflow_controller.py`), Validierung: 3/3 grün.
 - 2026-03-15: Slice 6.4 abgeschlossen: zweiter Workflow-Controller extrahiert (`ui/workflows/rating_workflow_controller.py`), Rating-Thread-Wiring/Start aus `modern_window.py` delegiert; Validierung: 6/6 fokussierte Workflow-Controller-Tests grün.
 - 2026-03-15: Slice 6.5 abgeschlossen: dritter Workflow-Controller extrahiert (`ui/workflows/selection_workflow_controller.py`), Selection-/Comparison-/Status-Target-Logik aus `modern_window.py` delegiert; Validierung: 10/10 fokussierte Workflow-Controller-Tests grün.
+- 2026-04-04: Slice 6.6 abgeschlossen: vierter Workflow-Controller extrahiert (`ui/workflows/export_delete_workflow_controller.py`), Export-/Delete-Dialog-Entscheidungen und Ergebnis-Meldungen aus `modern_window.py` delegiert; Validierung: 16/16 fokussierte Workflow-Controller-Tests grün.
+- 2026-04-04: Punkt 10 abgeschlossen: Legacy-UI-Pfade (`ui/main_window.py`, `ui/cleanup_ui.py`) sichtbar als deprecated markiert (Docstring + Runtime-Warnung + Log-Hinweis auf `ModernMainWindow`).
+- 2026-04-04: Slice 6.7 abgeschlossen: Slice-6-Konsolidierung dokumentiert (Controller-Set + technische Schulden + Abschlusskriterien); Slice 6 im Backlog formal auf COMPLETE gesetzt.
+- 2026-04-04: Punkt 11 abgeschlossen: gemeinsames Website-Bundle eingeführt (`website/assets/site-bundle.css`, `website/assets/site-bundle.js`) und in alle Website-Seiten eingebunden.

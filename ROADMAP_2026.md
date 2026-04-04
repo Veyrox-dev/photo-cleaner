@@ -1,7 +1,7 @@
 # PhotoCleaner - Roadmap 2026 (REVISITED)
 
-**Aktualisiert:** 15. März 2026 (Execution Sync: Slice 5 abgeschlossen, Slice 6 vorbereitet, 503-Thema geparkt, MSI-Track ergänzt)  
-**Status:** Phase 4.1 ✅ COMPLETE | Security P0 ✅ COMPLETE | Phase 4.2 QA Testing + P1 Refactor (Slice 6 als Nächstes)  
+**Aktualisiert:** 04. April 2026 (Slice 6 abgeschlossen, Legacy-Deprecation sichtbar, nächste Backlog-Punkte aktiv)  
+**Status:** Phase 4.1 ✅ COMPLETE | Security P0 ✅ COMPLETE | Phase 4.2 QA Testing + P1 Refactor (Slice 6 ✅ COMPLETE)  
 **Ziel:** v1.0.0 Launch im November 2026 (revised timing)  
 **Timeline:** 9 Monate mit Fokus auf STABILITÄTSRISIKEN
 
@@ -65,7 +65,7 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [x] **Slice 3 (COMPLETE):** Scoring Logic extraction → `pipeline/analysis/quality_scorer.py` (18+ methods, 730 lines)
 - [x] **Slice 4 (COMPLETE):** EXIF/Metadata extraction → `pipeline/analysis/exif_extractor.py`
 - [x] **Slice 5 (COMPLETE):** remaining QualityAnalyzer compression abgeschlossen
-- [ ] **Slice 6 (NEXT):** `modern_window.py` Refactoring starten (views/controllers/workflows)
+- [x] **Slice 6 (COMPLETE):** `modern_window.py` Refactoring in workflows/controllers abgeschlossen
 
 #### Slice 6 Startplan (ab 2026-03-15)
 - [x] 6.1: Workflow-Seams in `modern_window.py` markieren (Import, Rating, Selection, Dialog-Trigger)
@@ -73,7 +73,8 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [x] 6.3: Mini-Slice implementieren + fokussierte Regression-Tests
 - [x] 6.4: Zweiten Mini-Slice implementieren (Rating-Workflow-Controller) und dokumentieren
 - [x] 6.5: Selection-/Dialog-Workflow-Controller implementieren und validieren
-- [ ] 6.6: Nächsten Mini-Slice planen (Export-/Delete-Dialog-Flow) und technische Schulden dokumentieren
+- [x] 6.6: Export-/Delete-Dialog-Workflow-Controller implementieren und validieren
+- [x] 6.7: Slice 6 konsolidieren (Dokumentation technischer Schulden + Abschlusskriterien für "Slice 6 COMPLETE")
 
 #### Slice 6 Progress (2026-03-15)
 - [x] Mini-slice 6.1: Workflow-Seams identifiziert (Indexing + Post-Indexing als erster Extraktionskandidat)
@@ -84,7 +85,19 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [x] Mini-slice 6.4: `modern_window.py` delegiert Rating-Thread-Wiring + Start/Dialog-Event-Flush an Controller (ohne UX-Änderung)
 - [x] Mini-slice 6.5: Dritter Workflow-Controller extrahiert → `ui/workflows/selection_workflow_controller.py`
 - [x] Mini-slice 6.5: `modern_window.py` delegiert Selection-UI-State, Comparison-Validierung und Status-Target-Sammlung an Controller (ohne UX-Änderung)
-- [x] Validierung: Workflow-Controller fokussiert 10/10 Tests grün (`test_indexing_workflow_controller.py` + `test_rating_workflow_controller.py` + `test_selection_workflow_controller.py`)
+- [x] Mini-slice 6.6: Vierter Workflow-Controller extrahiert → `ui/workflows/export_delete_workflow_controller.py`
+- [x] Mini-slice 6.6: `modern_window.py` delegiert Export-/Delete-Dialog-Entscheidungen und Ergebnis-Meldungen an Controller (ohne UX-Änderung)
+- [x] Folgeschritt Backlog #10: Legacy-UI-Pfade sichtbar deprecated markiert (`ui/main_window.py`, `ui/cleanup_ui.py`) mit Runtime-Warnung + Logger-Hinweis auf `ModernMainWindow`
+- [x] Folgeschritt Backlog #11: gemeinsame Website-Bundles eingeführt (`website/assets/site-bundle.css`, `website/assets/site-bundle.js`) und auf allen Website-Seiten verlinkt
+- [x] Validierung: Workflow-Controller fokussiert 16/16 Tests grün (`test_indexing_workflow_controller.py` + `test_rating_workflow_controller.py` + `test_selection_workflow_controller.py` + `test_export_delete_workflow_controller.py`)
+
+#### Slice 6 Konsolidierung (6.7) – Abschluss
+- [x] Controller-Landschaft konsolidiert: `indexing_workflow_controller.py`, `rating_workflow_controller.py`, `selection_workflow_controller.py`, `export_delete_workflow_controller.py`
+- [x] Sichtbare Legacy-Deprecation gesetzt: `ui/main_window.py`, `ui/cleanup_ui.py` (Docstring + FutureWarning + Logger-Warnung)
+- [x] Abschlusskriterien erfüllt:
+   - [x] UI-Verhalten unverändert (nur Delegation/Struktur)
+   - [x] Workflow-Controller fokussiert validiert (16/16 grün)
+   - [x] Slice-6-Refactoring aus Backlog-Sicht vollständig
 
 #### Slice 5 Progress (2026-03-12)
 - [x] Mini-slice 5.1: Haar cascade resolver in eigenes Modul extrahiert → `pipeline/analysis/haar_cascade_resolver.py`

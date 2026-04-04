@@ -1,10 +1,10 @@
 """
 PhotoCleaner Cleanup UI (ITIL-Style)
 
-** STATUS: ACTIVE SECONDARY UI **
+** STATUS: DEPRECATED LEGACY UI **
 
-Alternative UI für Cleanup-Operationen mit minimalem Design.
-Teil des ITIL-UI-Sets (zusammen mit main_window.py).
+Alternative Legacy-UI für Cleanup-Operationen mit minimalem Design.
+Primäre UI ist `photo_cleaner.ui.modern_window.ModernMainWindow`.
 
 Die neue Pipeline-UI wurde nach ui/pipeline_ui_archive/ archiviert.
 """
@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import warnings
 from pathlib import Path
 from typing import List
 
@@ -41,6 +42,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QIcon, QPixmap, QFont
 from PySide6.QtCore import Qt, QCoreApplication
 import logging
+logger = logging.getLogger(__name__)
 
 # Local imports (ensure package is on PYTHONPATH when running from project root)
 from photo_cleaner.db.schema import Database
@@ -69,6 +71,12 @@ class CleanupUI(QWidget):
 
     def __init__(self, db_path: Path | str = "photo_cleaner.db") -> None:
         super().__init__()
+        warnings.warn(
+            "CleanupUI ist deprecated; bitte ModernMainWindow verwenden.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        logger.warning("[DEPRECATED] CleanupUI instantiated; use ModernMainWindow instead.")
         self.db_path = Path(db_path)
         self.db = Database(self.db_path)
         self.conn = self.db.connect()

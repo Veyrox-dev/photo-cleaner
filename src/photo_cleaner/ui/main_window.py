@@ -1,17 +1,16 @@
 """
 PhotoCleaner Main Window (ITIL UI)
 
-** STATUS: ACTIVE PRIMARY UI **
-Reaktiviert als Haupt-UI (Januar 2026)
+** STATUS: DEPRECATED LEGACY UI **
+Nur noch für Kompatibilität/Debugzwecke; nicht mehr primärer Einstieg.
 
-Dieses ITIL-UI ist die primäre Benutzeroberfläche für PhotoCleaner:
+Dieses ITIL-UI ist ein Legacy-Pfad:
 - PySide6-basiert mit professionellem Design
 - Umfassende Features: Status-Management, History-Tracking, Batch-Operations
 - Integration mit allen Services und Repositories
 - Themes, Hotkeys, Panels wie im Original-Design
 
-Die neue Pipeline-UI (Tkinter) wurde nach ui/pipeline_ui_archive/ verschoben
-und kann bei Bedarf wieder aktiviert werden.
+Primäre UI ist `photo_cleaner.ui.modern_window.ModernMainWindow`.
 
 Verwendung:
     python run_ui.py --db photo_cleaner.db
@@ -21,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
@@ -125,6 +125,12 @@ class HotkeyOverlay(QDialog):
 class MainWindow(QMainWindow):
     def __init__(self, db_path: Path, output_path: Optional[Path] = None) -> None:
         super().__init__()
+        warnings.warn(
+            "MainWindow ist deprecated; bitte ModernMainWindow verwenden.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        logger.warning("[DEPRECATED] MainWindow instantiated; use ModernMainWindow instead.")
         self.setWindowTitle("PhotoCleaner - Review")
         self.resize(1280, 800)
 
@@ -890,9 +896,9 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
         try:
-            selsqlite3.Error:
-            logger.debug("Failed to close database connection", exc_info=True)xception:
-            pass
+            self.db.close()
+        except sqlite3.Error:
+            logger.debug("Failed to close database connection", exc_info=True)
         super().closeEvent(event)
 
 
