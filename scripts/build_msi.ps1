@@ -1,10 +1,10 @@
-Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
-
 param(
     [string]$Version,
     [switch]$Clean
 )
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $distExe = Join-Path $root "dist\PhotoCleaner\PhotoCleaner.exe"
@@ -39,8 +39,26 @@ if ($Version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') {
 }
 
 $wix = Get-Command wix -ErrorAction SilentlyContinue
-if (-not $wix) {
-    throw "WiX CLI not found. Install it via: dotnet tool install --global wix"
+$wixExe = if ($wix) { $wix.Source } else { $null }
+
+if (-not $wixExe) {
+    $candidatePaths = @(
+        "C:\Program Files\WiX Toolset\bin\wix.exe",
+        "C:\Program Files\WiX Toolset v6.0\bin\wix.exe",
+        "C:\Program Files\WiX Toolset v6\bin\wix.exe",
+        "C:\Program Files\WiX Toolset v4\bin\wix.exe"
+    )
+
+    foreach ($candidate in $candidatePaths) {
+        if (Test-Path $candidate) {
+            $wixExe = $candidate
+            break
+        }
+    }
+}
+
+if (-not $wixExe) {
+    throw "WiX CLI not found. Install it via: winget install --id WiXToolset.WiXCLI"
 }
 
 if ($Clean -and (Test-Path $outDir)) {
@@ -56,7 +74,7 @@ Write-Host "Version: $Version"
 Write-Host "Input:   $wxsPath"
 Write-Host "Output:  $outputPath"
 
-& wix build $wxsPath -d ProductVersion=$Version -arch x64 -out $outputPath
+& $wixExe build $wxsPath -d ProductVersion=$Version -arch x64 -out $outputPath
 
 if (-not (Test-Path $outputPath)) {
     throw "MSI build reported success, but output was not found: $outputPath"
