@@ -529,6 +529,24 @@ class TestRequestWithRetry:
         assert request_fn.call_count == 2
 
     @patch("photo_cleaner.license_client.time")
+    def test_dns_failure_does_not_retry(self, mock_time):
+        """NameResolutionError / socket.gaierror soll sofort ohne Retry abbrechen."""
+        import socket
+        from photo_cleaner.license_client import _request_with_retry
+
+        dns_cause = socket.gaierror(11001, "getaddrinfo failed")
+        conn_err = requests.ConnectionError("DNS failed")
+        conn_err.__cause__ = dns_cause
+        request_fn = Mock(side_effect=conn_err)
+
+        with pytest.raises(requests.ConnectionError):
+            _request_with_retry(request_fn, retries=4)
+
+        # Must NOT retry – only one call allowed
+        request_fn.assert_called_once()
+        mock_time.sleep.assert_not_called()
+
+    @patch("photo_cleaner.license_client.time")
     def test_honours_retry_after_integer_header(self, mock_time):
         """Retry-After-Header als Integer soll als Wartezeit genutzt werden."""
         from photo_cleaner.license_client import _request_with_retry

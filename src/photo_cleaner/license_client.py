@@ -649,6 +649,21 @@ _RETRYABLE_STATUS_CODES = frozenset({429, 502, 503, 504})
 _MAX_RETRY_WAIT_SECONDS = 30.0
 
 
+def _is_dns_failure(exc: Exception) -> bool:
+    """Return True if *exc* chain contains a DNS resolution error.
+
+    DNS failures (``socket.gaierror`` / ``NameResolutionError``) are permanent
+    on the current call – there is no point retrying them.
+    """
+    import socket
+    current: BaseException | None = exc
+    while current is not None:
+        if isinstance(current, socket.gaierror):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
 def _request_with_retry(
     request_fn,
     retries: int = 4,
@@ -698,6 +713,17 @@ def _request_with_retry(
                     except Exception:
                         pass
 
+        except requests.Timeout as exc:
+            # Timeouts are transient; retry with backoff.
+            last_exc = exc
+            retry_after = None
+        except requests.ConnectionError as exc:
+            if _is_dns_failure(exc):
+                # DNS failures are permanent for this attempt – fail fast.
+                logger.error("DNS resolution failed; skipping retries: %s", exc)
+                raise
+            last_exc = exc
+            retry_after = None
         except requests.RequestException as exc:
             last_exc = exc
             retry_after = None
