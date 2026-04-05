@@ -1,7 +1,7 @@
 # src/photo_cleaner/__init__.py
 """Photo Cleaner - Local photo collection analyzer and duplicate detector."""
 
-__version__ = "0.8.3"  # Phase 4 QA & Testing (State Machine Fixes)
+__version__ = "0.8.4"  # Architecture Refactoring Slice 6 + MSI Distribution Track
 
 # Import config to make it available at package level
 from photo_cleaner.config import AppConfig, AppMode, get_logger, is_debug, is_release

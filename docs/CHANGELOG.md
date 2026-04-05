@@ -1,5 +1,44 @@
 # PhotoCleaner - Changelog
-> Version 0.8.3 - State Machine & Initialization Fixes + Beta Testing Feedback (2026-02-23)
+> Version 0.8.4 - Architecture Refactoring (Slice 6) + MSI Distribution Track (2026-04-04)
+
+## [0.8.4] - Architecture Refactoring (Slice 6) + MSI Distribution Track (2026-04-04) 🏗️
+
+### 🏗️ Architecture: modern_window.py Slice 6 Refactoring (P1)
+
+Extracted all workflow responsibilities from the `modern_window.py` monolith into dedicated controller modules under `ui/workflows/`. No UX change; pure structural improvement.
+
+#### Workflow Controllers extracted
+- **`ui/workflows/indexing_workflow_controller.py`** – Indexing/Post-Indexing dialog + thread wiring
+- **`ui/workflows/rating_workflow_controller.py`** – Rating thread wiring, start/dialog-event flush
+- **`ui/workflows/selection_workflow_controller.py`** – Selection UI state, comparison validation, status-target collection
+- **`ui/workflows/export_delete_workflow_controller.py`** – Export/Delete dialog decisions and result messages
+
+All four controllers validated: **16/16 workflow-controller unit tests green**.
+
+#### Legacy UI Deprecation markers
+- `ui/main_window.py` and `ui/cleanup_ui.py` marked with `FutureWarning` + logger hint → `ModernMainWindow`
+
+### 🌐 Website: Shared Asset Bundles
+
+Introduced shared CSS/JS bundles for all website pages:
+- `website/assets/site-bundle.css`
+- `website/assets/site-bundle.js`
+
+All website pages updated to reference the shared bundles.
+
+### 📦 MSI Distribution Track (WiX v4)
+
+Set up a reproducible MSI installer pipeline using **WiX Toolset v4**:
+
+| File | Purpose |
+|------|---------|
+| `installer/PhotoCleaner.wxs` | WiX source – Install/MajorUpgrade/Uninstall/Shortcut |
+| `scripts/build_msi.ps1` | Reproducible build command (auto-detects version from `run_ui.py`) |
+| `docs/guides/MSI_BUILD.md` | Build prerequisites, command reference, Smoke-Test protocol |
+
+**First MSI build successful:** `PhotoCleaner-0.8.4-x64.msi` (≈ 356 MB)
+
+---
 
 ## [0.8.3] - State Machine & Initialization Fixes + Beta Testing Feedback (2026-02-23) 🔧
 

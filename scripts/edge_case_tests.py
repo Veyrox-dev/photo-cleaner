@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Edge case and crash testing for PhotoCleaner v0.8.3
+Edge case and crash testing for PhotoCleaner v0.8.4
 
 Tests graceful handling of:
 - Corrupted JPEG files

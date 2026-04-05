@@ -1,6 +1,6 @@
 # PhotoCleaner FAQ
 
-**Version:** 0.8.3 (Feb 2026)
+**Version:** 0.8.4 (Apr 2026)
 
 ---
 

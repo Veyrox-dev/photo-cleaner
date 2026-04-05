@@ -35,7 +35,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build_msi.ps1
 Optional mit expliziter Version und Clean-Output:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/build_msi.ps1 -Version 0.8.3 -Clean
+powershell -ExecutionPolicy Bypass -File scripts/build_msi.ps1 -Version 0.8.4 -Clean
 ```
 
 Output:

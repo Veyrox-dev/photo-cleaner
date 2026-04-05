@@ -1,6 +1,6 @@
 # PhotoCleaner Beta Feedback System
 
-**Version:** 0.8.3  
+**Version:** 0.8.4  
 **Erstellt:** 5. Februar 2026  
 **Zweck:** Systematisches Sammeln von User Feedback für Algorithm Improvements
 

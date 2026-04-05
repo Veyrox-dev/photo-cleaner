@@ -5,7 +5,7 @@
 
 # Default target
 help:
-	@echo "PhotoCleaner v0.8.3 - Development Commands"
+	@echo "PhotoCleaner v0.8.4 - Development Commands"
 	@echo "=========================================="
 	@echo ""
 	@echo "Setup:"

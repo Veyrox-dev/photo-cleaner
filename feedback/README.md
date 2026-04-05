@@ -1,6 +1,6 @@
 # 📊 PhotoCleaner Beta Feedback
 
-Dieser Ordner speichert Feedback-Dateien von Beta-Testern für PhotoCleaner v0.8.3+.
+Dieser Ordner speichert Feedback-Dateien von Beta-Testern für PhotoCleaner v0.8.4+.
 
 ## 📁 Struktur
 

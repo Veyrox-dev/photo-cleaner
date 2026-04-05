@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Stress testing script for PhotoCleaner v0.8.3
+Stress testing script for PhotoCleaner v0.8.4
 
 Generates large test image datasets and runs photocleaner on them,
 measuring performance, memory usage, and timing characteristics.

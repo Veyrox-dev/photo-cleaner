@@ -147,7 +147,7 @@ def main():
     """Run all memory profiling tests"""
     print("\n" + "="*80)
     print("PHASE 4.2 MEMORY PROFILING SUITE")
-    print("PhotoCleaner v0.8.3 - Memory Leak Detection")
+    print("PhotoCleaner v0.8.4 - Memory Leak Detection")
     print("="*80)
     
     results = {}

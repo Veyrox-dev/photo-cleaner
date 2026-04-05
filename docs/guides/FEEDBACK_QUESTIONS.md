@@ -1,6 +1,6 @@
 # PhotoCleaner v0.8.2 Beta Feedback Formular
 
-**Version:** 0.8.3 (Phase 4 - State Machine Fixes)  
+**Version:** 0.8.4 (Architecture Refactoring + MSI Distribution)  
 **Datum:** Februar 2026  
 **Ziel:** User Feedback zur Auto-Select Genauigkeit und neuen Features sammeln
 

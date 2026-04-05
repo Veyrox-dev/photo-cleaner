@@ -35,7 +35,7 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
 }
 
 if ($Version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') {
-    throw "Invalid version '$Version'. Expected semantic version format like 0.8.3"
+    throw "Invalid version '$Version'. Expected semantic version format like 0.8.4"
 }
 
 $wix = Get-Command wix -ErrorAction SilentlyContinue

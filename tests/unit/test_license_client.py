@@ -452,3 +452,178 @@ class TestLicenseManager:
         assert success is False
         error_msg = message if isinstance(message, str) else str(message)
         assert "fehlgeschlagen" in error_msg.lower() or "failed" in error_msg.lower()
+
+
+class TestRequestWithRetry:
+    """Tests für _request_with_retry – exponentielles Backoff + Retry-After."""
+
+    def _make_response(self, status_code, headers=None):
+        resp = MagicMock()
+        resp.status_code = status_code
+        resp.headers = headers or {}
+        return resp
+
+    @patch("photo_cleaner.license_client.time")
+    def test_succeeds_on_first_attempt(self, mock_time):
+        """Kein Retry wenn erster Request 200 zurückgibt."""
+        from photo_cleaner.license_client import _request_with_retry
+
+        ok = self._make_response(200)
+        request_fn = Mock(return_value=ok)
+
+        result = _request_with_retry(request_fn)
+
+        assert result.status_code == 200
+        request_fn.assert_called_once()
+        mock_time.sleep.assert_not_called()
+
+    @patch("photo_cleaner.license_client.time")
+    def test_retries_on_503_then_succeeds(self, mock_time):
+        """Erster Call liefert 503, zweiter 200 → Erfolg nach einem Retry."""
+        from photo_cleaner.license_client import _request_with_retry
+
+        responses = [self._make_response(503), self._make_response(200)]
+        request_fn = Mock(side_effect=responses)
+
+        result = _request_with_retry(request_fn)
+
+        assert result.status_code == 200
+        assert request_fn.call_count == 2
+        mock_time.sleep.assert_called_once()
+
+    @patch("photo_cleaner.license_client.time")
+    def test_retries_on_502_then_succeeds(self, mock_time):
+        """502 ist jetzt im Retryable-Set enthalten."""
+        from photo_cleaner.license_client import _request_with_retry
+
+        responses = [self._make_response(502), self._make_response(200)]
+        request_fn = Mock(side_effect=responses)
+
+        result = _request_with_retry(request_fn)
+
+        assert result.status_code == 200
+        assert request_fn.call_count == 2
+
+    @patch("photo_cleaner.license_client.time")
+    def test_raises_after_all_retries_fail(self, mock_time):
+        """Nach allen Versuchen soll RequestException geworfen werden."""
+        from photo_cleaner.license_client import _request_with_retry
+
+        request_fn = Mock(return_value=self._make_response(503))
+
+        with pytest.raises(requests.RequestException, match="HTTP 503"):
+            _request_with_retry(request_fn, retries=3)
+
+        assert request_fn.call_count == 3
+
+    @patch("photo_cleaner.license_client.time")
+    def test_raises_on_network_exception(self, mock_time):
+        """Netzwerk-Exception soll nach allen Retries weitergereicht werden."""
+        from photo_cleaner.license_client import _request_with_retry
+
+        request_fn = Mock(side_effect=requests.ConnectionError("timeout"))
+
+        with pytest.raises(requests.RequestException):
+            _request_with_retry(request_fn, retries=2)
+
+        assert request_fn.call_count == 2
+
+    @patch("photo_cleaner.license_client.time")
+    def test_honours_retry_after_integer_header(self, mock_time):
+        """Retry-After-Header als Integer soll als Wartezeit genutzt werden."""
+        from photo_cleaner.license_client import _request_with_retry
+
+        resp_503 = self._make_response(503, headers={"Retry-After": "5"})
+        resp_200 = self._make_response(200)
+        request_fn = Mock(side_effect=[resp_503, resp_200])
+
+        _request_with_retry(request_fn, retries=4, max_backoff=10.0)
+
+        mock_time.sleep.assert_called_once()
+        actual_delay = mock_time.sleep.call_args[0][0]
+        # Retry-After=5 capped at max_backoff=10 → delay == 5.0
+        assert actual_delay == pytest.approx(5.0)
+
+    @patch("photo_cleaner.license_client.time")
+    def test_retry_after_capped_at_max_backoff(self, mock_time):
+        """Retry-After-Wert größer als max_backoff soll auf max_backoff gecappt werden."""
+        from photo_cleaner.license_client import _request_with_retry
+
+        resp_503 = self._make_response(503, headers={"Retry-After": "60"})
+        resp_200 = self._make_response(200)
+        request_fn = Mock(side_effect=[resp_503, resp_200])
+
+        _request_with_retry(request_fn, retries=4, max_backoff=10.0)
+
+        actual_delay = mock_time.sleep.call_args[0][0]
+        assert actual_delay == pytest.approx(10.0)
+
+    @patch("photo_cleaner.license_client.time")
+    def test_budget_exhausted_stops_retrying(self, mock_time):
+        """Wenn Retry-After > Budget-Rest: kein weiterer Retry."""
+        from photo_cleaner.license_client import _request_with_retry
+
+        # All calls return 503 so we track how many were made.
+        request_fn = Mock(return_value=self._make_response(503))
+
+        # base_backoff=40 with max_backoff=100: first raw delay ≈ 40s which
+        # already exceeds the 30s budget → loop breaks after the first attempt.
+        with pytest.raises(requests.RequestException):
+            _request_with_retry(request_fn, retries=4, base_backoff=40.0, max_backoff=100.0)
+
+        # Should not have made all 4 attempts because budget is exhausted.
+        assert request_fn.call_count < 4
+
+    @patch("photo_cleaner.license_client.time")
+    def test_exponential_backoff_increases(self, mock_time):
+        """Backoff soll zwischen Retries steigen (grob exponentiell)."""
+        from photo_cleaner.license_client import _request_with_retry
+
+        request_fn = Mock(return_value=self._make_response(503))
+
+        with pytest.raises(requests.RequestException):
+            _request_with_retry(request_fn, retries=4, base_backoff=1.0, max_backoff=100.0)
+
+        sleep_calls = [c[0][0] for c in mock_time.sleep.call_args_list]
+        # Each successive delay should be >= the previous (ignoring jitter noise)
+        # base_backoff * 2^0 = 1, * 2^1 = 2, * 2^2 = 4 — allow ±30 % for jitter
+        for i in range(1, len(sleep_calls)):
+            assert sleep_calls[i] >= sleep_calls[i - 1] * 0.7
+
+    @patch("photo_cleaner.license_client.time")
+    def test_exchange_license_key_retries_on_503(self, mock_time):
+        """exchange_license_key soll bei transientem 503 automatisch retrien."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = LicenseConfig(
+                project_url="https://test.supabase.co",
+                anon_key="test_anon_key",
+            )
+            client = LicenseClient(config, cache_dir=Path(tmpdir))
+
+            resp_503 = self._make_response(503)
+            resp_503.headers = {}
+            payload = {
+                "ok": True,
+                "license_id": "TEST-001",
+                "license_data": {
+                    "license_id": "TEST-001",
+                    "status": "active",
+                    "plan": "basic",
+                    "expires_at": (
+                        datetime.now(timezone.utc) + timedelta(days=30)
+                    ).isoformat(),
+                },
+                "signature": "sig",
+            }
+            resp_200 = self._make_response(200)
+            resp_200.json = Mock(return_value=payload)
+
+            with patch("photo_cleaner.license_client.requests") as mock_req:
+                mock_req.post.side_effect = [resp_503, resp_200]
+                mock_req.RequestException = requests.RequestException
+
+                success, license_id, error = client.exchange_license_key("TEST-KEY")
+
+            assert success is True
+            assert license_id == "TEST-001"
+            assert mock_req.post.call_count == 2

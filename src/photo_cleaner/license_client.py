@@ -224,7 +224,9 @@ class LicenseClient:
         }
         
         try:
-            resp = requests.post(url, json=payload, headers=headers, timeout=15)
+            resp = _request_with_retry(
+                lambda: requests.post(url, json=payload, headers=headers, timeout=15)
+            )
             if resp.status_code >= 400:
                 details = _safe_response_details(resp)
                 logger.error("License exchange failed (%s): %s", resp.status_code, details)
@@ -464,7 +466,9 @@ class LicenseClient:
         }
         
         try:
-            resp = requests.post(url, json=payload, headers=headers, timeout=10)
+            resp = _request_with_retry(
+                lambda: requests.post(url, json=payload, headers=headers, timeout=10)
+            )
             resp.raise_for_status()
             return True, ""
         except requests.HTTPError as e:
@@ -638,23 +642,97 @@ def _safe_response_details(resp) -> str:
             return ""
 
 
-def _request_with_retry(request_fn, retries: int = 3, backoff_seconds: float = 1.5):
+# Retryable HTTP status codes from Supabase / cloud backends.
+_RETRYABLE_STATUS_CODES = frozenset({429, 502, 503, 504})
+
+# Maximum total seconds to spend on retries before giving up.
+_MAX_RETRY_WAIT_SECONDS = 30.0
+
+
+def _request_with_retry(
+    request_fn,
+    retries: int = 4,
+    base_backoff: float = 1.0,
+    max_backoff: float = 10.0,
+):
+    """Execute *request_fn* with exponential backoff on transient HTTP errors.
+
+    Retry behaviour:
+    - Retries on :data:`_RETRYABLE_STATUS_CODES` (429, 502, 503, 504) and
+      network-level :class:`requests.RequestException`.
+    - Exponential backoff: ``base_backoff * 2 ** attempt`` (capped at
+      *max_backoff*), with ±25 % random jitter.
+    - Honours the ``Retry-After`` response header (integer seconds or
+      HTTP-date) when present on a 429 / 503 response.
+    - Gives up early when accumulated wait would exceed
+      :data:`_MAX_RETRY_WAIT_SECONDS`.
+    """
+    import random
+
     last_exc = None
+    total_waited = 0.0
+
     for attempt in range(retries):
         try:
             resp = request_fn()
-            if resp.status_code in (429, 503, 504):
-                raise requests.RequestException(f"HTTP {resp.status_code}")
-            return resp
+            if resp.status_code not in _RETRYABLE_STATUS_CODES:
+                return resp
+            # Treat retryable status as a transient exception so the retry
+            # loop handles backoff uniformly.
+            last_exc = requests.RequestException(f"HTTP {resp.status_code}")
+
+            # Honour Retry-After header if present.
+            retry_after_raw = resp.headers.get("Retry-After", "")
+            retry_after: float | None = None
+            if retry_after_raw:
+                try:
+                    retry_after = float(retry_after_raw)
+                except ValueError:
+                    # HTTP-date format – parse and compute delta.
+                    try:
+                        from email.utils import parsedate_to_datetime
+                        retry_dt = parsedate_to_datetime(retry_after_raw)
+                        from datetime import timezone as _tz
+                        delta = (retry_dt - datetime.now(_tz.utc)).total_seconds()
+                        retry_after = max(0.0, delta)
+                    except Exception:
+                        pass
+
         except requests.RequestException as exc:
             last_exc = exc
-            if attempt < retries - 1:
-                delay = backoff_seconds * (attempt + 1)
-                logger.warning("Request failed (%s); retrying in %.1fs", exc, delay)
-                time.sleep(delay)
-                continue
-            raise
-    raise last_exc if last_exc else requests.RequestException("Request failed")
+            retry_after = None
+
+        if attempt >= retries - 1:
+            break
+
+        # Compute exponential backoff with ±25 % jitter.
+        raw_delay = base_backoff * (2 ** attempt)
+        jitter = raw_delay * 0.25 * (2 * random.random() - 1)
+        delay = min(raw_delay + jitter, max_backoff)
+
+        if retry_after is not None:
+            delay = min(retry_after, max_backoff)
+
+        if total_waited + delay > _MAX_RETRY_WAIT_SECONDS:
+            logger.warning(
+                "Retry budget exhausted after %.1fs total wait; giving up.",
+                total_waited,
+            )
+            break
+
+        logger.warning(
+            "Transient error (%s); retry %d/%d in %.1fs.",
+            last_exc,
+            attempt + 1,
+            retries - 1,
+            delay,
+        )
+        time.sleep(delay)
+        total_waited += delay
+
+    if last_exc:
+        raise last_exc
+    raise requests.RequestException("Request failed after retries")  # pragma: no cover
 
 
 class LicenseManager:

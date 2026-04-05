@@ -1,7 +1,7 @@
 # PhotoCleaner - Roadmap 2026 (REVISITED)
 
-**Aktualisiert:** 04. April 2026 (Slice 6 abgeschlossen, Legacy-Deprecation sichtbar, nächste Backlog-Punkte aktiv)  
-**Status:** Phase 4.1 ✅ COMPLETE | Security P0 ✅ COMPLETE | Phase 4.2 QA Testing + P1 Refactor (Slice 6 ✅ COMPLETE)  
+**Aktualisiert:** 05. April 2026 (v0.8.4 released, Root-Cleanup, Roadmap synchronisiert)  
+**Status:** Phase 4.1 ✅ COMPLETE | Security P0 ✅ COMPLETE | Phase 4.2 QA Testing + P1 Refactor (Slice 6 ✅ COMPLETE) | MSI Distribution Track ✅ COMPLETE  
 **Ziel:** v1.0.0 Launch im November 2026 (revised timing)  
 **Timeline:** 9 Monate mit Fokus auf STABILITÄTSRISIKEN
 
@@ -17,7 +17,7 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [ ] Frozen-Build Smoke-Test auf 5+ clean Windows Maschinen (extern/manuell)
 - [x] P1 Slice #6: `modern_window.py` Refactoring (views/controllers/workflows, top-down) abgeschlossen
 - [x] Distribution-Track gestartet: MSI-Installer-Konzept + erster Build-Pfad (WiX v4 + reproduzierbarer Build-Command)
-- [ ] Supabase Licensing HTTP 503 Investigation bewusst verschoben (Parkplatz bis nach MSI-Track-Start)
+- [x] Supabase Licensing HTTP 503 Investigation abgeschlossen: exponentielles Backoff + Retry-After + 30s-Budget in `license_client.py`
 - [x] P1 Slice #1: License Service Adapter umgesetzt
 - [x] P1 Slice #2: Progress-Workflow in `modern_window.py` über Service/Facade entkoppelt
 - [x] Lizenz-/Activation-Regression-Checks ergänzt (7 gezielte Unit-Tests grün)
@@ -48,16 +48,16 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [ ] **Frozen-Build Smoke-Test auf 5+ Clean Windows Maschinen** final abschließen
 
 ### Geparkte Themen (bewusst verschoben)
-- [ ] **Supabase Licensing HTTP 503 / Exchange-Stabilität**
-   - Status: bewusst auf später verschoben, damit der Top-Down-Roadmap-Flow nicht unterbrochen wird
-   - Re-Entry: direkt nach erstem MSI-Build-Pfad (WiX + Smoke-Test-Vorbereitung)
-   - Scope bei Wiederaufnahme: Edge-Function-Retry/Timeouts, DB/Policy-Diagnostik, Monitoring/Alerts
+- [x] **Supabase Licensing HTTP 503 / Exchange-Stabilität** – abgeschlossen
+   - `_request_with_retry`: exponentielles Backoff (base×2^n ±25% Jitter), Retry-After-Header (int + HTTP-date), 30s-Budget-Cap, Retryable: {429, 502, 503, 504}
+   - `exchange_license_key` + `register_device` verwenden jetzt Retry
+   - 10 neue Unit-Tests, alle 34 License-Client-Tests grün
 
-### Nächste Ziele (März, priorisiert)
-1. **Sprint 1 sauber schließen (Backlog NOW):** Secret rotation + 5x clean-machine smoke-tests
-2. **P1 Architektur top-down weiterführen:** Slice 6 in `modern_window.py` starten und in kleine testbare Mini-Slices schneiden
-3. **Vertrauenswürdiger Release-Kanal:** MSI-Installer als zusätzliches Auslieferungsziel vorbereiten
-4. **Danach Re-Entry geparkter Cloud-Themen:** HTTP 503/Supabase root-cause sprint
+### Nächste Ziele (April, priorisiert)
+1. **Sprint 1 extern abschließen:** Secret Rotation + 5x Clean-Machine Smoke-Tests (blocking für v1.0)
+2. ~~**Supabase HTTP-503 Re-Entry:**~~ ✅ Erledigt – Retry-Logik implementiert und getestet
+3. **MSI Smoke-Test auf virgin Windows** durchführen (Install/Upgrade/Uninstall gemäß `docs/guides/MSI_BUILD.md`)
+4. **Launch-Readiness Re-Score** nach P1-Abschluss
 
 ### Architektur-Refactoring Roadmap (Quality Analyzer Slices)
 - [x] **Slice 1 (COMPLETE):** Data Models extraction → `pipeline/analysis/models.py`
@@ -491,8 +491,8 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
    - [ ] Sign EXE (if applicable)
 
 2. **Installation Testing**
-   - [ ] MSI-Installer bauen (primärer Installer-Track für mehr Trust)
-   - [ ] Tooling-Entscheidung festziehen (WiX Toolset vs Inno Setup) + reproduzierbarer Build-Command
+   - [x] MSI-Installer gebaut (WiX v4, erster Build: `PhotoCleaner-0.8.4-x64.msi`)
+   - [x] Tooling-Entscheidung: WiX Toolset v4 + reproduzierbarer Build-Command (`scripts/build_msi.ps1`)
    - [ ] Test installer on virgin Windows 10
    - [ ] Test installer on virgin Windows 11
    - [ ] Test upgrade from v0.8.x to v1.0.0

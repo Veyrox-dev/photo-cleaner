@@ -2,13 +2,13 @@
 
 **Intelligente Foto-Verwaltung mit Duplikaterkennung und automatischer Qualitätsbewertung**
 
-[![Version](https://img.shields.io/badge/version-0.8.3-green.svg)](https://github.com/your-repo/photo-cleaner)
+[![Version](https://img.shields.io/badge/version-0.8.4-green.svg)](https://github.com/your-repo/photo-cleaner)
 [![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Proprietary-lightgrey.svg)](../LICENSE)
 [![Status](https://img.shields.io/badge/status-beta--testing-yellow.svg)]()
 [![Performance](https://img.shields.io/badge/performance-9.19x_faster-brightgreen.svg)]()
 
-> **v0.8.3 Stabilisierung (Feb 22, 2026)**: State-Machine Fixes, Rating-Reliability, sequenzielles Thumbnail-Loading.
+> **v0.8.4 Architecture Refactoring (Apr 4, 2026)**: Slice 6 Workflow Controllers, MSI Distribution Track (WiX v4).
 
 ---
 
@@ -426,22 +426,22 @@ python run_final_pipeline.py ~/Pictures --hash-dist 8
 
 ## 📊 Versionen & Updates
 
-**Aktuelle Version:** 0.8.3 (Stabilisierung & Pipeline Sequencing)  
-**Release:** Februar 22, 2026  
+**Aktuelle Version:** 0.8.4 (Architecture Refactoring + MSI Distribution)  
+**Release:** April 4, 2026  
 **Status:** Beta-Testing
 
-### Version 0.8.3 Highlights (Latest Release)
+### Version 0.8.4 Highlights (Latest Release)
 
-- ✅ **State Machine Fixes**: Keine falschen MTCNN/MediaPipe Warnungen
-- ✅ **Rating Reliability**: MTCNN-Fallback funktioniert ohne Abbruch
-- ✅ **Sequenzieller Flow**: Index → Duplicates → Rating → Thumbnails
-- ✅ **Gruppen sichtbar**: Duplicate-Gruppen werden sofort gerendert
-- ✅ **Beta Feedback**: Offline-Form speichert JSON-Feedback lokal
+- ✅ **Slice 6 Refactoring**: 4 Workflow-Controller aus `modern_window.py` extrahiert
+- ✅ **Legacy Deprecation**: `main_window.py`/`cleanup_ui.py` sichtbar markiert
+- ✅ **Website Bundles**: Gemeinsame CSS/JS-Assets konsolidiert
+- ✅ **MSI Distribution**: WiX v4 Build-Pfad, reproduzierbares Skript, Smoke-Test-Protokoll
 
 ### Version History
 
 | Version | Highlights | Datum |
 |---------|-----------|-------|
+| **0.8.4** | Architecture Refactoring (Slice 6), MSI Distribution Track | Apr 4, 2026 |
 | **0.8.3** | Stabilisierung, Pipeline Sequencing, Rating-Fixes | Feb 22, 2026 |
 | **0.8.2** | Performance Tuning (Cheap Filter, HEIC, Profiling) | Feb 7, 2026 |
 | **0.6.0** | Database Migrations, CI/CD Pipeline, Performance Profiling | Feb 15, 2026 |

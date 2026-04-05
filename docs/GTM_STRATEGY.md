@@ -2,7 +2,7 @@
 
 **Dokumentversion:** 1.0  
 **Datum:** 7. Februar 2026  
-**Status:** Aktive Strategie (v0.8.3+)
+**Status:** Aktive Strategie (v0.8.4+)
 
 ---
 

@@ -85,7 +85,7 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 
 ## LATER (Sprint 3+)
 
-13. [ ] Supabase HTTP-503 Root-Cause Sprint (bewusst geparkt bis erster MSI-Build-Pfad validiert ist)
+13. [x] Supabase HTTP-503 Root-Cause Sprint – `_request_with_retry` exponentialBackoff+Jitter+Retry-After, `exchange_license_key` und `register_device` auf Retry umgestellt, Unit-Tests ergänzt (34/34 grün)
 14. [ ] Naming-/Terminologie-Guide finalisieren (Code Englisch, UI via i18n)
 15. [ ] Weitere QA-Baselines (10k/50k/100k) mit Vergleichsreport konsolidieren
 16. [ ] Launch-Readiness Re-Score nach P1/P2 Fortschritt
@@ -121,3 +121,4 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 - 2026-04-04: Slice 6.7 abgeschlossen: Slice-6-Konsolidierung dokumentiert (Controller-Set + technische Schulden + Abschlusskriterien); Slice 6 im Backlog formal auf COMPLETE gesetzt.
 - 2026-04-04: Punkt 11 abgeschlossen: gemeinsames Website-Bundle eingeführt (`website/assets/site-bundle.css`, `website/assets/site-bundle.js`) und in alle Website-Seiten eingebunden.
 - 2026-04-04: Punkt 12 abgeschlossen: MSI-Track mit WiX v4 aufgesetzt (`installer/PhotoCleaner.wxs`, `scripts/build_msi.ps1`) und Build/Smoke-Test-Guide dokumentiert (`docs/guides/MSI_BUILD.md`).
+- 2026-04-05: Punkt 13 abgeschlossen: Supabase HTTP-503 Retry-Logik implementiert – `_request_with_retry` auf exponentielles Backoff+Jitter+Retry-After-Header+30s-Budget umgestellt; `exchange_license_key` und `register_device` nutzen jetzt Retry; 10 neue Unit-Tests, alle 34 Tests grün.
