@@ -14,6 +14,11 @@
 - Schutz gegen Fehlkonfiguration ergänzt: JWT-Token in `PUBLIC_KEY_PEM` wird explizit als falsches Format erkannt und klar geloggt
 - Public-Key-Parsing lokal validiert (`Ed25519PublicKey` wird korrekt geladen)
 
+### 📘 Governance: Naming & Terminology
+- Neuer Standard: `docs/standards/NAMING_TERMINOLOGY_GUIDE.md`
+- Verbindliche Regel festgelegt: Code-Identifiers Englisch, UI-Texte über i18n
+- Doku-Navigation erweitert (`docs/INDEX.md`, `docs/standards/INDEX.md`)
+
 ### 🚨 Runtime Findings (Server-side)
 - Live-Diagnose zeigte: Edge Function `exchange-license-key` liefert weiterhin Mock-Signatur (`sig-...`, Länge 32) statt Ed25519-Base64
 - Live-Diagnose zeigte zusätzlich: `/rest/v1/licenses` antwortet mit `503 / PGRST002` (Schema-Cache-Problem)

@@ -17,6 +17,7 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [ ] Frozen-Build Smoke-Test auf 5+ clean Windows Maschinen (extern/manuell)
 - [x] P1 Slice #6: `modern_window.py` Refactoring (views/controllers/workflows, top-down) abgeschlossen
 - [x] Distribution-Track gestartet: MSI-Installer-Konzept + erster Build-Pfad (WiX v4 + reproduzierbarer Build-Command)
+- [x] Naming-/Terminologie-Guide finalisiert (`docs/standards/NAMING_TERMINOLOGY_GUIDE.md`)
 - [ ] Supabase Licensing HTTP 503 Investigation (Re-Open): Client-Härtung abgeschlossen, Infrastruktur-Issue bleibt geparkt (Edge-Function-Signer + PostgREST PGRST002)
 - [x] P1 Slice #1: License Service Adapter umgesetzt
 - [x] P1 Slice #2: Progress-Workflow in `modern_window.py` über Service/Facade entkoppelt
@@ -42,6 +43,7 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [x] **P1 Quality Analyzer Slice #2:** Face Detection extrahiert → `pipeline/analysis/face_detector.py` (1,238 lines, FaceDetector class)
 - [x] **P1 Quality Analyzer Slice #3:** Scoring Logik extrahiert → `pipeline/analysis/quality_scorer.py` (18+ methods, 660 lines)
 - [x] **P1 Quality Analyzer Slice #4:** EXIF/Metadata extrahiert → `pipeline/analysis/exif_extractor.py` (ExifExtractor + Wrapper-Kompatibilität)
+- [x] **Governance:** Naming-/Terminologie-Guide finalisiert (`docs/standards/NAMING_TERMINOLOGY_GUIDE.md`) mit Regel "Code Englisch, UI via i18n"
 
 ### Offene kritische Punkte (extern/manuell)
 - [ ] **Secret Rotation durchführen:** Bereits exponierte Supabase Keys sofort rotieren (außerhalb Repo)

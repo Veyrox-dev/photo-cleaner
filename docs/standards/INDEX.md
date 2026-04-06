@@ -9,6 +9,7 @@
 ## Process & Workflow
 - [Workflow](WORKFLOW.md) - Development and release workflow
 - [Data Security Analysis](DATENSICHERHEIT_ANALYSE.md) - Security analysis (German)
+- [Naming & Terminology Guide](NAMING_TERMINOLOGY_GUIDE.md) - Canonical naming rules (code English, UI via i18n)
 
 ## Related
 - See [Guides](../guides/) for contributor guidelines and setup

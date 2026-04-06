@@ -39,6 +39,7 @@ Quality assurance, audits, and bug fixes.
 | [P1 Fixes Complete](standards/P1_FIXES_COMPLETE_20260205.md) | 8 high-priority bugs (thread safety, error handling) |
 | [P2 Fixes Complete](standards/P2_FIXES_COMPLETE_20260205.md) | 4 medium-priority bugs (security, performance) |
 | [Workflow](standards/WORKFLOW.md) | Development and release workflow |
+| [Naming & Terminology Guide](standards/NAMING_TERMINOLOGY_GUIDE.md) | Canonical naming rules (code English, UI via i18n) |
 | [Data Security Analysis](standards/DATENSICHERHEIT_ANALYSE.md) | Security analysis (German) |
 
 → **Use this for**: Bug fixes, quality metrics, security reviews, compliance
