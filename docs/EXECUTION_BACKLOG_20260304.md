@@ -89,6 +89,10 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 14. [ ] Naming-/Terminologie-Guide finalisieren (Code Englisch, UI via i18n)
 15. [ ] Weitere QA-Baselines (10k/50k/100k) mit Vergleichsreport konsolidieren
 16. [ ] Launch-Readiness Re-Score nach P1/P2 Fortschritt
+17. [ ] Supabase Licensing Incident Follow-up (erneut geparkt bis Infra-Fix)
+   - Typ: Extern/Backend
+   - Befund: `exchange-license-key` liefert Mock-Signatur (`sig-...`, Länge 32) statt Ed25519-Base64; `/rest/v1/licenses` liefert `503 / PGRST002`
+   - Re-Entry: Nach Edge-Function-Signer-Fix + PostgREST-Schema-Cache-Stabilisierung
 
 ---
 
@@ -122,3 +126,4 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 - 2026-04-04: Punkt 11 abgeschlossen: gemeinsames Website-Bundle eingeführt (`website/assets/site-bundle.css`, `website/assets/site-bundle.js`) und in alle Website-Seiten eingebunden.
 - 2026-04-04: Punkt 12 abgeschlossen: MSI-Track mit WiX v4 aufgesetzt (`installer/PhotoCleaner.wxs`, `scripts/build_msi.ps1`) und Build/Smoke-Test-Guide dokumentiert (`docs/guides/MSI_BUILD.md`).
 - 2026-04-05: Punkt 13 abgeschlossen: Supabase HTTP-503 Retry-Logik implementiert – `_request_with_retry` auf exponentielles Backoff+Jitter+Retry-After-Header+30s-Budget umgestellt; `exchange_license_key` und `register_device` nutzen jetzt Retry; 10 neue Unit-Tests, alle 34 Tests grün.
+- 2026-04-06: Follow-up-Diagnose zu Supabase Licensing durchgeführt: Live-Response zeigt Mock-Signatur (`sig-...`, Länge 32) und `/rest/v1/licenses` liefert `503 / PGRST002`; Thema als externer Infra-Blocker erneut geparkt (Backlog #17).

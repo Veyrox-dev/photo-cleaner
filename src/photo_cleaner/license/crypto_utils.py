@@ -19,7 +19,7 @@ except ImportError:
 
 # Public key (Ed25519) used to verify license signatures. Keep private key OUT of the app.
 PUBLIC_KEY_PEM = """-----BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEARqPms2Pt+KRiBaVh+E2Q1Q7/gF5qNsN+i3eC3FhVuEo=
+MCowBQYDK2VwAyEASbmxHo4TCYQT6G9WgoXSWGmJ/S6vi9l/j3tuVvRHn6Q=
 -----END PUBLIC KEY-----
 """
 

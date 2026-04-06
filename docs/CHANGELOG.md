@@ -1,6 +1,24 @@
 # PhotoCleaner - Changelog
 > Version 0.8.4 - Architecture Refactoring (Slice 6) + MSI Distribution Track (2026-04-04)
 
+## [Unreleased] - Supabase Licensing Stabilization + Incident Diagnostics (2026-04-06) 🧪
+
+### 🔒 License Client Resilience Hardening
+- `_request_with_retry` erweitert: exponentielles Backoff + Jitter + Retry-After + Budget-Cap (bereits in 0.8.4 begonnen, hier weiter gehärtet)
+- DNS-Auflösungsfehler (`NameResolutionError`/`getaddrinfo`) werden als Non-Retryable erkannt und sofort abgebrochen (Fail-Fast)
+- Minimum-Retry-Delay ergänzt, damit bei ungültigem/zu kleinem `Retry-After` keine `0.0s` Tight-Loops entstehen
+- Zusätzliche Unit-Tests für DNS-Fail-Fast und Retry-Delay-Grenzfälle
+
+### 🧾 Signature/Key Diagnostics
+- Logging bei Signaturprüfung verbessert (`InvalidSignature` inkl. Exception-Typ)
+- Schutz gegen Fehlkonfiguration ergänzt: JWT-Token in `PUBLIC_KEY_PEM` wird explizit als falsches Format erkannt und klar geloggt
+- Public-Key-Parsing lokal validiert (`Ed25519PublicKey` wird korrekt geladen)
+
+### 🚨 Runtime Findings (Server-side)
+- Live-Diagnose zeigte: Edge Function `exchange-license-key` liefert weiterhin Mock-Signatur (`sig-...`, Länge 32) statt Ed25519-Base64
+- Live-Diagnose zeigte zusätzlich: `/rest/v1/licenses` antwortet mit `503 / PGRST002` (Schema-Cache-Problem)
+- Konsequenz: Thema strategisch erneut geparkt bis Supabase-Infra-Fix (echter Signer + stabiler PostgREST)
+
 ## [0.8.4] - Architecture Refactoring (Slice 6) + MSI Distribution Track (2026-04-04) 🏗️
 
 ### 🏗️ Architecture: modern_window.py Slice 6 Refactoring (P1)

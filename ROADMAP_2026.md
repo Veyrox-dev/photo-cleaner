@@ -1,6 +1,6 @@
 # PhotoCleaner - Roadmap 2026 (REVISITED)
 
-**Aktualisiert:** 05. April 2026 (v0.8.4 released, Root-Cleanup, Roadmap synchronisiert)  
+**Aktualisiert:** 06. April 2026 (v0.8.4 released, Supabase Incident-Diagnose durchgeführt, Thema erneut geparkt)  
 **Status:** Phase 4.1 ✅ COMPLETE | Security P0 ✅ COMPLETE | Phase 4.2 QA Testing + P1 Refactor (Slice 6 ✅ COMPLETE) | MSI Distribution Track ✅ COMPLETE  
 **Ziel:** v1.0.0 Launch im November 2026 (revised timing)  
 **Timeline:** 9 Monate mit Fokus auf STABILITÄTSRISIKEN
@@ -17,7 +17,7 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [ ] Frozen-Build Smoke-Test auf 5+ clean Windows Maschinen (extern/manuell)
 - [x] P1 Slice #6: `modern_window.py` Refactoring (views/controllers/workflows, top-down) abgeschlossen
 - [x] Distribution-Track gestartet: MSI-Installer-Konzept + erster Build-Pfad (WiX v4 + reproduzierbarer Build-Command)
-- [x] Supabase Licensing HTTP 503 Investigation abgeschlossen: exponentielles Backoff + Retry-After + 30s-Budget in `license_client.py`
+- [ ] Supabase Licensing HTTP 503 Investigation (Re-Open): Client-Härtung abgeschlossen, Infrastruktur-Issue bleibt geparkt (Edge-Function-Signer + PostgREST PGRST002)
 - [x] P1 Slice #1: License Service Adapter umgesetzt
 - [x] P1 Slice #2: Progress-Workflow in `modern_window.py` über Service/Facade entkoppelt
 - [x] Lizenz-/Activation-Regression-Checks ergänzt (7 gezielte Unit-Tests grün)
@@ -48,14 +48,15 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [ ] **Frozen-Build Smoke-Test auf 5+ Clean Windows Maschinen** final abschließen
 
 ### Geparkte Themen (bewusst verschoben)
-- [x] **Supabase Licensing HTTP 503 / Exchange-Stabilität** – abgeschlossen
-   - `_request_with_retry`: exponentielles Backoff (base×2^n ±25% Jitter), Retry-After-Header (int + HTTP-date), 30s-Budget-Cap, Retryable: {429, 502, 503, 504}
-   - `exchange_license_key` + `register_device` verwenden jetzt Retry
-   - 10 neue Unit-Tests, alle 34 License-Client-Tests grün
+- [ ] **Supabase Licensing HTTP 503 / Exchange-Stabilität** – erneut geparkt (Infra-Blocker)
+   - Bereits erledigt (Client): `_request_with_retry` mit exponentiellem Backoff/Jitter/Retry-After/30s-Budget, DNS-Fail-Fast, Minimum-Retry-Delay, zusätzliche Regression-Tests
+   - Offener Blocker (Backend): `exchange-license-key` liefert weiterhin Mock-Signatur (`sig-...`, Länge 32) statt Ed25519-Base64; Signaturprüfung bleibt dadurch invalid
+   - Zusätzlicher Blocker: PostgREST liefert `PGRST002` (Schema-Cache) auf `/rest/v1/licenses` → `fetch_license` landet im Offline-Fallback
+   - Re-Entry-Bedingung: Edge Function mit echtem Ed25519-Signer deployed + PostgREST 503 beseitigt
 
 ### Nächste Ziele (April, priorisiert)
 1. **Sprint 1 extern abschließen:** Secret Rotation + 5x Clean-Machine Smoke-Tests (blocking für v1.0)
-2. ~~**Supabase HTTP-503 Re-Entry:**~~ ✅ Erledigt – Retry-Logik implementiert und getestet
+2. **Supabase HTTP-503 Re-Entry (erneut):** geparkt bis Infra-Fix (Edge-Signer + PostgREST/PGRST002)
 3. **MSI Smoke-Test auf virgin Windows** durchführen (Install/Upgrade/Uninstall gemäß `docs/guides/MSI_BUILD.md`)
 4. **Launch-Readiness Re-Score** nach P1-Abschluss
 
