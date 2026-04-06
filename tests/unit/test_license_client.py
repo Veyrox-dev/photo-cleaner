@@ -645,3 +645,35 @@ class TestRequestWithRetry:
             assert success is True
             assert license_id == "TEST-001"
             assert mock_req.post.call_count == 2
+
+    @patch("photo_cleaner.license_client.time")
+    def test_exchange_license_key_dns_error_returns_actionable_message(self, mock_time):
+        """DNS-Fehler sollen als klare User-Meldung zurückgegeben werden."""
+        import socket
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = LicenseConfig(
+                project_url="https://test.supabase.co",
+                anon_key="test_anon_key",
+            )
+            client = LicenseClient(config, cache_dir=Path(tmpdir))
+
+            dns_cause = socket.gaierror(11001, "getaddrinfo failed")
+            conn_err = requests.ConnectionError("DNS failed")
+            conn_err.__cause__ = dns_cause
+
+            with patch("photo_cleaner.license_client.requests") as mock_req:
+                mock_req.post.side_effect = conn_err
+                mock_req.RequestException = requests.RequestException
+                mock_req.Timeout = requests.Timeout
+                mock_req.ConnectionError = requests.ConnectionError
+
+                success, license_id, error = client.exchange_license_key("TEST-KEY")
+
+            assert success is False
+            assert license_id is None
+            assert "DNS lookup failed" in error
+            assert "exchange-license-key" in error
+            request_calls = mock_req.post.call_count
+            assert request_calls == 1
+            mock_time.sleep.assert_not_called()

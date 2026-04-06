@@ -253,7 +253,7 @@ class LicenseClient:
 
         except requests.RequestException as e:
             logger.error(f"License exchange failed: {e}")
-            return False, None, f"Network error: {str(e)}"
+            return False, None, _format_network_error(e, endpoint="exchange-license-key")
         except Exception as e:
             logger.error(f"Unexpected error in exchange_license_key: {e}")
             return False, None, f"Error: {str(e)}"
@@ -656,12 +656,31 @@ def _is_dns_failure(exc: Exception) -> bool:
     on the current call – there is no point retrying them.
     """
     import socket
+    dns_markers = (
+        "nameresolutionerror",
+        "getaddrinfo failed",
+        "failed to resolve",
+        "temporary failure in name resolution",
+    )
     current: BaseException | None = exc
     while current is not None:
         if isinstance(current, socket.gaierror):
             return True
+        msg = str(current).lower()
+        if any(marker in msg for marker in dns_markers):
+            return True
         current = current.__cause__ or current.__context__
     return False
+
+
+def _format_network_error(exc: Exception, endpoint: str = "service") -> str:
+    """Build a concise user-facing network error message."""
+    if _is_dns_failure(exc):
+        return (
+            f"DNS lookup failed for {endpoint}. "
+            "Please check internet/DNS settings or verify the Supabase URL."
+        )
+    return f"Network error: {str(exc)}"
 
 
 def _request_with_retry(
