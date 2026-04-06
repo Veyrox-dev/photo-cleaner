@@ -19,7 +19,7 @@ except ImportError:
 
 # Public key (Ed25519) used to verify license signatures. Keep private key OUT of the app.
 PUBLIC_KEY_PEM = """-----BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEAYv2JpJ60sH1+4icx+XAu1KOJV8RKPnDcKvsPpEHrLpQ=
+MCowBQYDK2VwAyEARqPms2Pt+KRiBaVh+E2Q1Q7/gF5qNsN+i3eC3FhVuEo=
 -----END PUBLIC KEY-----
 """
 
@@ -32,7 +32,18 @@ def _load_public_key() -> Optional[Any]:
     global _PUBLIC_KEY
     if _PUBLIC_KEY is None:
         try:
-            _PUBLIC_KEY = serialization.load_pem_public_key(PUBLIC_KEY_PEM.encode("utf-8"))
+            key_text = (PUBLIC_KEY_PEM or "").strip()
+            # Common misconfiguration: Supabase anon/service JWT pasted instead
+            # of an Ed25519 public key PEM.
+            if key_text.count(".") == 2 and key_text.startswith("eyJ"):
+                logger.error(
+                    "Embedded key looks like a JWT token, not an Ed25519 public key PEM. "
+                    "Replace PUBLIC_KEY_PEM with the real signing public key."
+                )
+                _PUBLIC_KEY = None
+                return None
+
+            _PUBLIC_KEY = serialization.load_pem_public_key(key_text.encode("utf-8"))
         except Exception as e:
             logger.error("Failed to load embedded public key: %s", e)
             _PUBLIC_KEY = None
@@ -56,5 +67,5 @@ def verify_ed25519_signature(payload: Dict[str, Any], signature_b64: str) -> boo
     except Exception as e:
         # Invalid signatures are expected in some flows (e.g. stale/partial payloads).
         # Keep this at debug level to avoid log spam in normal runtime.
-        logger.debug("Signature verification failed: %s", e)
+        logger.debug("Signature verification failed (%s): %s", type(e).__name__, e)
         return False

@@ -648,6 +648,9 @@ _RETRYABLE_STATUS_CODES = frozenset({429, 502, 503, 504})
 # Maximum total seconds to spend on retries before giving up.
 _MAX_RETRY_WAIT_SECONDS = 30.0
 
+# Avoid tight retry loops when backend returns Retry-After: 0 or very small values.
+_MIN_RETRY_DELAY_SECONDS = 0.25
+
 
 def _is_dns_failure(exc: Exception) -> bool:
     """Return True if *exc* chain contains a DNS resolution error.
@@ -754,9 +757,13 @@ def _request_with_retry(
         raw_delay = base_backoff * (2 ** attempt)
         jitter = raw_delay * 0.25 * (2 * random.random() - 1)
         delay = min(raw_delay + jitter, max_backoff)
+        delay = max(delay, 0.0)
 
-        if retry_after is not None:
+        if retry_after is not None and retry_after > 0:
             delay = min(retry_after, max_backoff)
+
+        if delay < _MIN_RETRY_DELAY_SECONDS:
+            delay = _MIN_RETRY_DELAY_SECONDS
 
         if total_waited + delay > _MAX_RETRY_WAIT_SECONDS:
             logger.warning(

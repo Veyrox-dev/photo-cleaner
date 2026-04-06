@@ -577,6 +577,20 @@ class TestRequestWithRetry:
         assert actual_delay == pytest.approx(10.0)
 
     @patch("photo_cleaner.license_client.time")
+    def test_retry_after_zero_uses_minimum_delay(self, mock_time):
+        """Retry-After=0 darf keinen 0.0s-Tight-Loop erzeugen."""
+        from photo_cleaner.license_client import _request_with_retry
+
+        resp_503 = self._make_response(503, headers={"Retry-After": "0"})
+        resp_200 = self._make_response(200)
+        request_fn = Mock(side_effect=[resp_503, resp_200])
+
+        _request_with_retry(request_fn, retries=4, max_backoff=10.0)
+
+        actual_delay = mock_time.sleep.call_args[0][0]
+        assert actual_delay >= 0.25
+
+    @patch("photo_cleaner.license_client.time")
     def test_budget_exhausted_stops_retrying(self, mock_time):
         """Wenn Retry-After > Budget-Rest: kein weiterer Retry."""
         from photo_cleaner.license_client import _request_with_retry
