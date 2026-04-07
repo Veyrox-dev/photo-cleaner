@@ -78,3 +78,6 @@ Output:
 
 - Dieser Track paketiert den bestehenden PyInstaller-Output als MSI.
 - Frozen-Build-Smoketests auf mehreren clean Maschinen bleiben als separater P0/P1-Risikopunkt bestehen.
+- Praktische Testunterlagen:
+   - `docs/guides/WIN11_TEST_CHECKLIST.md`
+   - `feedback/TEST_SESSION_TEMPLATE.md`
