@@ -92,12 +92,11 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
    - Definition of Done: 1k/5k als Standard-Baselines, 10k als optionaler Soak/Stress-Lauf, 50k/100k nicht mehr blockierend
 16. [x] Launch-Readiness Re-Score nach P1/P2 Fortschritt
    - Ergebnis: Re-Score durchgeführt (2026-04-06) mit aktualisierter 1-10-Bewertung und Blocker-Liste in `ROADMAP_2026.md`
-17. [ ] Supabase Licensing Incident Follow-up (erneut geparkt bis Infra-Fix)
+17. [x] Supabase Licensing Incident Follow-up – vollständig abgeschlossen (2026-04-07)
    - Typ: Extern/Backend
-   - Befund: Ed25519-Signaturpfad ist repariert und verifiziert (`signature_valid=True`), aber `/rest/v1/licenses` liefert weiterhin `503 / PGRST002`.
-   - Root Cause (Logs): PostgREST startet mit `db-schemas=pg_pgrst_no_exposed_schemas`; Schema existiert nicht (`3F000`), dadurch kann der Schema-Cache nicht geladen werden.
-   - Impact: Aktivierung kann dennoch erfolgreich sein, weil `exchange-license-key` ueber direkte DB-Verbindung laeuft (nicht ueber PostgREST).
-   - Re-Entry: Nach PostgREST-Schema-Cache-Stabilisierung
+   - Befund war: Ed25519-Signaturpfad repariert; PostgREST lieferte `503 / PGRST002` wegen fehlendem Schema `pg_pgrst_no_exposed_schemas`.
+   - Fix: Data API / Exposed Schemas in Supabase-Dashboard reaktiviert; PostgREST-Schema-Cache lädt wieder (`401/42501` statt `503/PGRST002`).
+   - Ergebnis: Aktivierung via Edge Function OK, REST-Pfad wieder verfügbar.
 
 ---
 
@@ -138,3 +137,4 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 - 2026-04-06: Punkt 16 abgeschlossen: Launch-Readiness Re-Score durchgeführt. Ergebnis: intern technisch solide, aber extern/manuell weiter geblockt durch Secret Rotation + 5x Clean-Windows Smoke-Tests; Supabase-Incident separat geparkt (#17).
 - 2026-04-07: Supabase Licensing Follow-up: `exchange-license-key` korrekt auf Ed25519 (`signAsync`) umgestellt, Secret/Public-Key erneut rotiert, Ende-zu-Ende verifiziert (`signature_len=88`, `signature_valid=True`). Restblocker bleibt PostgREST `PGRST002` auf `/rest/v1/licenses`.
 - 2026-04-07: Infra-Log ausgewertet: `Failed to load the schema cache ... db-schemas=pg_pgrst_no_exposed_schemas ... schema does not exist (3F000)`. Incident #17 auf konkrete PostgREST-Schema-Konfiguration eingegrenzt; Aktivierungspfad via Edge Function bleibt nutzbar.
+- 2026-04-07: Punkt 17 abgeschlossen: Data API / Exposed Schemas in Supabase-Dashboard reaktiviert; PostgREST antwortet jetzt mit `401/42501` (RLS, normal) statt `503/PGRST002`. Supabase Licensing Incident vollständig gelöst.

@@ -30,12 +30,11 @@
 - Ergebnis: **7.4 / 10** (intern technisch solide, extern/manuell weiterhin geblockt)
 - Launch-Gates bleiben: Secret Rotation + 5x Clean-Windows Smoke-Tests; Supabase-Incident als separater Infra-Blocker geparkt
 
-### 🚨 Runtime Findings (Server-side)
- Exchange endpoint signing path is fixed and verified: Ed25519 signatures are generated via async signing, payloads return 88-char Base64 signatures, and local verification passes (`signature_valid=True`).
- `/rest/v1/licenses` still returns `503` (`PGRST002`), indicating an external PostgREST schema cache / DB reachability problem that remains the active blocker.
- Root cause from Supabase logs: PostgREST is configured with `db-schemas=pg_pgrst_no_exposed_schemas`, and that schema does not exist (`3F000`), so schema-cache loading fails.
- Operational impact: License activation can still work via `exchange-license-key` (direct DB connection), while REST-based fetch paths remain degraded and use offline/cache fallback.
- Client-side resilience improvements in this repo remain complete (retry budget, Retry-After support, jitter, DNS fail-fast, clearer network messaging); open risk is backend/runtime availability only.
+### ✅ Runtime Findings (Server-side) – vollständig gelöst (2026-04-07)
+- Exchange endpoint signing path: fixed and verified (Ed25519, 88-char signatures, `signature_valid=True`).
+- PostgREST schema cache: fixed – Data API / Exposed Schemas in Supabase Dashboard reaktiviert. Antwort jetzt `401/42501` (RLS/normal) statt `503/PGRST002`.
+- Root cause was: `db-schemas=pg_pgrst_no_exposed_schemas` mit nicht vorhandenem Schema (`3F000`).
+- Client-side resilience in diesem Repo komplett (retry budget, Retry-After, jitter, DNS fail-fast). Kein Backend-Risiko mehr offen.
 
 ### 🏗️ Architecture: modern_window.py Slice 6 Refactoring (P1)
 

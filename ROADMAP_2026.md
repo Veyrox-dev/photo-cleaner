@@ -18,7 +18,7 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [x] P1 Slice #6: `modern_window.py` Refactoring (views/controllers/workflows, top-down) abgeschlossen
 - [x] Distribution-Track gestartet: MSI-Installer-Konzept + erster Build-Pfad (WiX v4 + reproduzierbarer Build-Command)
 - [x] Naming-/Terminologie-Guide finalisiert (`docs/standards/NAMING_TERMINOLOGY_GUIDE.md`)
-- [ ] Supabase Licensing HTTP 503 Investigation (Re-Open): Client-Härtung + Ed25519-Signaturpfad abgeschlossen; verbleibender Infra-Blocker ist PostgREST `PGRST002` (Root Cause: fehlkonfigurierte `db-schemas`, Schema `pg_pgrst_no_exposed_schemas` nicht vorhanden)
+- [x] Supabase Licensing HTTP 503 Investigation (Re-Open): vollständig abgeschlossen (2026-04-07) – Ed25519-Signaturpfad + PostgREST-Schema-Cache-Fix (Data API reaktiviert)
 - [x] P1 Slice #1: License Service Adapter umgesetzt
 - [x] P1 Slice #2: Progress-Workflow in `modern_window.py` über Service/Facade entkoppelt
 - [x] Lizenz-/Activation-Regression-Checks ergänzt (7 gezielte Unit-Tests grün)
@@ -76,12 +76,12 @@ Skala: 1 (kritisch) bis 10 (launch-ready)
 - [ ] **Supabase Licensing HTTP 503 / Exchange-Stabilität** – teilweise gelöst, weiter geparkt
    - Erledigt (Client): `_request_with_retry` mit exponentiellem Backoff/Jitter/Retry-After/30s-Budget, DNS-Fail-Fast, Minimum-Retry-Delay, zusätzliche Regression-Tests
    - Erledigt (Backend Signatur): `exchange-license-key` auf Ed25519 umgestellt (`signAsync`), Signatur-Ende-zu-Ende verifiziert (`signature_valid=True`, 88 chars)
-   - Offener Blocker: PostgREST liefert weiter `PGRST002` (Schema-Cache) auf `/rest/v1/licenses`; Log-Hinweis auf `db-schemas=pg_pgrst_no_exposed_schemas` / fehlendes Schema. Aktivierung kann trotzdem funktionieren, da `exchange-license-key` direkt per DB-Connection arbeitet.
-   - Re-Entry-Bedingung: PostgREST 503/PGRST002 stabil beseitigt
+   - ✅ Fix: Data API / Exposed Schemas in Supabase-Dashboard reaktiviert → PostgREST antwortet wieder korrekt (`401/42501` statt `503/PGRST002`)
+   - Alle Pfade operativ: Aktivierung (Edge Function) + REST-Fetch wieder verfügbar
 
 ### Nächste Ziele (April, priorisiert)
 1. **Sprint 1 extern abschließen:** Secret Rotation + 5x Clean-Machine Smoke-Tests (blocking für v1.0)
-2. **Supabase HTTP-503 Re-Entry (erneut):** geparkt bis Infra-Fix (Rest-Blocker: PostgREST/PGRST002)
+2. ~~**Supabase HTTP-503 Re-Entry:**~~ ✅ abgeschlossen (2026-04-07) – Data API reaktiviert, PostgREST wieder operativ
 3. **MSI Smoke-Test auf virgin Windows** durchführen (Install/Upgrade/Uninstall gemäß `docs/guides/MSI_BUILD.md`)
 4. **Optionaler 10k Soak-Lauf bei Bedarf** (vor größeren Performance-Releases)
 5. ~~**Launch-Readiness Re-Score** nach P1-Abschluss~~ ✅ durchgeführt (2026-04-06)
