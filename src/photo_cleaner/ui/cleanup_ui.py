@@ -62,14 +62,20 @@ except ImportError:
     pass  # pillow-heif not available, HEIC files will fail
 
 from photo_cleaner.io.file_scanner import FileScanner
+from photo_cleaner.config import AppConfig
+from photo_cleaner.i18n import t
 from PySide6.QtWidgets import QFileDialog as _QFileDialog
 from PySide6.QtCore import QSize
+
+
+def _default_db_path() -> Path:
+    return AppConfig.get_db_dir() / "photo_cleaner.db"
 
 
 class CleanupUI(QWidget):
     """Minimal UI to inspect duplicate groups and delete selected removals."""
 
-    def __init__(self, db_path: Path | str = "photo_cleaner.db") -> None:
+    def __init__(self, db_path: Path | str | None = None) -> None:
         super().__init__()
         warnings.warn(
             "CleanupUI ist deprecated; bitte ModernMainWindow verwenden.",
@@ -77,7 +83,7 @@ class CleanupUI(QWidget):
             stacklevel=2,
         )
         logger.warning("[DEPRECATED] CleanupUI instantiated; use ModernMainWindow instead.")
-        self.db_path = Path(db_path)
+        self.db_path = Path(db_path) if db_path else _default_db_path()
         self.db = Database(self.db_path)
         self.conn = self.db.connect()
 
@@ -450,20 +456,18 @@ class CleanupUI(QWidget):
             cursor.execute("SELECT path, created_time, is_keeper FROM files WHERE file_hash = ?", (file_hash,))
             rows = cursor.fetchall()
             entries: List[FileEntry] = []
+            keeper_override: Path | None = None
             for r in rows:
                 p = Path(r[0])
                 created = r[1] if r[1] is not None else 0
                 is_keeper = bool(r[2]) if len(r) > 2 else False
                 entries.append(FileEntry(path=p, width=0, height=0, created=created, name=p.name))
 
-            # If any file in the group was previously marked as keeper, prefer it
-            keeper_override = None
-            for r in rows:
+                # If any file in the group was previously marked as keeper, prefer it
                 try:
-                    if len(r) > 2 and bool(r[2]):
-                        keeper_override = Path(r[0])
-                        break
-                except (IndexError, TypeError):
+                    if is_keeper:
+                        keeper_override = p
+                except (OSError, TypeError, ValueError):
                     logger.debug("Failed to check keeper flag", exc_info=True)
 
             if len(entries) <= 1:
@@ -762,13 +766,15 @@ class CleanupUI(QWidget):
             # remove trash file
             try:
                 if trash_path and Path(trash_path).exists():
-                   OSError:
-                logger.debug(f"Failed to delete trash file", exc_info=True)xception:
+                    Path(trash_path).unlink()
+            except OSError:
+                logger.debug("Failed to delete trash file", exc_info=True)
                 pass
             # remove DB row
             try:
-                cursqlite3.Error:
-                logger.debug(f"Failed to delete from database", exc_info=True)xception:
+                cursor.execute("DELETE FROM files WHERE file_id = ?", (fid,))
+            except sqlite3.Error:
+                logger.debug("Failed to delete from database", exc_info=True)
                 pass
         self.conn.commit()
         QMessageBox.information(self, "Gelöscht", "Ausgewählte Dateien wurden endgültig gelöscht.")
@@ -796,7 +802,7 @@ class PlanDialog(QDialog):
         layout.addWidget(buttons)
 
 
-def run_ui(db_path: str | Path = "photo_cleaner.db") -> None:
+def run_ui(db_path: str | Path | None = None) -> None:
     app = QApplication([])
     w = CleanupUI(db_path)
     w.show()

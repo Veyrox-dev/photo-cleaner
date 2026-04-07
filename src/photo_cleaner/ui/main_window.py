@@ -51,6 +51,7 @@ from PySide6.QtWidgets import (
 )
 
 from photo_cleaner.db.schema import Database
+from photo_cleaner.config import AppConfig
 from photo_cleaner.models.mode import AppMode
 from photo_cleaner.models.status import FileStatus
 from photo_cleaner.repositories.file_repository import FileRepository
@@ -910,4 +911,4 @@ def run_ui(db_path: Path) -> None:
 
 
 if __name__ == "__main__":
-    run_ui(Path("photo_cleaner.db"))
+    run_ui(AppConfig.get_db_dir() / "photo_cleaner.db")

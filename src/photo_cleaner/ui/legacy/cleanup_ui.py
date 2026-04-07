@@ -33,6 +33,7 @@ import logging
 
 # Local imports (ensure package is on PYTHONPATH when running from project root)
 from photo_cleaner.db.schema import Database
+from photo_cleaner.config import AppConfig
 from photo_cleaner.duplicates.finder import DuplicateFinder
 from photo_cleaner.core.duplicate_groups import FileEntry, pick_best_file
 from photo_cleaner.ui.thumbnail_cache import get_thumbnail
@@ -48,9 +49,9 @@ from PySide6.QtCore import QSize
 class CleanupUI(QWidget):
     """Minimal UI to inspect duplicate groups and delete selected removals."""
 
-    def __init__(self, db_path: Path | str = "photo_cleaner.db") -> None:
+    def __init__(self, db_path: Path | str | None = None) -> None:
         super().__init__()
-        self.db_path = Path(db_path)
+        self.db_path = Path(db_path) if db_path else (AppConfig.get_db_dir() / "photo_cleaner.db")
         self.db = Database(self.db_path)
         self.conn = self.db.connect()
 
@@ -769,7 +770,7 @@ class PlanDialog(QDialog):
         layout.addWidget(buttons)
 
 
-def run_ui(db_path: str | Path = "photo_cleaner.db") -> None:
+def run_ui(db_path: str | Path | None = None) -> None:
     app = QApplication([])
     w = CleanupUI(db_path)
     w.show()

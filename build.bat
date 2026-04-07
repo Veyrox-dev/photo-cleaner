@@ -6,7 +6,7 @@ setlocal enabledelayedexpansion
 
 echo.
 echo ====================================
-echo PhotoCleaner v0.8.2 Build Script
+echo PhotoCleaner v0.8.5 Build Script
 echo ====================================
 echo.
 
@@ -18,7 +18,6 @@ if exist .venv\Scripts\activate.bat (
     call venv\Scripts\activate.bat
 ) else (
     echo ERROR: Virtual environment not found!
-    pause
     exit /b 1
 )
 
@@ -38,7 +37,6 @@ echo Running preflight check...
 if errorlevel 1 (
     echo.
     echo PREFLIGHT FAILED - build aborted
-    pause
     exit /b 1
 )
 
@@ -85,15 +83,12 @@ if exist PhotoCleaner.spec (
     ) else (
         echo.
         echo BUILD FAILED - exe not created
-        pause
         exit /b 1
     )
 ) else (
     echo ERROR: PhotoCleaner.spec not found!
-    pause
     exit /b 1
 )
 
 echo.
 endlocal
-pause

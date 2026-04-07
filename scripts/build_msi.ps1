@@ -1,6 +1,7 @@
 param(
     [string]$Version,
-    [switch]$Clean
+    [switch]$Clean,
+    [switch]$SkipAppRebuild
 )
 
 Set-StrictMode -Version Latest
@@ -10,13 +11,14 @@ $root = Split-Path -Parent $PSScriptRoot
 $distExe = Join-Path $root "dist\PhotoCleaner\PhotoCleaner.exe"
 $wxsPath = Join-Path $root "installer\PhotoCleaner.wxs"
 $outDir = Join-Path $root "releases\msi"
-
-if (-not (Test-Path $distExe)) {
-    throw "Build artifact missing: $distExe`nRun build.bat first."
-}
+$buildBat = Join-Path $root "build.bat"
 
 if (-not (Test-Path $wxsPath)) {
     throw "WiX source file missing: $wxsPath"
+}
+
+if (-not (Test-Path $buildBat) -and -not $SkipAppRebuild) {
+    throw "build.bat not found at $buildBat. Cannot rebuild app automatically."
 }
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
@@ -36,6 +38,78 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
 
 if ($Version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') {
     throw "Invalid version '$Version'. Expected semantic version format like 0.8.4"
+}
+
+function Get-NewestSourceTimestamp {
+    param([string]$WorkspaceRoot)
+
+    $sourceCandidates = @(
+        (Join-Path $WorkspaceRoot "run_ui.py"),
+        (Join-Path $WorkspaceRoot "PhotoCleaner.spec"),
+        (Join-Path $WorkspaceRoot "src"),
+        (Join-Path $WorkspaceRoot "build_hooks")
+    )
+
+    $timestamps = @()
+    foreach ($candidate in $sourceCandidates) {
+        if (-not (Test-Path $candidate)) {
+            continue
+        }
+        $item = Get-Item $candidate
+        if ($item.PSIsContainer) {
+            $timestamps += Get-ChildItem $candidate -Recurse -File | Select-Object -ExpandProperty LastWriteTimeUtc
+        } else {
+            $timestamps += $item.LastWriteTimeUtc
+        }
+    }
+
+    if (-not $timestamps -or $timestamps.Count -eq 0) {
+        return [datetime]::MinValue
+    }
+
+    return ($timestamps | Sort-Object -Descending | Select-Object -First 1)
+}
+
+function Invoke-AppBuild {
+    param(
+        [string]$WorkspaceRoot,
+        [switch]$CleanBuild
+    )
+
+    Push-Location $WorkspaceRoot
+    try {
+        $arguments = @("/c", "build.bat")
+        if ($CleanBuild) {
+            $arguments += "clean"
+        }
+
+        Write-Host "Building app artifact before MSI packaging..."
+        & cmd.exe @arguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "build.bat failed with exit code $LASTEXITCODE"
+        }
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+$needsRebuild = -not (Test-Path $distExe)
+if (-not $needsRebuild) {
+    $exeTime = (Get-Item $distExe).LastWriteTimeUtc
+    $srcTime = Get-NewestSourceTimestamp -WorkspaceRoot $root
+    if ($exeTime -lt $srcTime) {
+        $needsRebuild = $true
+        Write-Host "App build artifact is stale (dist older than sources)."
+    }
+}
+
+if ($needsRebuild -and -not $SkipAppRebuild) {
+    Invoke-AppBuild -WorkspaceRoot $root -CleanBuild:$Clean
+}
+
+if (-not (Test-Path $distExe)) {
+    throw "Build artifact missing after rebuild attempt: $distExe"
 }
 
 $wix = Get-Command wix -ErrorAction SilentlyContinue
