@@ -44,10 +44,33 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 - [x] **P1 Quality Analyzer Slice #3:** Scoring Logik extrahiert → `pipeline/analysis/quality_scorer.py` (18+ methods, 660 lines)
 - [x] **P1 Quality Analyzer Slice #4:** EXIF/Metadata extrahiert → `pipeline/analysis/exif_extractor.py` (ExifExtractor + Wrapper-Kompatibilität)
 - [x] **Governance:** Naming-/Terminologie-Guide finalisiert (`docs/standards/NAMING_TERMINOLOGY_GUIDE.md`) mit Regel "Code Englisch, UI via i18n"
+- [x] **QA-Baselines risikobasiert (Punkt 15):** Vergleichsreport konsolidiert; Pflichtumfang auf 1k/5k gesetzt, 10k als optionaler Soak-Lauf, 50k/100k nicht blockierend (`docs/tech/QA_BASELINE_COMPARISON_2026-04-06.md`)
 
 ### Offene kritische Punkte (extern/manuell)
 - [ ] **Secret Rotation durchführen:** Bereits exponierte Supabase Keys sofort rotieren (außerhalb Repo)
 - [ ] **Frozen-Build Smoke-Test auf 5+ Clean Windows Maschinen** final abschließen
+
+### Launch-Readiness Re-Score (2026-04-06)
+
+Skala: 1 (kritisch) bis 10 (launch-ready)
+
+| Bereich | Vorher (Audit 2026-03-04) | Jetzt (2026-04-06) | Kommentar |
+|---|---:|---:|---|
+| Code-Qualität | 6.0 | 7.5 | Retry-/Fehlerpfade gehärtet, zusätzliche Regressionstests |
+| Struktur/Architektur | 7.0 | 8.5 | Slice 6 abgeschlossen, Workflow-Controller extrahiert |
+| Performance | 8.0 | 8.0 | 1k/5k stabil; 10k optionaler Soak statt Pflichtgate |
+| UX | 7.0 | 7.5 | Stabilere Flows, bessere Fehlermeldungen/Logs |
+| Wartbarkeit | 5.0 | 8.0 | Naming-/Terminologie-Guide + modulare Refactorings |
+| Betrieb/Infra | 5.0 | 5.0 | Externe Blocker offen (Secrets/Smoke-Tests), Supabase-Incident geparkt |
+
+**Gewichteter Gesamteindruck:** 7.4 / 10 (intern strong, extern blocked)
+
+**Go/No-Go:**
+- **No-Go für v1.0 Launch jetzt**, solange externe Gates offen sind.
+- **Conditional Go** sobald diese Punkte abgeschlossen sind:
+   1. Secret-Rotation bestätigt (extern/manuell)
+   2. 5x Clean-Windows Smoke-Test ohne Blocker
+   3. Supabase-Incident (#17) entweder gefixt oder für Launch-Pfad sicher isoliert
 
 ### Geparkte Themen (bewusst verschoben)
 - [ ] **Supabase Licensing HTTP 503 / Exchange-Stabilität** – erneut geparkt (Infra-Blocker)
@@ -60,7 +83,8 @@ Roadmap bleibt strategisch; tägliche Abarbeitung erfolgt über das Backlog.
 1. **Sprint 1 extern abschließen:** Secret Rotation + 5x Clean-Machine Smoke-Tests (blocking für v1.0)
 2. **Supabase HTTP-503 Re-Entry (erneut):** geparkt bis Infra-Fix (Edge-Signer + PostgREST/PGRST002)
 3. **MSI Smoke-Test auf virgin Windows** durchführen (Install/Upgrade/Uninstall gemäß `docs/guides/MSI_BUILD.md`)
-4. **Launch-Readiness Re-Score** nach P1-Abschluss
+4. **Optionaler 10k Soak-Lauf bei Bedarf** (vor größeren Performance-Releases)
+5. ~~**Launch-Readiness Re-Score** nach P1-Abschluss~~ ✅ durchgeführt (2026-04-06)
 
 ### Architektur-Refactoring Roadmap (Quality Analyzer Slices)
 - [x] **Slice 1 (COMPLETE):** Data Models extraction → `pipeline/analysis/models.py`

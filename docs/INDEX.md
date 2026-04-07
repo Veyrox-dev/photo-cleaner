@@ -23,6 +23,7 @@ Technical implementation details and system specifics.
 | [Theme System](tech/THEME_SYSTEM.md) | UI theming and color management |
 | [API Reference](tech/API_REFERENCE.md) | Public entry points and stable APIs |
 | [Performance Analysis](tech/PERFORMANCE_ANALYSIS_2026-02-01.md) | Profiling results and benchmarks |
+| [QA Baseline Comparison 2026-04-06](tech/QA_BASELINE_COMPARISON_2026-04-06.md) | Consolidated 10k/50k/100k baseline status report |
 | [PyInstaller Solutions](tech/PYINSTALLER_NUMPY_SOLUTIONS.md) | NumPy/TensorFlow packaging workarounds |
 
 → **Use this for**: Implementation details, technical decisions, performance metrics

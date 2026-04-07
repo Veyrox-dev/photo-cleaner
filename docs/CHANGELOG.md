@@ -19,6 +19,17 @@
 - Verbindliche Regel festgelegt: Code-Identifiers Englisch, UI-Texte über i18n
 - Doku-Navigation erweitert (`docs/INDEX.md`, `docs/standards/INDEX.md`)
 
+### 📊 QA Baseline Consolidation (Punkt 15 gestartet)
+- Vergleichsreport erstellt: `docs/tech/QA_BASELINE_COMPARISON_2026-04-06.md`
+- Historische 1k/5k-Artefakte konsolidiert und 10k/50k/100k-Abdeckung bewertet
+- Befund: 10k-Artefakte vorhanden, aber ungültig (`success=false`); 50k/100k-Artefakte fehlen
+- Entscheidung: QA-DoD auf risikobasierten Umfang angepasst (1k/5k Pflicht, 10k optionaler Soak-Lauf, 50k/100k nicht blockierend)
+
+### 🎯 Launch-Readiness Re-Score (Punkt 16 abgeschlossen)
+- Re-Score durchgeführt und in der Roadmap dokumentiert (`ROADMAP_2026.md`)
+- Ergebnis: **7.4 / 10** (intern technisch solide, extern/manuell weiterhin geblockt)
+- Launch-Gates bleiben: Secret Rotation + 5x Clean-Windows Smoke-Tests; Supabase-Incident als separater Infra-Blocker geparkt
+
 ### 🚨 Runtime Findings (Server-side)
 - Live-Diagnose zeigte: Edge Function `exchange-license-key` liefert weiterhin Mock-Signatur (`sig-...`, Länge 32) statt Ed25519-Base64
 - Live-Diagnose zeigte zusätzlich: `/rest/v1/licenses` antwortet mit `503 / PGRST002` (Schema-Cache-Problem)

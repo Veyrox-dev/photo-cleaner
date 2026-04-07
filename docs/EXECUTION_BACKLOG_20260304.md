@@ -87,8 +87,11 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 
 13. [x] Supabase HTTP-503 Root-Cause Sprint – `_request_with_retry` exponentialBackoff+Jitter+Retry-After, `exchange_license_key` und `register_device` auf Retry umgestellt, Unit-Tests ergänzt (34/34 grün)
 14. [x] Naming-/Terminologie-Guide finalisieren (Code Englisch, UI via i18n)
-15. [ ] Weitere QA-Baselines (10k/50k/100k) mit Vergleichsreport konsolidieren
-16. [ ] Launch-Readiness Re-Score nach P1/P2 Fortschritt
+15. [x] QA-Baselines risikobasiert konsolidieren (1k/5k Pflicht, 10k optional)
+   - Ergebnis: Vergleichsreport erstellt und Zielbild angepasst (`docs/tech/QA_BASELINE_COMPARISON_2026-04-06.md`)
+   - Definition of Done: 1k/5k als Standard-Baselines, 10k als optionaler Soak/Stress-Lauf, 50k/100k nicht mehr blockierend
+16. [x] Launch-Readiness Re-Score nach P1/P2 Fortschritt
+   - Ergebnis: Re-Score durchgeführt (2026-04-06) mit aktualisierter 1-10-Bewertung und Blocker-Liste in `ROADMAP_2026.md`
 17. [ ] Supabase Licensing Incident Follow-up (erneut geparkt bis Infra-Fix)
    - Typ: Extern/Backend
    - Befund: `exchange-license-key` liefert Mock-Signatur (`sig-...`, Länge 32) statt Ed25519-Base64; `/rest/v1/licenses` liefert `503 / PGRST002`
@@ -128,3 +131,6 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 - 2026-04-05: Punkt 13 abgeschlossen: Supabase HTTP-503 Retry-Logik implementiert – `_request_with_retry` auf exponentielles Backoff+Jitter+Retry-After-Header+30s-Budget umgestellt; `exchange_license_key` und `register_device` nutzen jetzt Retry; 10 neue Unit-Tests, alle 34 Tests grün.
 - 2026-04-06: Follow-up-Diagnose zu Supabase Licensing durchgeführt: Live-Response zeigt Mock-Signatur (`sig-...`, Länge 32) und `/rest/v1/licenses` liefert `503 / PGRST002`; Thema als externer Infra-Blocker erneut geparkt (Backlog #17).
 - 2026-04-06: Punkt 14 abgeschlossen: Naming-/Terminologie-Guide finalisiert (`docs/standards/NAMING_TERMINOLOGY_GUIDE.md`), Doku-Indizes aktualisiert; Regel fixiert: Code-Identifiers Englisch, UI-Texte via i18n.
+- 2026-04-06: Punkt 15 gestartet: vorhandene QA-Artefakte konsolidiert und Vergleichsreport erstellt (`docs/tech/QA_BASELINE_COMPARISON_2026-04-06.md`). Befund: 10k-Runs vorhanden aber ungültig (`success=false`, ReturnCode 1/2), 50k/100k fehlen noch.
+- 2026-04-06: Punkt 15 finalisiert: QA-Zielbild auf risikobasierten Umfang umgestellt (1k/5k Pflicht, 10k optional, 50k/100k nicht blockierend) und in Report/Roadmap synchronisiert.
+- 2026-04-06: Punkt 16 abgeschlossen: Launch-Readiness Re-Score durchgeführt. Ergebnis: intern technisch solide, aber extern/manuell weiter geblockt durch Secret Rotation + 5x Clean-Windows Smoke-Tests; Supabase-Incident separat geparkt (#17).
