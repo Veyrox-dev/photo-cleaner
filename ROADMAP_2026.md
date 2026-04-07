@@ -2,7 +2,7 @@
 
 **Stand:** 07. April 2026 · Version 0.8.4
 **Ziel:** v1.0.0 Launch Q3/Q4 2026
-**Launch-Readiness:** 7.4 / 10 → zwei externe Gates offen
+**Launch-Readiness:** 7.6 / 10 → ein externes Gate offen
 
 ---
 
@@ -25,7 +25,7 @@
 
 ## 🚨 Go/No-Go-Gates für v1.0 (extern / manuell)
 
-Nur diese zwei Punkte blockieren den Launch.
+Diese Gates wurden definiert; aktuell blockiert noch ein Punkt den Launch.
 
 | # | Gate | Status |
 |---|---|---|
@@ -117,7 +117,7 @@ Neues Modell: **FREE (einmalig 250 Bilder, kostenlos per E-Mail-Lizenz)** + **PR
 | Performance | 8.0 |
 | UX | 7.5 |
 | Wartbarkeit | 8.0 |
-| Betrieb / Infra | 5.5 *(Supabase gelöst; Secrets + Smoke-Tests noch offen)* |
+| Betrieb / Infra | 6.5 *(Supabase + Secrets erledigt; 5× Smoke-Tests noch offen)* |
 | **Gesamt** | **7.6 / 10** |
 
-**Conditional Go:** Launch freigegeben, sobald Secret Rotation + 5× Smoke-Test abgehakt sind.
+**Conditional Go:** Launch freigegeben, sobald der 5× Smoke-Test abgehakt ist.
