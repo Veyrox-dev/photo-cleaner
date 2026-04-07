@@ -180,12 +180,12 @@ jobs:
     - name: Build with PyInstaller (Windows)
       if: runner.os == 'Windows'
       run: |
-        pyinstaller PhotoCleaner.spec --distpath ./dist --buildpath ./build --specpath .
+        pyinstaller PhotoCleaner.spec --distpath ./dist --workpath ./build --specpath .
     
     - name: Build with PyInstaller (Linux/macOS)
       if: runner.os != 'Windows'
       run: |
-        pyinstaller PhotoCleaner.spec --distpath ./dist --buildpath ./build --specpath .
+        pyinstaller PhotoCleaner.spec --distpath ./dist --workpath ./build --specpath .
     
     - name: Create release archive (Windows)
       if: runner.os == 'Windows'

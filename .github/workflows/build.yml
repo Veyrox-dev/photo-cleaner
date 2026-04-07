@@ -91,7 +91,7 @@ jobs:
       run: |
         pyinstaller PhotoCleaner.spec ^
           --distpath ./dist ^
-          --buildpath ./build ^
+          --workpath ./build ^
           --specpath . ^
           --clean
     
@@ -100,7 +100,7 @@ jobs:
       run: |
         pyinstaller PhotoCleaner.spec \
           --distpath ./dist \
-          --buildpath ./build \
+          --workpath ./build \
           --specpath . \
           --clean
     
