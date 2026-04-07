@@ -77,11 +77,11 @@ Neues Modell: **FREE (einmalig 250 Bilder, kostenlos per E-Mail-Lizenz)** + **PR
 - i18n-Texte und Pricing-Tabellen bereinigen (kein Enterprise mehr)
 - Free-Quota-Texte überall auf „einmalig 250 Bilder" vereinheitlichen
 
-### Slice 3 · Stripe/Supabase Produktmodell (🟡 in Arbeit)
+### Slice 3 · Stripe/Supabase Produktmodell (✅ umgesetzt)
 - ✅ Webhook-Metadaten fixiert (`metadata.plan=pro` Guardrail), deployed und negativ getestet (falscher Plan -> HTTP 400)
 - ✅ Technischer E2E-Fluss getestet (Testpfad B): Webhook -> Lizenz -> Exchange-Aktivierung -> signierte `license_data`
 - ✅ E2E-Runbook erstellt: `docs/guides/STRIPE_SUPABASE_E2E.md`
-- ⬜ Echter Stripe-Checkout mit Signaturpfad offen: Checkout -> Webhook -> Lizenzmail -> Aktivierung
+- ✅ Echter Stripe-Checkout mit Signaturpfad durchgeführt: Checkout -> Webhook -> Lizenzmail -> Aktivierung
 
 ### Slice 4 · Guardrails + Tests (✅ umgesetzt)
 - ✅ Unit-/E2E-Tests für Free-Quota (250) + PRO unlimited ergänzt
