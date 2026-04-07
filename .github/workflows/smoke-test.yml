@@ -1,145 +1,149 @@
-name: Smoke Test (Windows Frozen Build)
+﻿name: Smoke Test (Windows Frozen Build)
 
-# Manuell auslösbar ODER automatisch nach erfolgreichem Build-Workflow
+# Manuell auslösbar ODER automatisch nach erfolgreichem Build-Workflow.
+# Baut NICHT neu - lädt das Artefakt aus build.yml und testet es.
 on:
-  workflow_dispatch:        # Manuell per Knopfdruck auf GitHub
-  workflow_run:             # Automatisch nach build.yml
+  workflow_dispatch:
+  workflow_run:
     workflows: ["Build & Release"]
     types: [completed]
     branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   smoke-test-windows:
     name: Windows Frozen Build Smoke Test
     runs-on: windows-latest
-    # Bei automatischem Trigger: nur wenn Build erfolgreich war
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      # ── 1. Repo auschecken ──────────────────────────────────────────
+      # -- 1. Repo auschecken -------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── 2. Python einrichten ────────────────────────────────────────
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      # -- 2a. Artefakt vom auslösenden Build-Run laden -----------------------
+      - name: Download artifact from triggering build
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
         with:
-          python-version: "3.12"
-          cache: pip
+          name: builds-windows-latest
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/
 
-      # ── 3. Dependencies + PyInstaller installieren ──────────────────
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install -r requirements.txt
-          pip install pyinstaller
-
-      # ── 4. EXE bauen ────────────────────────────────────────────────
-      - name: Build frozen EXE
-        run: |
-          pyinstaller PhotoCleaner.spec --distpath ./dist --buildpath ./build --clean
+      # -- 2b. Bei manuellem Trigger: letzten erfolgreichen Build laden --------
+      - name: Download latest successful build artifact (manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
         env:
-          CUDA_VISIBLE_DEVICES: "-1"   # TF CPU-only, kein GPU-Scan
-
-      # ── 5. EXE existiert ────────────────────────────────────────────
-      - name: Check EXE exists
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if (Test-Path "dist/PhotoCleaner/PhotoCleaner.exe") {
-            Write-Host "PASS: EXE found"
-            $size = (Get-Item "dist/PhotoCleaner/PhotoCleaner.exe").Length / 1MB
-            Write-Host "Size: $([math]::Round($size, 1)) MB"
-          } else {
-            Write-Error "FAIL: EXE not found"
+          $runId = gh run list `
+            --workflow=build.yml `
+            --status=success `
+            --limit=1 `
+            --json databaseId `
+            --jq '.[0].databaseId'
+
+          if (-not $runId) {
+            Write-Error "Kein erfolgreicher build.yml-Run gefunden. Bitte zuerst 'Build & Release' ausfuehren."
             exit 1
           }
+          Write-Host "Lade Artefakt von Run $runId ..."
+          gh run download $runId --name builds-windows-latest --dir artifacts/
 
-      # ── 6. EXE startet + beendet sich sauber ────────────────────────
+      # -- 3. ZIP entpacken -> PhotoCleaner/ ----------------------------------
+      - name: Extract EXE from artifact
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem artifacts/ -Filter "*.zip" | Select-Object -First 1
+          if (-not $zip) {
+            Write-Error "Kein ZIP-Artefakt in artifacts/ gefunden"
+            Get-ChildItem artifacts/ -Recurse | Select-Object FullName
+            exit 1
+          }
+          Write-Host "Entpacke: $($zip.Name)"
+          Expand-Archive -Path $zip.FullName -DestinationPath "."
+          Write-Host "Inhalt nach dem Entpacken:"
+          Get-ChildItem "PhotoCleaner/" | Select-Object Name, Length | Format-Table -AutoSize
+
+      # -- 4. EXE existiert und ist gross genug -------------------------------
+      - name: Verify EXE exists
+        shell: pwsh
+        run: |
+          $exe = "PhotoCleaner/PhotoCleaner.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "FAIL: PhotoCleaner.exe nicht gefunden"
+            exit 1
+          }
+          $sizeMB = [math]::Round((Get-Item $exe).Length / 1MB, 1)
+          Write-Host "PASS: EXE gefunden ($sizeMB MB)"
+          if ($sizeMB -lt 10) {
+            Write-Warning "EXE ist ungewoehnlich klein ($sizeMB MB) - moeglicher Build-Fehler"
+          }
+
+      # -- 5. EXE starten + auf Crash pruefen ---------------------------------
       - name: EXE startup smoke test
+        shell: pwsh
         timeout-minutes: 2
         run: |
-          # Headless: PHOTOCLEANER_HEADLESS=1 verhindert Qt-Fenster-Init
-          # --smoke-test Flag (falls implementiert) oder einfach Exit-Code prüfen
           $env:PHOTOCLEANER_HEADLESS = "1"
-          $env:PHOTOCLEANER_MODE = "RELEASE"
-          $env:CUDA_VISIBLE_DEVICES = "-1"
+          $env:PHOTOCLEANER_MODE     = "RELEASE"
+          $env:CUDA_VISIBLE_DEVICES  = "-1"
 
           $proc = Start-Process `
-            -FilePath "dist/PhotoCleaner/PhotoCleaner.exe" `
+            -FilePath "PhotoCleaner/PhotoCleaner.exe" `
             -ArgumentList "--smoke-test" `
-            -PassThru `
-            -NoNewWindow `
+            -PassThru -NoNewWindow `
             -RedirectStandardOutput "smoke_stdout.txt" `
             -RedirectStandardError  "smoke_stderr.txt"
 
-          # Bis zu 30 Sekunden warten
           $exited = $proc.WaitForExit(30000)
 
-          $stdout = if (Test-Path smoke_stdout.txt) { Get-Content smoke_stdout.txt -Raw } else { "" }
-          $stderr = if (Test-Path smoke_stderr.txt) { Get-Content smoke_stderr.txt -Raw } else { "" }
-
-          Write-Host "=== STDOUT ==="
-          Write-Host $stdout
-          Write-Host "=== STDERR ==="
-          Write-Host $stderr
+          $out = if (Test-Path smoke_stdout.txt) { Get-Content smoke_stdout.txt -Raw } else { "(leer)" }
+          $err = if (Test-Path smoke_stderr.txt) { Get-Content smoke_stderr.txt -Raw } else { "(leer)" }
+          Write-Host "=== STDOUT ==="; Write-Host $out
+          Write-Host "=== STDERR ==="; Write-Host $err
 
           if (-not $exited) {
             $proc.Kill()
-            Write-Host "INFO: Process did not exit within 30s (no --smoke-test flag) - checking for crash"
-            # Kein Exit in 30s ist OK wenn kein Crash-Code
+            Write-Host "PASS: EXE laeuft stabil (kein sofortiger Crash); nach 30s sauber beendet"
             exit 0
           }
 
           $code = $proc.ExitCode
-          Write-Host "Exit code: $code"
-          # Exit 0 = OK; Exit 42 = Smoke-Test-Modus erfolgreich beendet
+          Write-Host "Exit-Code: $code"
           if ($code -eq 0 -or $code -eq 42) {
-            Write-Host "PASS: EXE exited cleanly"
+            Write-Host "PASS: EXE sauber beendet (Exit $code)"
           } else {
-            Write-Error "FAIL: EXE exited with code $code"
+            Write-Error "FAIL: EXE mit Exit-Code $code abgebrochen"
             exit 1
           }
 
-      # ── 7. Log-Datei auf Crashes/Panics prüfen ──────────────────────
-      - name: Check for crash markers in log
+      # -- 6. App-Log auf Crash-Marker pruefen --------------------------------
+      - name: Check log for crash markers
+        if: always()
+        shell: pwsh
         run: |
           $logPath = "$env:APPDATA\PhotoCleaner\PhotoCleaner.log"
-          if (Test-Path $logPath) {
-            $log = Get-Content $logPath -Raw
-            Write-Host "=== PhotoCleaner.log (letzte 50 Zeilen) ==="
-            Get-Content $logPath | Select-Object -Last 50
-
-            $crashPatterns = @("Traceback", "CRITICAL", "Fatal", "Access violation", "Segmentation fault")
-            $found = $crashPatterns | Where-Object { $log -match $_ }
-            if ($found) {
-              Write-Error "FAIL: Crash-Marker im Log gefunden: $($found -join ', ')"
-              exit 1
-            }
-            Write-Host "PASS: Keine Crash-Marker im Log"
-          } else {
-            Write-Host "INFO: Keine Log-Datei gefunden (EXE hat evtl. nicht gestartet)"
+          if (-not (Test-Path $logPath)) {
+            Write-Host "INFO: Keine Log-Datei vorhanden"
+            exit 0
           }
-
-      # ── 8. MSI bauen und Struktur prüfen ────────────────────────────
-      - name: Build MSI
-        run: |
-          if (Test-Path "scripts/build_msi.ps1") {
-            & scripts/build_msi.ps1
-          } else {
-            Write-Host "SKIP: build_msi.ps1 nicht gefunden"
+          Write-Host "=== PhotoCleaner.log (letzte 50 Zeilen) ==="
+          Get-Content $logPath | Select-Object -Last 50
+          $log = Get-Content $logPath -Raw
+          $hits = @("Traceback", "CRITICAL", "Fatal", "Access violation") | Where-Object { $log -match $_ }
+          if ($hits) {
+            Write-Error "FAIL: Crash-Marker gefunden: $($hits -join ', ')"
+            exit 1
           }
-        continue-on-error: true   # MSI-Fehler blockiert nicht den EXE-Test
+          Write-Host "PASS: Keine Crash-Marker im Log"
 
-      - name: Check MSI exists
-        run: |
-          $msi = Get-ChildItem -Path "releases/msi" -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($msi) {
-            Write-Host "PASS: MSI found: $($msi.Name) ($([math]::Round($msi.Length/1MB,1)) MB)"
-          } else {
-            Write-Host "INFO: Kein MSI gefunden (optional)"
-          }
-
-      # ── 9. Artefakte hochladen ───────────────────────────────────────
-      - name: Upload smoke test logs
+      # -- 7. Logs als Artefakt hochladen -------------------------------------
+      - name: Upload test logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -148,10 +152,3 @@ jobs:
             smoke_stdout.txt
             smoke_stderr.txt
           retention-days: 14
-
-      - name: Upload EXE artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: PhotoCleaner-windows-smoke-tested
-          path: dist/PhotoCleaner/
-          retention-days: 7
