@@ -61,6 +61,34 @@ Separat und ergänzend zu den EXE-Smoke-Tests.
 
 ---
 
+## 🔐 Lizenzmodell-Migration (neu)
+
+Neues Modell: **FREE (einmalig 250 Bilder, kostenlos per E-Mail-Lizenz)** + **PRO (Jahresabo, unbegrenzt)**.  
+**ENTERPRISE entfällt**.
+
+### Slice 1 · Domain/Backend-Grundlage (✅ umgesetzt)
+- FREE-Lifetime-Limit auf 250 gesetzt
+- Enterprise als aktiver Tier entfernt, Alt-Daten werden kompatibel auf PRO gemappt
+- Upgrade-Meldungen auf PRO-only angepasst
+- Webhook auf PRO-only umgestellt
+
+### Slice 2 · UI + Texte (✅ umgesetzt)
+- Lizenzdialog auf 2 Pläne (FREE/PRO) reduzieren
+- i18n-Texte und Pricing-Tabellen bereinigen (kein Enterprise mehr)
+- Free-Quota-Texte überall auf „einmalig 250 Bilder" vereinheitlichen
+
+### Slice 3 · Stripe/Supabase Produktmodell
+- Stripe Products/Prices auf einen PRO-Plan konsolidieren
+- Webhook-Metadaten fixieren (`plan=pro`)
+- End-to-End Test: Checkout → Webhook → Lizenzmail → Aktivierung
+
+### Slice 4 · Guardrails + Tests
+- Unit-Tests für Free-Quota (250) + PRO unlimited ergänzen
+- Regression-Tests: alte ENTERPRISE-Lizenzen werden als PRO akzeptiert
+- Smoke-Test-Checkliste um Lizenzfälle FREE/PRO erweitern
+
+---
+
 ## 🎯 Feature-Scope
 
 ### v1.0 (geplant)

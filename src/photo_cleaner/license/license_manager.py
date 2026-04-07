@@ -40,12 +40,12 @@ LICENSE_REQUIRED_FIELDS = ("user", "license_type", "machine_id")
 CLOUD_SNAPSHOT_FILENAME = "license_snapshot.json"
 CLOUD_SIGNATURE_FILENAME = "license_signature"
 CLOUD_DEFAULT_GRACE_DAYS = 7
+FREE_LIFETIME_IMAGE_LIMIT = 250
 
 
 class LicenseType(Enum):
     FREE = "FREE"
     PRO = "PRO"
-    ENTERPRISE = "ENTERPRISE"
 
 
 FEATURES_MAP: Dict[LicenseType, List[str]] = {
@@ -57,16 +57,6 @@ FEATURES_MAP: Dict[LicenseType, List[str]] = {
         "advanced_quality_analysis",
         "bulk_delete",
         "export_formats",
-    ],
-    LicenseType.ENTERPRISE: [
-        "batch_processing",
-        "heic_support",
-        "extended_cache",
-        "advanced_quality_analysis",
-        "bulk_delete",
-        "export_formats",
-        "api_access",
-        "unlimited_images",
     ],
 }
 
@@ -268,16 +258,14 @@ class LicenseManager:
             not_expired = expires_at > datetime.now(timezone.utc)
 
         plan_upper = plan.upper()
-        if plan_upper == "ENTERPRISE":
-            lic_type = LicenseType.ENTERPRISE
-        elif plan_upper == "PRO":
+        if plan_upper in ("PRO", "ENTERPRISE"):
             lic_type = LicenseType.PRO
         else:
             lic_type = LicenseType.FREE
 
         valid = status in ("active", "valid") and not_expired and lic_type != LicenseType.FREE
         enabled_features = FEATURES_MAP.get(lic_type, []) if valid else []
-        max_images = 0 if valid and lic_type in (LicenseType.PRO, LicenseType.ENTERPRISE) else 1000
+        max_images = 0 if valid and lic_type == LicenseType.PRO else FREE_LIFETIME_IMAGE_LIMIT
 
         self.license_info = LicenseInfo(
             license_type=lic_type,
@@ -458,7 +446,7 @@ class LicenseManager:
             machine_match=True,
             valid=True,
             enabled_features=enabled,
-            max_images=0 if lic_enum in (LicenseType.PRO, LicenseType.ENTERPRISE) else 1000,
+            max_images=0 if lic_enum == LicenseType.PRO else FREE_LIFETIME_IMAGE_LIMIT,
             raw={"activation": True},
             path=self.activation_marker,
             validation_reason="ok",
@@ -500,6 +488,8 @@ class LicenseManager:
             # Validate
             if not (mid and exp and nonce and sig):
                 return False
+            if lic_type == "ENTERPRISE":
+                lic_type = "PRO"
             if lic_type not in LicenseType.__members__:
                 return False
             if not verify_ed25519_signature(signed_payload, sig):
@@ -535,7 +525,7 @@ class LicenseManager:
                     machine_match=True,
                     valid=True,
                     enabled_features=enabled,
-                    max_images=0 if lic_enum in (LicenseType.PRO, LicenseType.ENTERPRISE) else 1000,
+                    max_images=0 if lic_enum == LicenseType.PRO else FREE_LIFETIME_IMAGE_LIMIT,
                     raw={"activation": True},
                     path=self.activation_marker,
                     validation_reason="ok",
@@ -557,7 +547,7 @@ class LicenseManager:
             machine_match=True,
             valid=False,
             enabled_features=FEATURES_MAP[LicenseType.FREE],
-            max_images=1000,
+            max_images=FREE_LIFETIME_IMAGE_LIMIT,
             raw={},
             path=self.license_file if self.license_file else None,
             validation_reason=reason,
@@ -610,7 +600,7 @@ class LicenseManager:
 
         valid = bool(signature_valid and machine_match and not_expired)
         enabled_features = FEATURES_MAP[lic_type] if valid else FEATURES_MAP[LicenseType.FREE]
-        max_images = 0 if (lic_type in (LicenseType.PRO, LicenseType.ENTERPRISE) and valid) else 1000
+        max_images = 0 if (lic_type == LicenseType.PRO and valid) else FREE_LIFETIME_IMAGE_LIMIT
 
         reason = "ok" if valid else self._build_reason(signature_valid, machine_match, not_expired)
 
@@ -714,7 +704,7 @@ class LicenseManager:
             return True, ""
         if isinstance(remaining, int):
             return False, f"Free-Limit erreicht. Verbleibend: {remaining} Bilder."
-        return False, error or "Free-Limit erreicht. Bitte Upgrade auf PRO/ENTERPRISE."
+        return False, error or "Free-Limit erreicht. Bitte Upgrade auf PRO."
 
     def get_license_info(self) -> LicenseInfo:
         return self.license_info
@@ -777,8 +767,6 @@ class FeatureFlagsManager:
             return "📦 FREE (Basic)"
         if info.license_type == LicenseType.PRO:
             return "⭐ PRO"
-        if info.license_type == LicenseType.ENTERPRISE:
-            return "🏢 ENTERPRISE"
         return "Unknown"
 
 

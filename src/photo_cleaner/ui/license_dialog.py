@@ -228,8 +228,6 @@ class LicenseDialog(QDialog):
             label.setText(f'<p style="background: #333; padding: 10px; border-radius: 5px;">📋 <b>{t("license_your_plan")}:</b> FREE ({t("license_plan_standard")})</p>')
         elif license_type == "PRO":
             label.setText(f'<p style="background: #2a2a2a; padding: 10px; border-radius: 5px;">⭐ <b>{t("license_your_plan")}:</b> PRO ({t("license_plan_active")})</p>')
-        elif license_type == "ENTERPRISE":
-            label.setText(f'<p style="background: #3a1a3a; padding: 10px; border-radius: 5px;">🏢 <b>{t("license_your_plan")}:</b> ENTERPRISE ({t("license_plan_active")})</p>')
         else:
             label.setText(f'<p style="background: #333; padding: 10px; border-radius: 5px;">📋 <b>{t("license_your_plan")}:</b> {license_type}</p>')
 
@@ -247,9 +245,6 @@ class LicenseDialog(QDialog):
             if license_type == "PRO":
                 color = "#FF9800"  # Orange
                 icon = "⭐"
-            elif license_type == "ENTERPRISE":
-                color = "#9C27B0"  # Purple
-                icon = "🏢"
             else:  # FREE
                 color = "#4CAF50"  # Green
                 icon = "✓"
@@ -267,14 +262,14 @@ class LicenseDialog(QDialog):
             f'<span style="color: {color}; font-size: 14pt;">{icon} {license_type}</span>'
         )
 
-        # Details (vereinfacht für FREE-Mode, detailliert für PRO/ENTERPRISE)
+        # Details (vereinfacht fuer FREE-Mode, detailliert fuer PRO/invalid)
         original_license_type = status.get("license_type", "FREE").upper()
         
         if original_license_type == "FREE" and not valid:
             # FREE-Mode: Show simplified, user-friendly details
             details = t("license_free_details")
         else:
-            # PRO/ENTERPRISE or invalid license: Show technical details
+            # PRO or invalid license: Show technical details
             details = f"""
 {t('license_label')}: {license_type}
 {t('license_user')}: {status.get('user', t('license_not_assigned'))}

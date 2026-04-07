@@ -2903,7 +2903,7 @@ class ModernMainWindow(QMainWindow):
                 QMessageBox.warning(
                     self,
                     "Free-Limit erreicht",
-                    reason or "Free-Limit erreicht. Bitte Upgrade auf PRO/ENTERPRISE.",
+                    reason or "Free-Limit erreicht. Bitte Upgrade auf PRO.",
                 )
                 return
 

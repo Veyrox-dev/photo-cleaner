@@ -46,12 +46,8 @@ def show_status(ctx: click.Context) -> None:
         # Farb-Markierungen
         if license_type == "FREE":
             icon = "📦"
-        elif license_type == "TRIAL":
-            icon = "🔓"
         elif license_type == "PRO":
             icon = "⭐"
-        elif license_type == "ENTERPRISE":
-            icon = "🏢"
         else:
             icon = "❓"
 
@@ -161,46 +157,31 @@ def show_license_info(ctx: click.Context) -> None:
 
 📦 FREE (Standard)
    • Grundlegende Bildanalyse
-   • Bis zu 1000 Bilder pro Scan
+    • Einmalig bis zu 250 Bilder (Lebenszeit-Kontingent)
    • Keine Premium-Features
-   • Kostenfrei, unbegrenzte Nutzung
-
-🔓 TRIAL (30 Tage)
-   • Batch-Verarbeitung
-   • HEIC/HEIF-Unterstützung
-   • Bulk-Löschung
-   • Bis zu 1000 Bilder
-   • Ablauf nach 30 Tagen
+    • Kostenlos (Lizenz per E-Mail)
 
 ⭐ PRO (Jährlich)
-   • Alle TRIAL-Features +
+    • Alle Premium-Features
    • Erweitertes Caching (ImageCache)
    • Erweiterte Qualitätsanalyse
    • Custom Export-Formate
-   • Bis zu 1000 Bilder
+    • Unbegrenzte Bilder
    • 365 Tage Gültigkeit
-
-🏢 ENTERPRISE (Unbegrenzt)
-   • ALLE Features freigeschaltet
-   • Unbegrenzte Bilder
-   • REST API-Zugriff
-   • Keine zeitlichen Beschränkungen
-   • Vollständige Automatisierung
 
 ╔════════════════════════════════════════════════════════════╗
 ║                    FEATURE-TABELLE                         ║
 ╚════════════════════════════════════════════════════════════╝
 
-Feature                    │ FREE │ TRIAL │ PRO │ ENTERPRISE
-───────────────────────────┼──────┼───────┼─────┼───────────
-Batch-Verarbeitung         │  ✗   │   ✓   │  ✓  │    ✓
-HEIC/HEIF-Format           │  ✗   │   ✓   │  ✓  │    ✓
-Erweitertes Caching        │  ✗   │   ✗   │  ✓  │    ✓
-Erweiterte Qualitätsanalyse│  ✗   │   ✗   │  ✓  │    ✓
-Bulk-Löschung              │  ✗   │   ✓   │  ✓  │    ✓
-Custom Export-Formate      │  ✗   │   ✗   │  ✓  │    ✓
-REST API-Zugriff           │  ✗   │   ✗   │  ✗  │    ✓
-Unbegrenzte Bilder         │  ✗   │   ✗   │  ✗  │    ✓
+Feature                    │ FREE │ PRO
+───────────────────────────┼──────┼─────
+Batch-Verarbeitung         │  ✗   │  ✓
+HEIC/HEIF-Format           │  ✗   │  ✓
+Erweitertes Caching        │  ✗   │  ✓
+Erweiterte Qualitätsanalyse│  ✗   │  ✓
+Bulk-Löschung              │  ✗   │  ✓
+Custom Export-Formate      │  ✗   │  ✓
+Unbegrenzte Bilder         │  ✗   │  ✓
 """
     click.echo(info_text)
 

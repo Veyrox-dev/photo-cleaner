@@ -23,7 +23,7 @@ as $$
 declare
   current_total integer;
   new_total integer;
-  limit_total integer := 1000;
+  limit_total integer := 250;
 begin
   if p_device_id is null or length(p_device_id) = 0 then
     raise exception 'device_id required';

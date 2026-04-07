@@ -186,7 +186,7 @@ class PhotoCleanerPipeline:
             total_files = FileScanner(folder_path).count_files()
             allowed, reason = license_mgr.check_and_consume_free_images(total_files)
             if not allowed:
-                raise ValueError(reason or "Free-Limit erreicht. Bitte Upgrade auf PRO/ENTERPRISE.")
+                raise ValueError(reason or "Free-Limit erreicht. Bitte Upgrade auf PRO.")
         except (ImportError, AttributeError) as e:
             logger.warning("License check skipped: %s", e)
         

@@ -351,23 +351,18 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "license_online_licensing": "Online-Lizenzierung",
         "license_online_info_html": """<b>Online-Lizenzierung mit Supabase</b>
 
-• <b>Geräte-Bindung:</b> Jede Lizenz ist an bis zu 3 Geräte gebunden
-• <b>Grace Period:</b> 7 Tage offline Nutzung möglich
-• <b>Cloud Sync:</b> Lizenzstatus wird nach Wiederherstellung der Verbindung synchronisiert
+    • <b>FREE-Lizenz:</b> kostenlos per E-Mail-Aktivierung
+    • <b>FREE-Kontingent:</b> einmalig 250 Bilder (Lebenszeit)
+    • <b>PRO-Lizenz:</b> unbegrenzte Bilder + Premium-Features
+    • <b>Cloud Sync:</b> Lizenzstatus wird nach Wiederherstellung der Verbindung synchronisiert
 
 <b>Pläne:</b>
-• <b>PRO</b> - Professionell (Cloud, 3 Geräte, 7 Tage Grace Period)
-• <b>STANDARD</b> - Standard (Cloud, 2 Geräte, 7 Tage Grace Period)
+    • <b>FREE</b> - Einstieg (250 Bilder gesamt)
+    • <b>PRO</b> - Professionell (Cloud, 3 Geräte, unbegrenzt)
 
 <b>Aktivierung:</b>
 Geben Sie Ihren Lizenzschlüssel oben ein und klicken Sie auf "Aktivieren".
-Das Gerät wird automatisch registriert.
-
-<b>ENTERPRISE</b> - Enterprise (Unbegrenzt)
-• Alle Features freigeschaltet
-• Unbegrenzte Bilder
-• REST API-Zugriff
-• Keine zeitlichen Beschränkungen""",
+    Das Gerät wird automatisch registriert.""",
         "license_plan_comparison_html": """<style>
     table { border-collapse: collapse; width: 100%; margin: 10px 0; }
     th { background: #333; color: white; padding: 12px; text-align: center; font-weight: bold; }
@@ -377,7 +372,6 @@ Das Gerät wird automatisch registriert.
     .cross { color: #666; font-size: 18px; }
     .plan-free { background: #1a1a1a; }
     .plan-pro { background: #2a2a2a; }
-    .plan-ent { background: #3a1a3a; }
     .price { font-size: 20px; font-weight: bold; color: #FF9800; }
     .highlight { background: #FF9800; color: white; padding: 4px 8px; border-radius: 4px; }
 </style>
@@ -388,8 +382,7 @@ Das Gerät wird automatisch registriert.
     <tr>
         <th class="feature-name">Feature / Limit</th>
         <th class="plan-free">FREE<br><span class="price">€0</span></th>
-        <th class="plan-pro">PRO ⭐<br><span class="price">€59/Jahr</span></th>
-        <th class="plan-ent">ENTERPRISE 🏢<br><span class="price">€199/Jahr</span></th>
+        <th class="plan-pro">PRO ⭐<br><span class="price">ab €19/Jahr</span></th>
     </tr>
     
     <!-- Basis-Features -->
@@ -397,19 +390,16 @@ Das Gerät wird automatisch registriert.
         <td class="feature-name">🔍 Bildanalyse & Duplikatsuche</td>
         <td class="plan-free"><span class="check">✓</span></td>
         <td class="plan-pro"><span class="check">✓</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
     </tr>
     <tr>
-        <td class="feature-name">📊 Bildlimit pro Scan</td>
-        <td class="plan-free">1.000 Bilder</td>
+        <td class="feature-name">📊 Bildlimit</td>
+        <td class="plan-free">250 Bilder gesamt</td>
         <td class="plan-pro"><span class="highlight">Unbegrenzt</span></td>
-        <td class="plan-ent"><span class="highlight">Unbegrenzt</span></td>
     </tr>
     <tr>
         <td class="feature-name">💻 Geräte-Limit</td>
         <td class="plan-free">1 Gerät</td>
         <td class="plan-pro">3 Geräte</td>
-        <td class="plan-ent">10 Geräte</td>
     </tr>
     
     <!-- PRO Features -->
@@ -417,72 +407,49 @@ Das Gerät wird automatisch registriert.
         <td class="feature-name">🚀 Batch-Verarbeitung (Massen-Import)</td>
         <td class="plan-free"><span class="cross">✗</span></td>
         <td class="plan-pro"><span class="check">✓</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
     </tr>
     <tr>
         <td class="feature-name">📷 HEIC/HEIF-Format Support</td>
         <td class="plan-free"><span class="cross">✗</span></td>
         <td class="plan-pro"><span class="check">✓</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
     </tr>
     <tr>
         <td class="feature-name">⚡ Erweitertes Caching (2-8x schneller)</td>
         <td class="plan-free"><span class="cross">✗</span></td>
         <td class="plan-pro"><span class="check">✓</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
     </tr>
     <tr>
         <td class="feature-name">🎯 Qualitätsanalyse (Schärfe/Belichtung/Details)</td>
         <td class="plan-free">Basis</td>
         <td class="plan-pro"><span class="highlight">Erweitert</span></td>
-        <td class="plan-ent"><span class="highlight">Erweitert</span></td>
     </tr>
     <tr>
         <td class="feature-name">📦 Batch-Löschung</td>
         <td class="plan-free"><span class="cross">✗</span></td>
         <td class="plan-pro"><span class="check">✓</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
     </tr>
     <tr>
         <td class="feature-name">📄 Export-Formate (CSV, JSON)</td>
         <td class="plan-free"><span class="cross">✗</span></td>
         <td class="plan-pro"><span class="check">✓</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
-    </tr>
-    
-    <!-- ENTERPRISE Features -->
-    <tr>
-        <td class="feature-name">🔌 REST API-Zugriff</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
-        <td class="plan-pro"><span class="cross">✗</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
-    </tr>
-    <tr>
-        <td class="feature-name">☁️ Cloud-Backup (Supabase)</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
-        <td class="plan-pro"><span class="cross">✗</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
     </tr>
     <tr>
         <td class="feature-name">📧 Support</td>
         <td class="plan-free"><span class="cross">✗</span></td>
         <td class="plan-pro">Email</td>
-        <td class="plan-ent">Email</td>
     </tr>
     <tr>
         <td class="feature-name">📱 Offline Grace Period</td>
         <td class="plan-free">-</td>
-        <td class="plan-pro">30 Tage</td>
-        <td class="plan-ent">90 Tage</td>
+        <td class="plan-pro">7 Tage</td>
     </tr>
 </table>
 
 <br>
 <p><b>💡 Empfehlung:</b></p>
 <ul>
-    <li><b>FREE:</b> Testen & kleine Sammlungen (&lt;1000 Bilder)</li>
-    <li><b>PRO:</b> Hobbyfotografen & Content Creators (unlimitiert)</li>
-    <li><b>ENTERPRISE:</b> Studios, Agenturen & Teams (API + Support)</li>
+    <li><b>FREE:</b> Testen & kleine Sammlungen (bis 250 Bilder gesamt)</li>
+    <li><b>PRO:</b> Regelmäßige Nutzung mit unbegrenzten Bildern</li>
 </ul>""",
         "license_your_plan": "Dein Plan",
         "license_plan_standard": "Standard",
@@ -490,11 +457,11 @@ Das Gerät wird automatisch registriert.
         "license_basic_features": "Basis-Features",
         "license_invalid": "ungültig",
         "license_free_details": """Lizenz: FREE (Basis-Features)
-Limit: 1.000 Bilder pro Scan
+    Limit: Einmalig 250 Bilder (Lebenszeit-Kontingent)
 Status: Offline-Nutzung aktiv
 
 💡 Für unbegrenzte Bilder und Premium-Features:
-   → Upgrade auf PRO oder ENTERPRISE""",
+       → Upgrade auf PRO""",
         "license_label": "Lizenz",
         "license_user": "Benutzer",
         "license_not_assigned": "Nicht zugewiesen",
@@ -846,23 +813,18 @@ Status: Offline-Nutzung aktiv
         "license_online_licensing": "Online Licensing",
         "license_online_info_html": """<b>Online Licensing with Supabase</b>
 
-• <b>Device Binding:</b> Each license is bound to up to 3 devices
-• <b>Grace Period:</b> 7 days offline usage possible
-• <b>Cloud Sync:</b> License status is synchronized after connection is restored
+    • <b>FREE license:</b> free email-based activation
+    • <b>FREE quota:</b> one-time 250 images (lifetime)
+    • <b>PRO license:</b> unlimited images + premium features
+    • <b>Cloud Sync:</b> License status is synchronized after connection is restored
 
 <b>Plans:</b>
-• <b>PRO</b> - Professional (Cloud, 3 devices, 7 days grace period)
-• <b>STANDARD</b> - Standard (Cloud, 2 devices, 7 days grace period)
+    • <b>FREE</b> - Starter (250 images total)
+    • <b>PRO</b> - Professional (Cloud, 3 devices, unlimited)
 
 <b>Activation:</b>
 Enter your license key above and click "Activate".
-The device will be registered automatically.
-
-<b>ENTERPRISE</b> - Enterprise (Unlimited)
-• All features unlocked
-• Unlimited images
-• REST API access
-• No time restrictions""",
+    The device will be registered automatically.""",
         "license_plan_comparison_html": """<style>
     table { border-collapse: collapse; width: 100%; margin: 10px 0; }
     th { background: #333; color: white; padding: 12px; text-align: center; font-weight: bold; }
@@ -872,7 +834,6 @@ The device will be registered automatically.
     .cross { color: #666; font-size: 18px; }
     .plan-free { background: #1a1a1a; }
     .plan-pro { background: #2a2a2a; }
-    .plan-ent { background: #3a1a3a; }
     .price { font-size: 20px; font-weight: bold; color: #FF9800; }
     .highlight { background: #FF9800; color: white; padding: 4px 8px; border-radius: 4px; }
 </style>
@@ -883,8 +844,7 @@ The device will be registered automatically.
     <tr>
         <th class="feature-name">Feature / Limit</th>
         <th class="plan-free">FREE<br><span class="price">€0</span></th>
-        <th class="plan-pro">PRO ⭐<br><span class="price">€59/year</span></th>
-        <th class="plan-ent">ENTERPRISE 🏢<br><span class="price">€199/year</span></th>
+        <th class="plan-pro">PRO ⭐<br><span class="price">from €19/year</span></th>
     </tr>
     
     <!-- Basic Features -->
@@ -892,19 +852,16 @@ The device will be registered automatically.
         <td class="feature-name">🔍 Image Analysis & Duplicate Detection</td>
         <td class="plan-free"><span class="check">✓</span></td>
         <td class="plan-pro"><span class="check">✓</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
     </tr>
     <tr>
-        <td class="feature-name">📊 Image Limit per Scan</td>
-        <td class="plan-free">1,000 images</td>
+        <td class="feature-name">📊 Image Limit</td>
+        <td class="plan-free">250 images total</td>
         <td class="plan-pro"><span class="highlight">Unlimited</span></td>
-        <td class="plan-ent"><span class="highlight">Unlimited</span></td>
     </tr>
     <tr>
         <td class="feature-name">💻 Device Limit</td>
         <td class="plan-free">1 device</td>
         <td class="plan-pro">3 devices</td>
-        <td class="plan-ent">10 devices</td>
     </tr>
     
     <!-- PRO Features -->
@@ -912,72 +869,49 @@ The device will be registered automatically.
         <td class="feature-name">🚀 Batch Processing (Mass Import)</td>
         <td class="plan-free"><span class="cross">✗</span></td>
         <td class="plan-pro"><span class="check">✓</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
     </tr>
     <tr>
         <td class="feature-name">📷 HEIC/HEIF Format Support</td>
         <td class="plan-free"><span class="cross">✗</span></td>
         <td class="plan-pro"><span class="check">✓</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
     </tr>
     <tr>
         <td class="feature-name">⚡ Extended Caching (2-8x faster)</td>
         <td class="plan-free"><span class="cross">✗</span></td>
         <td class="plan-pro"><span class="check">✓</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
     </tr>
     <tr>
         <td class="feature-name">🎯 Quality Analysis (Sharpness/Exposure/Details)</td>
         <td class="plan-free">Basic</td>
         <td class="plan-pro"><span class="highlight">Advanced</span></td>
-        <td class="plan-ent"><span class="highlight">Advanced</span></td>
     </tr>
     <tr>
         <td class="feature-name">📦 Batch Deletion</td>
         <td class="plan-free"><span class="cross">✗</span></td>
         <td class="plan-pro"><span class="check">✓</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
     </tr>
     <tr>
         <td class="feature-name">📄 Export Formats (CSV, JSON)</td>
         <td class="plan-free"><span class="cross">✗</span></td>
         <td class="plan-pro"><span class="check">✓</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
-    </tr>
-    
-    <!-- ENTERPRISE Features -->
-    <tr>
-        <td class="feature-name">🔌 REST API Access</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
-        <td class="plan-pro"><span class="cross">✗</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
-    </tr>
-    <tr>
-        <td class="feature-name">☁️ Cloud Backup (Supabase)</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
-        <td class="plan-pro"><span class="cross">✗</span></td>
-        <td class="plan-ent"><span class="check">✓</span></td>
     </tr>
     <tr>
         <td class="feature-name">📧 Support</td>
         <td class="plan-free"><span class="cross">✗</span></td>
         <td class="plan-pro">Email</td>
-        <td class="plan-ent">Email</td>
     </tr>
     <tr>
         <td class="feature-name">📱 Offline Grace Period</td>
         <td class="plan-free">-</td>
-        <td class="plan-pro">30 days</td>
-        <td class="plan-ent">90 days</td>
+        <td class="plan-pro">7 days</td>
     </tr>
 </table>
 
 <br>
 <p><b>💡 Recommendation:</b></p>
 <ul>
-    <li><b>FREE:</b> Testing & small collections (&lt;1000 images)</li>
-    <li><b>PRO:</b> Hobby photographers & content creators (unlimited)</li>
-    <li><b>ENTERPRISE:</b> Studios, agencies & teams (API + support)</li>
+    <li><b>FREE:</b> Testing & small collections (up to 250 images total)</li>
+    <li><b>PRO:</b> Regular use with unlimited images</li>
 </ul>""",
         "license_your_plan": "Your Plan",
         "license_plan_standard": "Standard",
@@ -985,11 +919,11 @@ The device will be registered automatically.
         "license_basic_features": "Basic Features",
         "license_invalid": "invalid",
         "license_free_details": """License: FREE (Basic Features)
-Limit: 1,000 images per scan
+    Limit: One-time 250 images (lifetime quota)
 Status: Offline usage active
 
 💡 For unlimited images and premium features:
-   → Upgrade to PRO or ENTERPRISE""",
+       → Upgrade to PRO""",
         "license_label": "License",
         "license_user": "User",
         "license_not_assigned": "Not assigned",

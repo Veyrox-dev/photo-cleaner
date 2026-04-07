@@ -27,6 +27,7 @@ except ImportError:
     requests = None
 
 logger = logging.getLogger(__name__)
+FREE_LIFETIME_IMAGE_LIMIT = 250
 
 # Lazy wrapper: avoids circular import at module-init time.
 # (license_client → license.crypto_utils → license/__init__ → license_manager → cloud_config → license_client)
@@ -379,8 +380,8 @@ class LicenseClient:
             if allowed:
                 return True, remaining, ""
             if remaining is None and used_total is not None:
-                remaining = max(0, 1000 - int(used_total))
-            return False, remaining, "Free-Limit erreicht. Bitte Upgrade auf PRO/ENTERPRISE."
+                remaining = max(0, FREE_LIFETIME_IMAGE_LIMIT - int(used_total))
+            return False, remaining, "Free-Limit erreicht. Bitte Upgrade auf PRO."
         except requests.HTTPError as e:
             logger.error("Free usage RPC failed: %s", e)
             return False, None, f"Server error: {e.response.status_code}"

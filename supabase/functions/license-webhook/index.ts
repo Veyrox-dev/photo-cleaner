@@ -49,7 +49,7 @@ const RESEND_FROM =
 interface PurchaseData {
   email: string;
   name: string;
-  plan: "pro" | "enterprise";
+  plan: "pro";
   stripe_payment_id: string;
   amount: number;
 }
@@ -87,16 +87,24 @@ serve(async (req: Request) => {
     // 2. Handle payment_intent.succeeded event
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
-      
-      const email =
-        TEST_EMAIL_OVERRIDE ||
+
+      const checkoutEmail =
         session.customer_email ||
         session.customer_details?.email ||
         "unknown@customer.local";
+      const useTestEmailOverride = !signature && Boolean(TEST_EMAIL_OVERRIDE);
+      const email = useTestEmailOverride ? TEST_EMAIL_OVERRIDE : checkoutEmail;
+
+      if (useTestEmailOverride) {
+        console.warn(
+          `TEST_EMAIL_OVERRIDE active for unsigned test request: ${TEST_EMAIL_OVERRIDE}`
+        );
+      }
+
       const purchaseData: PurchaseData = {
         email,
         name: session.customer_details?.name || "Customer",
-        plan: session.metadata?.plan || "pro", // pro oder enterprise
+        plan: "pro", // Enterprise removed: all paid checkouts map to PRO
         stripe_payment_id: session.payment_intent,
         amount: session.amount_total / 100, // Cent to Euro
       };
@@ -118,13 +126,8 @@ serve(async (req: Request) => {
       });
       
       const expiresAt = new Date();
-      if (purchaseData.plan === "pro") {
-        expiresAt.setFullYear(expiresAt.getFullYear() + 1); // 1 Jahr
-      } else if (purchaseData.plan === "enterprise") {
-        expiresAt.setFullYear(expiresAt.getFullYear() + 2); // 2 Jahre
-      }
-
-      const maxDevices = purchaseData.plan === "enterprise" ? 10 : 3;
+      expiresAt.setFullYear(expiresAt.getFullYear() + 1); // 1 year PRO
+      const maxDevices = 3;
 
       let license: Record<string, unknown> | null = null;
       let dbError: { message: string } | null = null;
@@ -246,8 +249,8 @@ serve(async (req: Request) => {
 // ============================================================
 // License Key Generator
 // ============================================================
-function generateLicenseKey(plan: "pro" | "enterprise"): string {
-  const prefix = plan === "enterprise" ? "ENT" : "PRO";
+function generateLicenseKey(plan: "pro"): string {
+  const prefix = "PRO";
   const timestamp = new Date().toISOString().split("T")[0].replace(/-/g, "");
   const random = Math.random().toString(36).substring(2, 8).toUpperCase();
   
@@ -262,8 +265,8 @@ async function sendActivationEmail(
   licenseKey: string,
   expiresAt: Date
 ): Promise<void> {
-  const planName = purchase.plan === "enterprise" ? "ENTERPRISE" : "PRO";
-  const planEmoji = purchase.plan === "enterprise" ? "🏢" : "⭐";
+  const planName = "PRO";
+  const planEmoji = "⭐";
 
   const emailHtml = `
 <!DOCTYPE html>
@@ -586,23 +589,12 @@ async function sendActivationEmail(
       <div class="features-section">
         <div class="features-title">🎁 Ihre ${planName} Features</div>
         <div class="features-grid">
-          ${purchase.plan === "enterprise" ? `
-            <div class="feature-item">Unbegrenzte Bilder</div>
-            <div class="feature-item">Batch-Verarbeitung</div>
-            <div class="feature-item">Qualitätsanalyse</div>
-            <div class="feature-item">HEIC/HEIF Support</div>
-            <div class="feature-item">2-8x Caching</div>
-            <div class="feature-item">REST API</div>
-            <div class="feature-item">Cloud-Backup</div>
-            <div class="feature-item">10 Geräte</div>
-          ` : `
             <div class="feature-item">Unbegrenzte Bilder</div>
             <div class="feature-item">Batch-Verarbeitung</div>
             <div class="feature-item">Qualitätsanalyse</div>
             <div class="feature-item">HEIC/HEIF Support</div>
             <div class="feature-item">2-8x Caching</div>
             <div class="feature-item">3 Geräte</div>
-          `}
         </div>
       </div>
 
