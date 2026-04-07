@@ -159,3 +159,23 @@ Invoke-RestMethod \
 - [ ] Aktivierung in App erfolgreich
 
 Wenn alle Punkte gruen sind, ist Slice 3 technisch abgeschlossen.
+
+---
+
+## Letzte Ausfuehrung (2026-04-07)
+
+Durchgefuehrte Validierung in der aktuellen Umgebung:
+
+1. Deploy der aktualisierten Function `license-webhook` auf Projekt `uxkbolrinptxyullfowo`
+2. Positivtest (Testpfad B) mit `metadata.plan=pro`
+  - Webhook: `success=true`
+  - Lizenzschluessel erzeugt
+  - Exchange-Aktivierung: `ok=true`, `license_type=pro`, Signatur vorhanden
+3. Negativtest mit `metadata.plan=enterprise`
+  - Erwartung erfuellt: HTTP 400
+  - Fehlermeldung: `Unexpected plan metadata 'enterprise'. Expected 'pro'.`
+
+Status nach Lauf:
+- Guardrail technisch wirksam
+- Webhook -> Exchange-Fluss verifiziert
+- Offener Restpunkt bleibt der echte Stripe-Signaturpfad aus einem realen Test-Checkout
