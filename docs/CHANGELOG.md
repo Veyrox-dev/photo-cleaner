@@ -31,11 +31,11 @@
 - Launch-Gates bleiben: Secret Rotation + 5x Clean-Windows Smoke-Tests; Supabase-Incident als separater Infra-Blocker geparkt
 
 ### 🚨 Runtime Findings (Server-side)
-- Live-Diagnose zeigte: Edge Function `exchange-license-key` liefert weiterhin Mock-Signatur (`sig-...`, Länge 32) statt Ed25519-Base64
-- Live-Diagnose zeigte zusätzlich: `/rest/v1/licenses` antwortet mit `503 / PGRST002` (Schema-Cache-Problem)
-- Konsequenz: Thema strategisch erneut geparkt bis Supabase-Infra-Fix (echter Signer + stabiler PostgREST)
-
-## [0.8.4] - Architecture Refactoring (Slice 6) + MSI Distribution Track (2026-04-04) 🏗️
+ Exchange endpoint signing path is fixed and verified: Ed25519 signatures are generated via async signing, payloads return 88-char Base64 signatures, and local verification passes (`signature_valid=True`).
+ `/rest/v1/licenses` still returns `503` (`PGRST002`), indicating an external PostgREST schema cache / DB reachability problem that remains the active blocker.
+ Root cause from Supabase logs: PostgREST is configured with `db-schemas=pg_pgrst_no_exposed_schemas`, and that schema does not exist (`3F000`), so schema-cache loading fails.
+ Operational impact: License activation can still work via `exchange-license-key` (direct DB connection), while REST-based fetch paths remain degraded and use offline/cache fallback.
+ Client-side resilience improvements in this repo remain complete (retry budget, Retry-After support, jitter, DNS fail-fast, clearer network messaging); open risk is backend/runtime availability only.
 
 ### 🏗️ Architecture: modern_window.py Slice 6 Refactoring (P1)
 

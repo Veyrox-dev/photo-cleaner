@@ -10,7 +10,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { decodeBase64, encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import postgres from "https://deno.land/x/postgresjs@v3.4.3/mod.js";
-import { sign } from "https://esm.sh/@noble/ed25519@2.1.0";
+import { getPublicKeyAsync, signAsync } from "https://esm.sh/@noble/ed25519@2.1.0";
 
 const databaseUrl =
   Deno.env.get("SUPABASE_DB_URL") ||
@@ -97,12 +97,14 @@ export async function handler(req: Request) {
     };
 
     const signature = await signPayload(licenseData, signingKeyB64);
+    const signingKeyFingerprint = await getSigningKeyFingerprint(signingKeyB64);
 
     return json({
       ok: true,
       license_id: license.license_id,
       license_data: licenseData,
       signature,
+      signing_key_fingerprint: signingKeyFingerprint,
     });
   } catch (error) {
     console.error("Error:", error instanceof Error ? error.message : String(error));
@@ -118,6 +120,9 @@ function json(body: unknown, status = 200): Response {
 }
 
 function canonicalize(value: unknown): unknown {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
   if (Array.isArray(value)) {
     return value.map(canonicalize);
   }
@@ -136,8 +141,20 @@ async function signPayload(payload: Record<string, unknown>, keyB64: string): Pr
   const canonical = JSON.stringify(canonicalize(payload));
   const message = new TextEncoder().encode(canonical);
   const keyBytes = decodeBase64(keyB64);
-  const sig = await sign(message, keyBytes);
+  // Supabase Edge Runtime provides WebCrypto; async API avoids sha512Sync hook errors.
+  const sig = await signAsync(message, keyBytes);
   return encodeBase64(sig);
+}
+
+async function getSigningKeyFingerprint(keyB64: string): Promise<string> {
+  try {
+    const keyBytes = decodeBase64(keyB64);
+    const pub = await getPublicKeyAsync(keyBytes);
+    const pubB64 = encodeBase64(pub);
+    return `ed25519:${pubB64.slice(0, 16)}`;
+  } catch {
+    return "unavailable";
+  }
 }
 
 serve(handler);

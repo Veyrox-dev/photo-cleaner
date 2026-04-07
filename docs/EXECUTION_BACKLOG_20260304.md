@@ -94,8 +94,10 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
    - Ergebnis: Re-Score durchgeführt (2026-04-06) mit aktualisierter 1-10-Bewertung und Blocker-Liste in `ROADMAP_2026.md`
 17. [ ] Supabase Licensing Incident Follow-up (erneut geparkt bis Infra-Fix)
    - Typ: Extern/Backend
-   - Befund: `exchange-license-key` liefert Mock-Signatur (`sig-...`, Länge 32) statt Ed25519-Base64; `/rest/v1/licenses` liefert `503 / PGRST002`
-   - Re-Entry: Nach Edge-Function-Signer-Fix + PostgREST-Schema-Cache-Stabilisierung
+   - Befund: Ed25519-Signaturpfad ist repariert und verifiziert (`signature_valid=True`), aber `/rest/v1/licenses` liefert weiterhin `503 / PGRST002`.
+   - Root Cause (Logs): PostgREST startet mit `db-schemas=pg_pgrst_no_exposed_schemas`; Schema existiert nicht (`3F000`), dadurch kann der Schema-Cache nicht geladen werden.
+   - Impact: Aktivierung kann dennoch erfolgreich sein, weil `exchange-license-key` ueber direkte DB-Verbindung laeuft (nicht ueber PostgREST).
+   - Re-Entry: Nach PostgREST-Schema-Cache-Stabilisierung
 
 ---
 
@@ -129,8 +131,10 @@ Zweck: Operative Abarbeitung der offenen Tasks aus Audit + Roadmap in klaren Bl�
 - 2026-04-04: Punkt 11 abgeschlossen: gemeinsames Website-Bundle eingeführt (`website/assets/site-bundle.css`, `website/assets/site-bundle.js`) und in alle Website-Seiten eingebunden.
 - 2026-04-04: Punkt 12 abgeschlossen: MSI-Track mit WiX v4 aufgesetzt (`installer/PhotoCleaner.wxs`, `scripts/build_msi.ps1`) und Build/Smoke-Test-Guide dokumentiert (`docs/guides/MSI_BUILD.md`).
 - 2026-04-05: Punkt 13 abgeschlossen: Supabase HTTP-503 Retry-Logik implementiert – `_request_with_retry` auf exponentielles Backoff+Jitter+Retry-After-Header+30s-Budget umgestellt; `exchange_license_key` und `register_device` nutzen jetzt Retry; 10 neue Unit-Tests, alle 34 Tests grün.
-- 2026-04-06: Follow-up-Diagnose zu Supabase Licensing durchgeführt: Live-Response zeigt Mock-Signatur (`sig-...`, Länge 32) und `/rest/v1/licenses` liefert `503 / PGRST002`; Thema als externer Infra-Blocker erneut geparkt (Backlog #17).
+- 2026-04-06: Follow-up-Diagnose zu Supabase Licensing durchgeführt (historischer Stand): Live-Response zeigte Mock-Signatur (`sig-...`, Länge 32) und `/rest/v1/licenses` lieferte `503 / PGRST002`; Thema wurde als externer Infra-Blocker erneut geparkt (Backlog #17). Der Signaturteil ist seit 2026-04-07 behoben.
 - 2026-04-06: Punkt 14 abgeschlossen: Naming-/Terminologie-Guide finalisiert (`docs/standards/NAMING_TERMINOLOGY_GUIDE.md`), Doku-Indizes aktualisiert; Regel fixiert: Code-Identifiers Englisch, UI-Texte via i18n.
 - 2026-04-06: Punkt 15 gestartet: vorhandene QA-Artefakte konsolidiert und Vergleichsreport erstellt (`docs/tech/QA_BASELINE_COMPARISON_2026-04-06.md`). Befund: 10k-Runs vorhanden aber ungültig (`success=false`, ReturnCode 1/2), 50k/100k fehlen noch.
 - 2026-04-06: Punkt 15 finalisiert: QA-Zielbild auf risikobasierten Umfang umgestellt (1k/5k Pflicht, 10k optional, 50k/100k nicht blockierend) und in Report/Roadmap synchronisiert.
 - 2026-04-06: Punkt 16 abgeschlossen: Launch-Readiness Re-Score durchgeführt. Ergebnis: intern technisch solide, aber extern/manuell weiter geblockt durch Secret Rotation + 5x Clean-Windows Smoke-Tests; Supabase-Incident separat geparkt (#17).
+- 2026-04-07: Supabase Licensing Follow-up: `exchange-license-key` korrekt auf Ed25519 (`signAsync`) umgestellt, Secret/Public-Key erneut rotiert, Ende-zu-Ende verifiziert (`signature_len=88`, `signature_valid=True`). Restblocker bleibt PostgREST `PGRST002` auf `/rest/v1/licenses`.
+- 2026-04-07: Infra-Log ausgewertet: `Failed to load the schema cache ... db-schemas=pg_pgrst_no_exposed_schemas ... schema does not exist (3F000)`. Incident #17 auf konkrete PostgREST-Schema-Konfiguration eingegrenzt; Aktivierungspfad via Edge Function bleibt nutzbar.
