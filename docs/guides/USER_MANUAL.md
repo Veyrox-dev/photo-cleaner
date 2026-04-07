@@ -49,7 +49,7 @@ python -c "from photo_cleaner.ui.modern_window import run_modern_ui; run_modern_
 - `Ctrl+J` / `Ctrl+K` = Naechste/Vorherige Gruppe
 - `?` = Shortcuts anzeigen
 
-Siehe auch: [MODERN_UI_QUICKSTART.md](MODERN_UI_QUICKSTART.md)
+Siehe auch: [FAQ.md](FAQ.md) und [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 
 ### Auto-Auswahl (⭐)
 Auto-Selection markiert das beste Bild pro Gruppe. Kriterien und Gewichtungen findest du in:
@@ -65,7 +65,9 @@ Auto-Selection markiert das beste Bild pro Gruppe. Kriterien und Gewichtungen fi
 - Export ist sicher, Originale bleiben unangetastet.
 
 ### Lizenzen (Kurzinfo)
-- FREE/TRIAL/PRO/ENTERPRISE
+- FREE/PRO
+- FREE: einmalig 250 Bilder
+- PRO: unbegrenzte Bilder + Premium-Features
 - Offline-Nutzung moeglich (mit lokalem Cache)
 
 Details: [LICENSE_SYSTEM.md](LICENSE_SYSTEM.md)
@@ -120,7 +122,7 @@ python -c "from photo_cleaner.ui.modern_window import run_modern_ui; run_modern_
 - `Ctrl+J` / `Ctrl+K` = Next/Previous group
 - `?` = Show shortcuts
 
-See: [MODERN_UI_QUICKSTART.md](MODERN_UI_QUICKSTART.md)
+See: [FAQ.md](FAQ.md) and [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 
 ### Auto-Selection (⭐)
 Auto-Selection marks the best image in each group. Details:

@@ -328,7 +328,7 @@ python -m photo_cleaner.ui.modern_window
 - 🎨 4 Themes: Dark, Light, System, High-Contrast
 - ⚡ Schnellere Navigation mit Keyboard Shortcuts
 
-📖 **Dokumentation:** `docs/MODERN_UI.md` und `docs/MODERN_UI_QUICKSTART.md`
+📖 **Dokumentation:** siehe [guides/USER_MANUAL.md](guides/USER_MANUAL.md) und [guides/FAQ.md](guides/FAQ.md)
 
 #### 🖥️ Classic UI (Legacy)
 
@@ -480,6 +480,7 @@ Siehe [CHANGELOG.md](CHANGELOG.md) für Details.
 
 ### Weitere Ressourcen
 
+- [INDEX.md](INDEX.md) - zentraler Dokumentations-Einstieg
 - [CHANGELOG.md](CHANGELOG.md) - Vollständige Version History
 - [feedback/README.md](../feedback/README.md) - Feedback sammeln (Offline JSON)
 - [SECURITY.md](SECURITY.md) - Security Policy

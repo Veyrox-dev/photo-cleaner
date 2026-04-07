@@ -6,8 +6,7 @@
 - [P1 Fixes Complete](P1_FIXES_COMPLETE_20260205.md) - High-priority bugs (8/8 fixed)
 - [P2 Fixes Complete](P2_FIXES_COMPLETE_20260205.md) - Medium-priority bugs (4/4 fixed)
 
-## Process & Workflow
-- [Workflow](WORKFLOW.md) - Development and release workflow
+## Governance & Security
 - [Data Security Analysis](DATENSICHERHEIT_ANALYSE.md) - Security analysis (German)
 - [Naming & Terminology Guide](NAMING_TERMINOLOGY_GUIDE.md) - Canonical naming rules (code English, UI via i18n)
 
