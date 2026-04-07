@@ -28,18 +28,20 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Import verify_ed25519_signature - handle potential circular imports
-def _import_verify_ed25519_signature():
-    try:
-        from photo_cleaner.license.crypto_utils import verify_ed25519_signature as _verify
-        return _verify
-    except ImportError:
-        logger.warning("Could not import verify_ed25519_signature")
-        def _fallback(data, signature):
-            return False
-        return _fallback
+# Lazy wrapper: avoids circular import at module-init time.
+# (license_client → license.crypto_utils → license/__init__ → license_manager → cloud_config → license_client)
+_verify_fn = None
 
-verify_ed25519_signature = _import_verify_ed25519_signature()
+def verify_ed25519_signature(data: "Dict[str, Any]", signature: str) -> bool:
+    global _verify_fn
+    if _verify_fn is None:
+        try:
+            from photo_cleaner.license.crypto_utils import verify_ed25519_signature as _v
+            _verify_fn = _v
+        except ImportError:
+            logger.warning("Could not import verify_ed25519_signature")
+            _verify_fn = lambda d, s: False
+    return _verify_fn(data, signature)
 
 
 class LicenseConfig:
