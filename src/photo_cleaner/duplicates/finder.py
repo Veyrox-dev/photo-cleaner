@@ -32,11 +32,43 @@ class DuplicateFinder:
         rows = cur.fetchall()
         logger.info(f"Found {len(rows)} files with phash")
 
+        cur.execute("DELETE FROM duplicates")
+
         if not rows:
-            logger.warning("No files with phash found - cannot build groups")
-            cur.execute("DELETE FROM duplicates")
+            logger.warning("No files with phash found - falling back to exact file_hash groups")
+            cur.execute(
+                """
+                SELECT file_hash, GROUP_CONCAT(file_id) AS file_ids, COUNT(*) AS total
+                FROM files
+                WHERE file_hash IS NOT NULL
+                GROUP BY file_hash
+                HAVING COUNT(*) > 1
+                ORDER BY file_hash
+                """
+            )
+            exact_groups = cur.fetchall()
+            if not exact_groups:
+                logger.warning("No exact file_hash groups found either")
+                conn.commit()
+                return []
+
+            group_rows = []
+            for index, group in enumerate(exact_groups, start=1):
+                group_id = f"G{index:06d}"
+                file_ids = [int(file_id) for file_id in str(group["file_ids"]).split(",") if file_id]
+                for file_id in file_ids:
+                    cur.execute(
+                        "INSERT INTO duplicates (group_id, file_id, similarity_score) VALUES (?,?,?)",
+                        (group_id, file_id, 1.0),
+                    )
+                group_rows.append((group_id, len(file_ids)))
+
             conn.commit()
-            return []
+            logger.info("=== DuplicateFinder.build_groups() COMPLETED ===")
+            logger.info(
+                f"Created {len(group_rows)} exact-match groups with {sum(g[1] for g in group_rows)} total images"
+            )
+            return group_rows
 
         n = len(rows)
         parent = list(range(n))

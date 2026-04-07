@@ -2762,6 +2762,10 @@ class ModernMainWindow(QMainWindow):
         logger.info("[UI] _on_indexing_finished() STARTED")
         
         if progress_dialog:
+            try:
+                progress_dialog.canceled.disconnect(self._cancel_indexing)
+            except (RuntimeError, TypeError):
+                pass
             progress_dialog.close()
         self._indexing_progress_dialog = None
 
@@ -2785,6 +2789,10 @@ class ModernMainWindow(QMainWindow):
     
     def _on_indexing_error(self, error_msg: str, progress_dialog):
         """Handle indexing error."""
+        try:
+            progress_dialog.canceled.disconnect(self._cancel_indexing)
+        except (AttributeError, RuntimeError, TypeError):
+            pass
         progress_dialog.close()
         self._indexing_progress_dialog = None
         logger.error(f"Indexing error: {error_msg}")

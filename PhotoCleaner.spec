@@ -175,7 +175,9 @@ a = Analysis(
     win_private_assemblies=False,
     cipher=block_cipher,
     noarchive=FAST_BUILD,
-    optimize=0 if FAST_BUILD else 2,  # Optimize bytecode
+    # Keep docstrings in frozen builds. numpy/scipy/imagehash rely on them during
+    # C-extension initialization, and optimize=2 strips them which breaks pHash.
+    optimize=0,
 )
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)

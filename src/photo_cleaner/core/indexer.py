@@ -152,10 +152,11 @@ class PhotoIndexer:
             hasher = ImageHasher()
             hashes = hasher.compute_all_hashes(path)
 
-            if hashes["phash"] is None:
+            if hashes["phash"] is None and hashes["file_hash"] is None:
                 return None
 
-            # Get file metadata
+            # Keep the file indexed even when pHash is unavailable so the DB,
+            # exact-duplicate fallback, and later re-analysis still have a record.
             stat = path.stat()
 
             return {
