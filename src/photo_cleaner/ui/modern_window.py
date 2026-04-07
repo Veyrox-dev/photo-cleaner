@@ -140,6 +140,7 @@ from photo_cleaner.ui.color_constants import (
     get_high_contrast_colors,
     to_rgba,
 )
+from photo_cleaner.ui.score_explanation import build_score_explanation
 from photo_cleaner.ui.theme_manager import ThemeManager
 
 
@@ -1026,6 +1027,8 @@ class GroupRow:
     decided_count: int
     delete_count: int
     similarity: float
+    needs_review_count: int = 0
+    confidence_score: int = 0
 
 
 @dataclass
@@ -1040,6 +1043,45 @@ class FileRow:
     lighting_score: Optional[float] = None  # Lighting/Exposure component (0-100)
     resolution_score: Optional[float] = None  # Resolution component (0-100)
     face_quality_score: Optional[float] = None  # Face quality component (0-100)
+
+
+def _get_confidence_style(level: Optional[str]) -> tuple[str, str]:
+    semantic_colors = get_semantic_colors()
+    if level == "high":
+        return semantic_colors["success"], "white"
+    if level == "medium":
+        return semantic_colors["warning"], "black"
+    if level == "low":
+        return semantic_colors["error"], "white"
+    if level == "incomplete":
+        return semantic_colors["info"], "white"
+    colors = get_theme_colors()
+    return colors["alternate_base"], colors["text"]
+
+
+def _get_component_bar_color(score: float) -> str:
+    quality_colors = get_quality_colors()
+    if score >= 75.0:
+        return quality_colors["high"]
+    if score >= 45.0:
+        return quality_colors["medium"]
+    return quality_colors["low"]
+
+
+def _resolve_default_db_path(db_path: Optional[Path]) -> Path:
+    """Resolve DB path to a user-writable location by default.
+
+    In frozen MSI installs, current working directory may be under Program Files,
+    so a relative DB path would fail with permission errors.
+    """
+    if db_path is None:
+        return AppConfig.get_db_dir() / "photo_cleaner.db"
+
+    candidate = Path(db_path).expanduser()
+    if candidate.is_absolute():
+        return candidate
+
+    return AppConfig.get_db_dir() / candidate.name
 
 
 class ExifReader:
@@ -1363,16 +1405,77 @@ class ImageDetailDialog(QDialog):
         quality_box = QGroupBox("Qualität")
         quality_layout = QVBoxLayout(quality_box)
 
-        if self.file_row.quality_score is not None:
-            quality_layout.addWidget(QLabel(f"Gesamtscore: {self.file_row.quality_score:.1f}%"))
-        if self.file_row.sharpness_score is not None:
-            quality_layout.addWidget(QLabel(f"Schärfe: {self.file_row.sharpness_score:.0f}%"))
-        if self.file_row.lighting_score is not None:
-            quality_layout.addWidget(QLabel(f"Belichtung: {self.file_row.lighting_score:.0f}%"))
-        if self.file_row.face_quality_score is not None:
-            quality_layout.addWidget(QLabel(f"Augen: {self.file_row.face_quality_score:.0f}%"))
-        if self.file_row.resolution_score is not None:
-            quality_layout.addWidget(QLabel(f"Auflösung: {self.file_row.resolution_score:.0f}%"))
+        explanation = build_score_explanation(
+            quality_score=self.file_row.quality_score,
+            sharpness_score=self.file_row.sharpness_score,
+            lighting_score=self.file_row.lighting_score,
+            resolution_score=self.file_row.resolution_score,
+            face_quality_score=self.file_row.face_quality_score,
+        )
+
+        if explanation.overall_text:
+            overall_label = QLabel(explanation.overall_text)
+            overall_label.setStyleSheet("font-weight: bold; font-size: 13px;")
+            overall_label.setToolTip(explanation.tooltip_text)
+            quality_layout.addWidget(overall_label)
+
+        if explanation.confidence_label:
+            bg_color, text_color = _get_confidence_style(explanation.confidence_level)
+            confidence_label = QLabel(explanation.confidence_label)
+            confidence_label.setToolTip(explanation.confidence_reason or explanation.tooltip_text)
+            confidence_label.setStyleSheet(
+                f"background-color: {bg_color}; color: {text_color}; font-weight: bold; padding: 4px 8px; border-radius: 6px;"
+            )
+            quality_layout.addWidget(confidence_label)
+
+        if explanation.component_summary_text:
+            summary_label = QLabel(explanation.component_summary_text)
+            summary_label.setWordWrap(True)
+            summary_label.setToolTip(explanation.tooltip_text)
+            quality_layout.addWidget(summary_label)
+
+        for metric in explanation.component_details:
+            metric_row = QWidget()
+            metric_layout = QHBoxLayout(metric_row)
+            metric_layout.setContentsMargins(0, 0, 0, 0)
+            metric_layout.setSpacing(8)
+
+            metric_label = QLabel(metric.label)
+            metric_label.setMinimumWidth(80)
+            metric_layout.addWidget(metric_label)
+
+            metric_bar = QProgressBar()
+            metric_bar.setRange(0, 100)
+            metric_bar.setValue(int(round(metric.value)))
+            metric_bar.setTextVisible(False)
+            metric_bar.setStyleSheet(
+                f"QProgressBar {{ border: 1px solid {colors['border']}; border-radius: 4px; background-color: {colors['alternate_base']}; }}"
+                f"QProgressBar::chunk {{ background-color: {_get_component_bar_color(metric.value)}; border-radius: 4px; }}"
+            )
+            metric_layout.addWidget(metric_bar, stretch=1)
+
+            metric_value = QLabel(f"{metric.value:.0f}%")
+            metric_value.setMinimumWidth(42)
+            metric_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            metric_layout.addWidget(metric_value)
+            quality_layout.addWidget(metric_row)
+
+        if explanation.strengths_text:
+            strengths_label = QLabel(explanation.strengths_text)
+            strengths_label.setWordWrap(True)
+            quality_layout.addWidget(strengths_label)
+
+        if explanation.concerns_text:
+            concerns_label = QLabel(explanation.concerns_text)
+            concerns_label.setWordWrap(True)
+            concerns_label.setStyleSheet(f"color: {get_semantic_colors()['warning']};")
+            quality_layout.addWidget(concerns_label)
+
+        if explanation.needs_reanalysis:
+            reanalysis_label = QLabel("Details fehlen: für diese Datei bitte Analyse erneut ausführen.")
+            reanalysis_label.setWordWrap(True)
+            reanalysis_label.setStyleSheet(f"color: {get_semantic_colors()['info']};")
+            quality_layout.addWidget(reanalysis_label)
 
         if quality_layout.count() == 0:
             empty_label = QLabel("Keine Qualitätsdaten verfügbar")
@@ -1552,6 +1655,13 @@ class ThumbnailCard(QWidget):
         # Quality Score Badge (NEW Feature 4!)
         if self.file_row.quality_score is not None:
             score = self.file_row.quality_score
+            explanation = build_score_explanation(
+                quality_score=self.file_row.quality_score,
+                sharpness_score=self.file_row.sharpness_score,
+                lighting_score=self.file_row.lighting_score,
+                resolution_score=self.file_row.resolution_score,
+                face_quality_score=self.file_row.face_quality_score,
+            )
             quality_colors = get_quality_colors()
             # Color coding: Blue shades (avoid confusion with status colors - green/orange/red)
             if score >= 70:
@@ -1577,10 +1687,7 @@ class ThumbnailCard(QWidget):
                     font-size: 10px;
                 }}
             """)
-            score_label.setToolTip(
-                f"Quality Score: {score:.1f}%\n"
-                f"{'✓ Hohe Qualität' if score >= 70 else '~ Mittlere Qualität' if score >= 40 else '✗ Niedrige Qualität'}"
-            )
+            score_label.setToolTip(explanation.tooltip_text)
             layout.addWidget(score_label)
         
         # Card styling
@@ -1738,31 +1845,29 @@ class ImageDetailWindow(QMainWindow):
         
         # Quality Score Display (compact banner like side-by-side)
         colors = get_theme_colors()
-        has_components = any(
-            val is not None
-            for val in (
-                self.file_row.sharpness_score,
-                self.file_row.lighting_score,
-                self.file_row.face_quality_score,
-                self.file_row.resolution_score,
-            )
+        explanation = build_score_explanation(
+            quality_score=self.file_row.quality_score,
+            sharpness_score=self.file_row.sharpness_score,
+            lighting_score=self.file_row.lighting_score,
+            resolution_score=self.file_row.resolution_score,
+            face_quality_score=self.file_row.face_quality_score,
         )
 
-        if self.file_row.quality_score is not None or has_components:
-            parts = []
-            if self.file_row.quality_score is not None:
-                parts.append(f"Gesamtscore: {self.file_row.quality_score:.1f}%")
-            if self.file_row.sharpness_score is not None:
-                parts.append(f"Schärfe: {self.file_row.sharpness_score:.0f}%")
-            if self.file_row.lighting_score is not None:
-                parts.append(f"Belichtung: {self.file_row.lighting_score:.0f}%")
-            if self.file_row.face_quality_score is not None:
-                parts.append(f"Augen: {self.file_row.face_quality_score:.0f}%")
-            if self.file_row.resolution_score is not None:
-                parts.append(f"Auflösung: {self.file_row.resolution_score:.0f}%")
+        if explanation.has_any_data:
+            parts = [
+                part
+                for part in (
+                    explanation.overall_text,
+                    explanation.confidence_label,
+                    explanation.component_summary_text,
+                    explanation.concerns_text,
+                )
+                if part
+            ]
 
             score_label = QLabel(" | ".join(parts) if parts else "Keine Qualitätsdaten verfügbar")
             score_label.setWordWrap(True)
+            score_label.setToolTip(explanation.tooltip_text)
             score_label.setStyleSheet(
                 f"font-size: 11px; color: {colors['text']}; padding: 6px; background-color: {colors['base']}; border: 1px solid {colors['border']}; border-radius: 6px;"
             )
@@ -2021,39 +2126,40 @@ class SideBySideComparisonWindow(QMainWindow):
         layout.addWidget(header)
         
         # Quality score breakdown (if available) - show overall and components
-        has_any_scores = (
-            file_row.sharpness_score is not None or
-            file_row.lighting_score is not None or
-            file_row.resolution_score is not None or
-            file_row.face_quality_score is not None
+        explanation = build_score_explanation(
+            quality_score=file_row.quality_score,
+            sharpness_score=file_row.sharpness_score,
+            lighting_score=file_row.lighting_score,
+            resolution_score=file_row.resolution_score,
+            face_quality_score=file_row.face_quality_score,
         )
 
-        score_info = []
-        if file_row.quality_score is not None:
-            score_info.append(f"Gesamtscore: {file_row.quality_score:.1f}%")
-        if file_row.sharpness_score is not None:
-            score_info.append(f"Schärfe: {file_row.sharpness_score:.0f}%")
-        if file_row.lighting_score is not None:
-            score_info.append(f"Belichtung: {file_row.lighting_score:.0f}%")
-        if file_row.face_quality_score is not None:
-            score_info.append(f"Augen: {file_row.face_quality_score:.0f}%")
-        if file_row.resolution_score is not None:
-            score_info.append(f"Auflösung: {file_row.resolution_score:.0f}%")
+        score_info = [
+            part
+            for part in (
+                explanation.overall_text,
+                explanation.confidence_label,
+                explanation.component_summary_text,
+            )
+            if part
+        ]
 
         if score_info:
             score_label = QLabel(" | ".join(score_info))
             score_label.setWordWrap(True)
             score_label.setMaximumHeight(32)
+            score_label.setToolTip(explanation.tooltip_text)
             score_label.setStyleSheet(
                 f"font-size: 9px; color: {colors['text']}; padding: 2px; background-color: {colors['base']}; border: 1px solid {colors['border']}; border-radius: 3px;"
             )
             layout.addWidget(score_label)
-        elif file_row.quality_score is not None and not has_any_scores:
+        elif explanation.needs_reanalysis:
             score_label = QLabel(
                 f"Gesamtscore: {file_row.quality_score:.1f}% (Details: Neu analysieren erforderlich)"
             )
             score_label.setWordWrap(True)
             score_label.setMaximumHeight(24)
+            score_label.setToolTip(explanation.tooltip_text)
             score_label.setStyleSheet(
                 f"font-size: 9px; color: {colors['text']}; padding: 2px; background-color: {colors['base']}; border: 1px solid {colors['border']}; border-radius: 3px;"
             )
@@ -2349,9 +2455,24 @@ class ModernMainWindow(QMainWindow):
             logger.warning("Failed to show main window", exc_info=True)
             pass
         
-        self.db_path = db_path or Path("photo_cleaner.db")
+        self.db_path = _resolve_default_db_path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.db = Database(self.db_path)
-        self.conn: sqlite3.Connection = self.db.connect()
+        try:
+            self.conn: sqlite3.Connection = self.db.connect()
+        except sqlite3.OperationalError as e:
+            fallback_path = AppConfig.get_db_dir() / "photo_cleaner.db"
+            logger.warning(
+                "Primary DB open failed (%s). Falling back to user DB path: %s",
+                e,
+                fallback_path,
+            )
+            if fallback_path == self.db_path:
+                raise
+            fallback_path.parent.mkdir(parents=True, exist_ok=True)
+            self.db_path = fallback_path
+            self.db = Database(self.db_path)
+            self.conn = self.db.connect()
         
         # Initialize services
         self.files = FileRepository(self.conn)
@@ -4580,6 +4701,11 @@ class ModernMainWindow(QMainWindow):
         self.search_box.setPlaceholderText(t("search_placeholder"))
         self.search_box.textChanged.connect(self._apply_group_filter)
         layout.addWidget(self.search_box)
+
+        self.needs_review_only_cb = QCheckBox("Needs Review")
+        self.needs_review_only_cb.setToolTip("Zeige nur Gruppen mit niedriger Confidence oder unvollstaendiger Analyse")
+        self.needs_review_only_cb.stateChanged.connect(self._apply_group_filter)
+        layout.addWidget(self.needs_review_only_cb)
         
         self.group_list = QListWidget()
         self.group_list.itemSelectionChanged.connect(self._on_group_selected)
@@ -4939,7 +5065,24 @@ class ModernMainWindow(QMainWindow):
                    SUM(CASE WHEN f.file_status IN ('UNDECIDED','UNSURE') THEN 1 ELSE 0 END) AS open_cnt,
                    SUM(CASE WHEN f.file_status IN ('KEEP','DELETE') THEN 1 ELSE 0 END) AS decided_cnt,
                    SUM(CASE WHEN f.file_status = 'DELETE' THEN 1 ELSE 0 END) AS delete_cnt,
-                   MAX(d.similarity_score) AS sim
+                   MAX(d.similarity_score) AS sim,
+                   SUM(CASE WHEN f.quality_score IS NOT NULL THEN 1 ELSE 0 END) AS analyzed_cnt,
+                   SUM(
+                       CASE
+                           WHEN f.quality_score IS NULL THEN 0
+                           WHEN (
+                               (f.sharpness_component IS NULL AND f.lighting_component IS NULL AND f.resolution_component IS NULL AND f.face_quality_component IS NULL)
+                               OR f.quality_score < 45
+                               OR (
+                                   (CASE WHEN f.sharpness_component < 45 THEN 1 ELSE 0 END)
+                                   + (CASE WHEN f.lighting_component < 45 THEN 1 ELSE 0 END)
+                                   + (CASE WHEN f.resolution_component < 45 THEN 1 ELSE 0 END)
+                                   + (CASE WHEN f.face_quality_component < 45 THEN 1 ELSE 0 END)
+                               ) >= 2
+                           ) THEN 1
+                           ELSE 0
+                       END
+                     ) AS needs_review_cnt
             FROM duplicates d
             JOIN files f ON f.file_id = d.file_id
             WHERE f.is_deleted = 0
@@ -4952,6 +5095,12 @@ class ModernMainWindow(QMainWindow):
         result: List[GroupRow] = []
         
         for r in rows:
+            analyzed_count = int(r[7] or 0)
+            needs_review_count = int(r[8] or 0)
+            confidence_score = 0
+            if analyzed_count > 0:
+                confidence_score = int(round(((analyzed_count - needs_review_count) / analyzed_count) * 100))
+
             grp = GroupRow(
                 group_id=str(r[0]),
                 sample_path=Path(r[1]),
@@ -4960,6 +5109,8 @@ class ModernMainWindow(QMainWindow):
                 decided_count=r[4] or 0,
                 delete_count=r[5] or 0,
                 similarity=float(r[6] or 0.0),
+                needs_review_count=needs_review_count,
+                confidence_score=confidence_score,
             )
 
             if hide_completed_groups and grp.open_count == 0:
@@ -4974,7 +5125,12 @@ class ModernMainWindow(QMainWindow):
             """
             SELECT f.file_id,
                    f.path,
-                   f.file_status
+                                     f.file_status,
+                                     f.quality_score,
+                                     f.sharpness_component,
+                                     f.lighting_component,
+                                     f.resolution_component,
+                                     f.face_quality_component
             FROM files f
             LEFT JOIN duplicates d ON f.file_id = d.file_id
             WHERE f.is_deleted = 0
@@ -4988,7 +5144,8 @@ class ModernMainWindow(QMainWindow):
         
         # BUG #4 FIX: TOCTOU-safe file existence check
         # Instead of checking exists() then opening, try to access file stat directly
-        for idx, (file_id, path, status) in enumerate(single_rows):
+        for idx, row in enumerate(single_rows):
+            file_id, path, status, quality_score, sharpness, lighting, resolution, face_quality = row
             file_path = Path(path)
             
             # TOCTOU-safe: Try to stat the file - if it fails, it doesn't exist
@@ -5007,6 +5164,21 @@ class ModernMainWindow(QMainWindow):
                     logger.error(f"Fehler beim Markieren als gelöscht: {db_err}", exc_info=True)
                 continue
             
+            explanation = build_score_explanation(
+                quality_score=float(quality_score) if quality_score is not None else None,
+                sharpness_score=float(sharpness) if sharpness is not None else None,
+                lighting_score=float(lighting) if lighting is not None else None,
+                resolution_score=float(resolution) if resolution is not None else None,
+                face_quality_score=float(face_quality) if face_quality is not None else None,
+            )
+            confidence_map = {
+                "high": 100,
+                "medium": 65,
+                "low": 25,
+                "incomplete": 10,
+                None: 0,
+            }
+
             single_grp = GroupRow(
                 group_id=f"SINGLE_{file_id}",
                 sample_path=file_path,
@@ -5015,6 +5187,8 @@ class ModernMainWindow(QMainWindow):
                 decided_count=0,
                 delete_count=0,
                 similarity=0.0,
+                needs_review_count=1 if explanation.confidence_level in ("low", "incomplete") else 0,
+                confidence_score=confidence_map.get(explanation.confidence_level, 0),
             )
             result.append(single_grp)
             self.group_lookup[single_grp.group_id] = single_grp
@@ -5038,6 +5212,7 @@ class ModernMainWindow(QMainWindow):
         logger.info(f"[UI] _render_groups() starting for {len(self.groups)} groups...")
         self.group_list.clear()
         term = self.search_box.text().lower().strip()
+        needs_review_only = hasattr(self, "needs_review_only_cb") and self.needs_review_only_cb.isChecked()
 
         self._group_thumb_total = 0
         self._group_thumb_done = 0
@@ -5053,8 +5228,12 @@ class ModernMainWindow(QMainWindow):
                 label = f"📷 Einzelbild: {grp.sample_path.name}"
             else:
                 label = f"Group {grp.group_id} ({grp.total} images)"
+
+            label = f"{label} | Conf {grp.confidence_score}%"
             
             if term and term not in label.lower() and term not in str(grp.sample_path).lower():
+                continue
+            if needs_review_only and grp.needs_review_count <= 0:
                 continue
             
             item = QListWidgetItem(label)
@@ -5088,19 +5267,23 @@ class ModernMainWindow(QMainWindow):
                 status_color = QColor(status_colors["UNDECIDED_ATTENTION"])
                 bg_alpha = 100  # More opaque for better visibility
             
-            item.setText(f"{status_icon} {label}")
+            needs_review_hint = f" | Needs Review: {grp.needs_review_count}" if grp.needs_review_count > 0 else ""
+            review_icon = " 🚩" if grp.needs_review_count > 0 else ""
+            item.setText(f"{status_icon}{review_icon} {label}")
             
             # Enhanced tooltip
             if is_single:
                 item.setToolTip(
                     f"📷 EINZELBILD - ENTSCHEIDUNG BENÖTIGT\n"
                     f"Datei: {grp.sample_path.name}\n"
-                    f"Status: Noch nicht entschieden"
+                    f"Status: Noch nicht entschieden{needs_review_hint}\n"
+                    f"Confidence: {grp.confidence_score}%"
                 )
             else:
                 item.setToolTip(
                     f"Open: {grp.open_count} | Decided: {grp.decided_count} | Delete: {grp.delete_count}\n"
-                    f"{'⚠️ AKTION ERFORDERLICH' if grp.open_count > 0 else '✅ Vollständig entschieden'}"
+                    f"{('⚠️ AKTION ERFORDERLICH' if grp.open_count > 0 else '✅ Vollständig entschieden')}{needs_review_hint}\n"
+                    f"Confidence: {grp.confidence_score}%"
                 )
             
             status_color.setAlpha(bg_alpha)
@@ -5248,11 +5431,11 @@ class ModernMainWindow(QMainWindow):
             cur = self.conn.execute(
                 """
                 SELECT f.file_id, f.path, f.file_status, f.is_locked, COALESCE(f.is_recommended, 0),
-                       COALESCE(f.quality_score, 0) as score,
-                       COALESCE(f.sharpness_component, 0),
-                       COALESCE(f.lighting_component, 0),
-                       COALESCE(f.resolution_component, 0),
-                       COALESCE(f.face_quality_component, 0)
+                      f.quality_score,
+                      f.sharpness_component,
+                      f.lighting_component,
+                      f.resolution_component,
+                      f.face_quality_component
                 FROM files f
                 WHERE f.file_id = ? AND f.is_deleted = 0
                 """,
@@ -5299,11 +5482,11 @@ class ModernMainWindow(QMainWindow):
         cur = self.conn.execute(
             """
             SELECT f.file_id, f.path, f.file_status, f.is_locked, COALESCE(f.is_recommended, 0),
-                   COALESCE(f.quality_score, 0) as score,
-                   COALESCE(f.sharpness_component, 0),
-                   COALESCE(f.lighting_component, 0),
-                   COALESCE(f.resolution_component, 0),
-                   COALESCE(f.face_quality_component, 0)
+                 f.quality_score,
+                 f.sharpness_component,
+                 f.lighting_component,
+                 f.resolution_component,
+                 f.face_quality_component
             FROM files f
             JOIN duplicates d ON f.file_id = d.file_id
             WHERE d.group_id = ? AND f.is_deleted = 0

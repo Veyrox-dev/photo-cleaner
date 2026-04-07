@@ -215,6 +215,13 @@ class Database:
             Active SQLite connection
         """
         if self.conn is None:
+            self.db_path = Path(self.db_path).expanduser()
+            try:
+                self.db_path.parent.mkdir(parents=True, exist_ok=True)
+            except (OSError, PermissionError) as e:
+                logger.error(f"Failed to create database directory {self.db_path.parent}: {e}")
+                raise sqlite3.OperationalError(f"Cannot create database directory: {self.db_path.parent}") from e
+
             logger.info(f"Connecting to database: {self.db_path}")
             self.conn = sqlite3.connect(
                 str(self.db_path),

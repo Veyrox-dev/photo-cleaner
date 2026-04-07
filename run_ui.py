@@ -387,44 +387,22 @@ def main():
     elif cuda_visible is not None:
         logger.info("CUDA_VISIBLE_DEVICES=%s", cuda_visible)
 
-    from photo_cleaner.core.hasher import check_phash_support
-    check_phash_support(logger)
-
-    # Ensure DLL search paths are available before TensorFlow import in frozen builds
-    _prepare_windows_dll_search_paths(app_dir, logger)
-    if mode == AppMode.DEBUG:
-        if "TF_CPP_MIN_LOG_LEVEL" not in os.environ or os.environ.get("TF_CPP_MIN_LOG_LEVEL") != "0":
-            os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"
-            logger.debug("TF_CPP_MIN_LOG_LEVEL forced to 0 for debug logging")
-        if "PYTHONVERBOSE" not in os.environ:
-            logger.debug("PYTHONVERBOSE not set (requires process restart to take effect)")
-        _log_tf_pre_import(logger)
-        _log_tf_diagnostics(app_dir, logger)
+    startup_t0 = time.perf_counter()
 
     # ====================================================================
-    # PHASE 0: TensorFlow vor Qt laden (kritisch!)
+    # PHASE 0: Argumente und Pfade sehr frueh aufloesen
     # ====================================================================
-    # TensorFlow MUSS vor Qt/PySide6 geladen werden, sonst DLL-Fehler
-    mtcnn_status = {"available": False, "error": None}
-    try:
-        tf_import_start = time.perf_counter()
-        import tensorflow as tf
-        tf_import_elapsed = time.perf_counter() - tf_import_start
-        logger.info(f"TensorFlow {tf.__version__} loaded successfully in {tf_import_elapsed:.2f}s")
-        if tf_import_elapsed > 2.0:
-            logger.warning("TensorFlow import took %.2fs; GPU enumeration may be slow", tf_import_elapsed)
-        _configure_keras_logging(logger)
-    except Exception as e:
-        mtcnn_status["error"] = str(e)
-        mtcnn_status["error"] = _sanitize_mtcnn_error(mtcnn_status["error"])
-        logger.error(f"✗ TensorFlow initialization failed: {type(e).__name__}: {e}")
-        if isinstance(e, ModuleNotFoundError) and "tensorflow" in str(e).lower():
-            logger.error("TensorFlow not found in this Python environment. Please run using .venv\\Scripts\\python.exe or install TensorFlow in the active environment.")
-        logger.warning("⚠ Photo quality analysis will use fallback face detection (Haar Cascade)")
-        logger.warning("⚠ This may reduce accuracy in detecting best photos with faces")
+    input_path = args.input.resolve() if args.input else None
+    output_path = args.output.resolve() if args.output else None
+    db_path = args.db.resolve() if args.db else None
+
+    if not db_path and output_path:
+        db_path = output_path / "photo_cleaner_session.db"
+    if not db_path:
+        db_path = AppConfig.get_db_dir() / "photo_cleaner.db"
 
     # ====================================================================
-    # PHASE 1: SOFORT QApplication starten (für Splash Screen)
+    # PHASE 1: SOFORT QApplication starten (fuer fruehen Splash)
     # ====================================================================
     from PySide6.QtWidgets import QApplication, QMessageBox
     app = QApplication(sys.argv)
@@ -474,11 +452,69 @@ def main():
         logger.warning(f"Could not load language preference: {e}")
     
     # ====================================================================
-    # PHASE 3: Splash Screen anzeigen (sofortiges Feedback)
+    # PHASE 3: Splash Screen so frueh wie moeglich anzeigen
     # ====================================================================
     from photo_cleaner.ui.splash_screen import create_splash_screen
     splash = create_splash_screen(app_dir)
     splash.show_progress(t("splash_loading_app"), 10)
+    logger.info("Splash shown after %.2fs", time.perf_counter() - startup_t0)
+
+    # ====================================================================
+    # PHASE 3.2: DB beim Erststart vorbereiten (Directory + Datei + Schema)
+    # ====================================================================
+    splash.show_progress("Preparing database", 15)
+    try:
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        from photo_cleaner.db.schema import Database
+
+        preflight_db = Database(db_path)
+        preflight_conn = preflight_db.connect()
+        preflight_conn.close()
+        logger.info("Database ready: %s", db_path)
+    except Exception as e:
+        logger.error("Database initialization failed for %s: %s", db_path, e, exc_info=True)
+        splash.close()
+        QMessageBox.critical(
+            None,
+            "Database Error",
+            f"PhotoCleaner konnte die Datenbank nicht initialisieren:\n\n{db_path}\n\n{e}"
+        )
+        sys.exit(1)
+
+    from photo_cleaner.core.hasher import check_phash_support
+    check_phash_support(logger)
+
+    # Ensure DLL search paths are available before TensorFlow import in frozen builds
+    _prepare_windows_dll_search_paths(app_dir, logger)
+    if mode == AppMode.DEBUG:
+        if "TF_CPP_MIN_LOG_LEVEL" not in os.environ or os.environ.get("TF_CPP_MIN_LOG_LEVEL") != "0":
+            os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"
+            logger.debug("TF_CPP_MIN_LOG_LEVEL forced to 0 for debug logging")
+        if "PYTHONVERBOSE" not in os.environ:
+            logger.debug("PYTHONVERBOSE not set (requires process restart to take effect)")
+        _log_tf_pre_import(logger)
+        _log_tf_diagnostics(app_dir, logger)
+
+    # ====================================================================
+    # PHASE 3.4: TensorFlow waehrend sichtbarem Splash laden
+    # ====================================================================
+    mtcnn_status = {"available": False, "error": None}
+    try:
+        tf_import_start = time.perf_counter()
+        import tensorflow as tf
+        tf_import_elapsed = time.perf_counter() - tf_import_start
+        logger.info(f"TensorFlow {tf.__version__} loaded successfully in {tf_import_elapsed:.2f}s")
+        if tf_import_elapsed > 2.0:
+            logger.warning("TensorFlow import took %.2fs; GPU enumeration may be slow", tf_import_elapsed)
+        _configure_keras_logging(logger)
+    except Exception as e:
+        mtcnn_status["error"] = str(e)
+        mtcnn_status["error"] = _sanitize_mtcnn_error(mtcnn_status["error"])
+        logger.error(f"✗ TensorFlow initialization failed: {type(e).__name__}: {e}")
+        if isinstance(e, ModuleNotFoundError) and "tensorflow" in str(e).lower():
+            logger.error("TensorFlow not found in this Python environment. Please run using .venv\\Scripts\\python.exe or install TensorFlow in the active environment.")
+        logger.warning("⚠ Photo quality analysis will use fallback face detection (Haar Cascade)")
+        logger.warning("⚠ This may reduce accuracy in detecting best photos with faces")
     
     # NOTE: Do NOT show MTCNN warning yet - MTCNN may be re-initialized below
     # Warning will only be shown if MTCNN still unavailable after splash phase
@@ -560,15 +596,8 @@ def main():
         sys.exit(1)
 
     # ====================================================================
-    # PHASE 5: Argumente vorbereiten
+    # PHASE 5: Finale Startup-Infos
     # ====================================================================
-    input_path = args.input.resolve() if args.input else None
-    output_path = args.output.resolve() if args.output else None
-    db_path = args.db.resolve() if args.db else None
-
-    if not db_path and output_path:
-        db_path = output_path / "photo_cleaner_session.db"
-
     if input_path:
         logger.info(f"Using input: {input_path}")
     if output_path:

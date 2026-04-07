@@ -92,19 +92,92 @@ Neues Modell: **FREE (einmalig 250 Bilder, kostenlos per E-Mail-Lizenz)** + **PR
 
 ## 🎯 Feature-Scope
 
-### v1.0 (geplant)
-- **Explainable Selection Scores** – Sharpness / Eye-Quality / Lighting im Detail-Panel sichtbar (1–2 Tage)
-- **Keyboard Shortcuts & Accessibility** – Power-User-Flows, Qt-Accessibility (1–2 Tage)
-- **ML-Fallback-Mechanismen** – ✅ bereits fertig (Haar+MTCNN-only Fallback)
+### Produktfokus bis Release
 
-### v1.1+
-- Undo/Redo mit Versionshistorie
-- Batch Metadata Editor (EXIF/IPTC/XMP Bulk-Update)
-- Verbesserte Fehlermeldungen & User-Guidance
+Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Automatik und sichere Korrekturpfade im Review.
+
+### v1.0 Must-have
+
+1. Explainable Score Breakdown
+2. Confidence Badge + Needs Review
+3. Merge/Split für Gruppen
+4. Undo-Historie + Action Log
+5. Guided Onboarding + Sample Walkthrough
+6. Smart Filter im Review
+7. Quota- und Upgrade-Messaging im Workflow
+
+### v1.1 Should-have
+
+1. Warum nicht gruppiert? Diagnose
+2. Review Queue für unsichere/große Gruppen
+3. Side-by-Side Compare mit Zoom + EXIF-Diff
+4. Presets Fast / Balanced / Best Quality
+5. Progressive Results während Analyse
+6. Benchmark- und Diagnostics Center
+
+### Later Nice-to-have
+
+1. Performance Mode für High-Res
+2. Batch Approval mit Guardrails
 
 ### Out of Scope (v1.x)
-- Non-destructive Image Editing
-- Mobile-Unterstützung
+
+1. Non-destructive Image Editing
+2. Mobile-Unterstützung
+
+---
+
+## 🗺️ Nächste 8 Wochen (max. 2 Entwickler)
+
+### Woche 1
+- Produkt- und UX-Spezifikation für Vertrauen, Confidence, Merge/Split, Undo
+- KPI-Ziele definieren: Trust, False Split/Merge, Time-to-first-result
+- Testbasis und Benchmark-Kriterien fixieren
+
+### Woche 2
+- Datenmodell für Explainability und Confidence fertigstellen
+- UI-Konzept für Badges, Score-Details und Review-Hinweise
+- Unit-Tests für Score-to-Confidence-Mapping
+- Technisches Startdokument: `docs/architecture/WEEK1_TRUST_FOUNDATION.md`
+
+### Woche 3
+- Merge/Split-Flow inklusive Persistenz und Recovery implementieren
+- Undo-/Action-Log-Verhalten finalisieren
+- Sicherheitsregressionen für Delete/Export ergänzen
+
+### Woche 4
+- Onboarding, Smart Filter und Quota-/Upgrade-Messaging umsetzen
+- Safe-Review-Hinweise für Erstnutzer integrieren
+- First-run-Test auf sauberem Windows-Setup
+
+### Woche 5
+- Reproduzierbarer Benchmark-Flow für 1k/5k/10k
+- Presets Fast/Balanced/Best Quality definieren
+- Sichtbare Fortschrittsmeilensteine im langen Run
+
+### Woche 6
+- Performance-Optimierungen für große Bildbestände
+- Progressive Results in der Analyse bereitstellen
+- Cache-Pfad und Qualitätsdrift validieren
+
+### Woche 7
+- Stabilisierung und Bugfixing
+- Frozen-Build-Validierung und Review-Polish
+- FREE/PRO Lizenz-Sanity und Delete-Safety final prüfen
+
+### Woche 8
+- Pilot-Release-Readiness
+- Support-Playbook für Gruppierungsprobleme
+- KPI-Tracking für Trust, Korrekturen und Durchsatz
+
+### Team-Aufteilung (Empfehlung)
+
+- Entwickler 1: Review UX, Explainability, Confidence, Merge/Split, Onboarding, Messaging
+- Entwickler 2: Scoring-Heuristik, Benchmarking, Presets, Progressive Results, Performance, Stabilität
+
+### Warum diese Reihenfolge
+
+Der aktuelle Engpass ist Vertrauen, nicht Funktionsanzahl. Solange Nutzer bei Fehlgruppierung keinen klaren Korrekturpfad haben und lange Läufe intransparent wirken, liefern zusätzliche Features wenig Netto-Wert. Deshalb zuerst Vertrauen und Recovery, danach Geschwindigkeit und Power-Features.
 
 ---
 
