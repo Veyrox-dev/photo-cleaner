@@ -50,7 +50,7 @@ class TestLicenseE2EInitialization:
             info = manager.license_info
             # If cloud license loaded, it could be other type
             # So we'll test that license_type is valid
-            assert info.license_type in (LicenseType.FREE, LicenseType.PRO, LicenseType.ENTERPRISE)
+            assert info.license_type in (LicenseType.FREE, LicenseType.PRO)
 
     def test_license_file_location_correct(self):
         """License file should be created in correct location."""
@@ -80,7 +80,7 @@ class TestLicenseE2EInitialization:
 class TestLicenseE2EActivation:
     """E2E: License activation workflows."""
 
-    def test_pro_license_activation_with_code(self):
+    def test_pro_license_activation_with_code(self, monkeypatch):
         """Complete PRO license activation with code."""
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = LicenseManager(Path(tmpdir))
@@ -97,14 +97,11 @@ class TestLicenseE2EActivation:
                 "nonce": "test-nonce-123",
             }
             
-            # Calculate signature
-            sig = manager._hmac_sign(
-                code["mid"],
-                code["type"],
-                code["exp"],
-                code["nonce"]
+            monkeypatch.setattr(
+                "photo_cleaner.license.license_manager.verify_ed25519_signature",
+                lambda payload, sig: True,
             )
-            code["sig"] = sig
+            code["sig"] = "test-ed25519-signature"
             code["user"] = "Test User"
             
             # Activate with code
@@ -115,12 +112,12 @@ class TestLicenseE2EActivation:
             assert manager.license_info.license_type == LicenseType.PRO
             assert manager.license_info.valid
 
-    def test_enterprise_license_activation_flow(self):
-        """Complete ENTERPRISE license activation workflow."""
+    def test_enterprise_activation_maps_to_pro_compatibility(self, monkeypatch):
+        """Legacy ENTERPRISE activation payloads should map to PRO."""
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = LicenseManager(Path(tmpdir))
 
-            # Create valid activation code for ENTERPRISE tier
+            # Legacy payload still accepted but mapped to PRO
             now = datetime.now(timezone.utc)
             exp_date = (now + timedelta(days=365)).date()
             
@@ -129,23 +126,20 @@ class TestLicenseE2EActivation:
                 "type": "ENTERPRISE",
                 "exp": exp_date.isoformat(),
                 "nonce": "test-nonce-456",
-                "user": "Enterprise User",
+                "user": "Compatibility User",
             }
-            
-            # Calculate signature
-            sig = manager._hmac_sign(
-                code["mid"],
-                code["type"],
-                code["exp"],
-                code["nonce"]
+
+            monkeypatch.setattr(
+                "photo_cleaner.license.license_manager.verify_ed25519_signature",
+                lambda payload, sig: True,
             )
-            code["sig"] = sig
+            code["sig"] = "test-ed25519-signature"
             
             # Activate with code
             success = manager.activate_with_code(json.dumps(code))
             
             assert success is True
-            assert manager.license_info.license_type == LicenseType.ENTERPRISE
+            assert manager.license_info.license_type == LicenseType.PRO
             assert manager.license_info.valid
 
 
@@ -168,7 +162,7 @@ class TestLicenseE2EFeatureFlags:
                 machine_match=True,
                 valid=False,
                 enabled_features=[],
-                max_images=1000,
+                max_images=250,
                 raw={},
                 path=None,
                 validation_reason="free",
@@ -217,53 +211,14 @@ class TestLicenseE2EFeatureFlags:
             assert flags.can_batch_process()
             assert flags.can_use_extended_cache()
             assert flags.has_unlimited_images()
-            assert not flags.has_api_access()  # Only ENTERPRISE
-
-    def test_enterprise_tier_features(self):
-        """ENTERPRISE tier should have all features enabled."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            manager = LicenseManager(Path(tmpdir))
-
-            # Manually create ENTERPRISE license info
-            expires_at = datetime.now(timezone.utc) + timedelta(days=365)
-            manager.license_info = LicenseInfo(
-                license_type=LicenseType.ENTERPRISE,
-                user="Enterprise User",
-                machine_id=manager.machine_id,
-                expires_at=expires_at,
-                signature_valid=True,
-                machine_match=True,
-                valid=True,
-                enabled_features=[
-                    "batch_processing",
-                    "heic_support",
-                    "extended_cache",
-                    "advanced_quality_analysis",
-                    "bulk_delete",
-                    "export_formats",
-                    "api_access",
-                    "unlimited_images",
-                ],
-                max_images=0,
-                raw={},
-                path=None,
-                validation_reason="ok",
-            )
-
-            flags = FeatureFlagsManager(manager)
-
-            # ENTERPRISE checks
-            assert flags.can_batch_process()
-            assert flags.can_use_extended_cache()
-            assert flags.has_unlimited_images()
-            assert flags.has_api_access()
+            assert not flags.has_api_access()  # API tier currently not part of paid plans
 
 
 class TestLicenseE2EImageLimits:
     """E2E: Image processing limits enforcement."""
 
     def test_free_tier_image_limit(self):
-        """FREE tier should have 1000 image limit."""
+        """FREE tier should have 250 lifetime image limit."""
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = LicenseManager(Path(tmpdir))
 
@@ -277,16 +232,16 @@ class TestLicenseE2EImageLimits:
                 machine_match=True,
                 valid=False,
                 enabled_features=[],
-                max_images=1000,
+                max_images=250,
                 raw={},
                 path=None,
                 validation_reason="free",
             )
 
-            # FREE tier has 1000 image limit
-            assert manager.can_process_images(500)  # Within limit
-            assert manager.can_process_images(1000)  # At limit
-            assert not manager.can_process_images(1001)  # Over limit
+            # FREE tier has 250 image limit
+            assert manager.can_process_images(200)  # Within limit
+            assert manager.can_process_images(250)  # At limit
+            assert not manager.can_process_images(251)  # Over limit
 
     def test_pro_tier_unlimited_images(self):
         """PRO tier should allow unlimited images."""
@@ -330,13 +285,13 @@ class TestLicenseE2EImageLimits:
                 machine_match=True,
                 valid=False,
                 enabled_features=[],
-                max_images=1000,
+                max_images=250,
                 raw={},
                 path=None,
                 validation_reason="free",
             )
 
-            # FREE tier: 1000 image limit
+            # FREE tier: 250 image limit
             batch_size = 5000
             can_process = manager.can_process_images(batch_size)
 
@@ -363,7 +318,7 @@ class TestLicenseE2EExpiration:
                 machine_match=True,
                 valid=False,  # Invalid due to expiration
                 enabled_features=[],
-                max_images=1000,  # Falls back to FREE limit
+                max_images=250,  # Falls back to FREE limit
                 raw={},
                 path=None,
                 validation_reason="expired",
@@ -451,7 +406,7 @@ class TestLicenseE2EMachineID:
                 machine_match=False,  # Different machine
                 valid=False,  # Invalid due to machine mismatch
                 enabled_features=[],
-                max_images=1000,
+                max_images=250,
                 raw={},
                 path=None,
                 validation_reason="machine_mismatch",
@@ -490,9 +445,15 @@ class TestLicenseE2EOfflineSync:
 
             # Write snapshot
             snapshot_path.write_text(json.dumps(snapshot_data), encoding="utf-8")
+            signature_path = snapshot_path.parent / "license_signature"
+            signature_path.write_text("test-signature", encoding="utf-8")
 
-            # Reload license
-            manager.refresh()
+            with patch(
+                "photo_cleaner.license.license_manager.verify_ed25519_signature",
+                return_value=True,
+            ):
+                # Reload license
+                manager.refresh()
 
             # Should load cloud license
             assert manager.license_info.license_type == LicenseType.PRO
@@ -500,10 +461,11 @@ class TestLicenseE2EOfflineSync:
             # Clean up
             try:
                 snapshot_path.unlink()
+                signature_path.unlink()
             except OSError:
                 pass
 
-    def test_activation_marker_persistence(self):
+    def test_activation_marker_persistence(self, monkeypatch):
         """Activation marker should persist across runs."""
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = LicenseManager(Path(tmpdir))
@@ -519,10 +481,11 @@ class TestLicenseE2EOfflineSync:
                 "nonce": "test-nonce-123",
             }
 
-            sig = manager._hmac_sign(
-                code["mid"], code["type"], code["exp"], code["nonce"]
+            monkeypatch.setattr(
+                "photo_cleaner.license.license_manager.verify_ed25519_signature",
+                lambda payload, sig: True,
             )
-            code["sig"] = sig
+            code["sig"] = "test-ed25519-signature"
             code["user"] = "Test User"
 
             success = manager.activate_with_code(json.dumps(code))
@@ -603,7 +566,7 @@ class TestLicenseE2EStatusReporting:
                 machine_match=True,
                 valid=False,
                 enabled_features=[],
-                max_images=1000,
+                max_images=250,
                 raw={},
                 path=None,
                 validation_reason="invalid_signature",
@@ -632,7 +595,7 @@ class TestLicenseE2EIntegrationWithPipeline:
                 machine_match=True,
                 valid=False,
                 enabled_features=[],
-                max_images=1000,
+                max_images=250,
                 raw={},
                 path=None,
                 validation_reason="free",
@@ -658,7 +621,7 @@ class TestLicenseE2EIntegrationWithPipeline:
                 machine_match=True,
                 valid=False,
                 enabled_features=[],
-                max_images=1000,
+                max_images=250,
                 raw={},
                 path=None,
                 validation_reason="free",
@@ -704,7 +667,7 @@ class TestLicenseE2EIntegrationWithPipeline:
             assert flags.can_batch_process()
             assert flags.can_use_extended_cache()
             assert flags.has_unlimited_images()
-            # API access only for ENTERPRISE
+            # API access currently not part of paid plan matrix
             assert not flags.has_api_access()
 
 

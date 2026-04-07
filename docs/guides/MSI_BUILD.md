@@ -58,15 +58,20 @@ Output:
    - Rating starten
    - Pruefen: keine Blocker/Crashs
 
-4. Upgrade
+4. Lizenzfaelle (Slice 4)
+   - FREE pruefen: bei >250 Bildern muss ein klarer Limit-/Upgrade-Hinweis erscheinen
+   - PRO pruefen: nach Aktivierung ist die gleiche Verarbeitung ohne Bildlimit moeglich
+   - Kompatibilitaet pruefen: bestehende Alt-Lizenzdaten mit Enterprise-Herkunft werden als PRO akzeptiert
+
+5. Upgrade
    - Neue MSI-Version installieren
    - Pruefen: MajorUpgrade greift, alte Version wird ersetzt
 
-5. Uninstall
+6. Uninstall
    - Deinstallation ueber Windows Apps
    - Pruefen: Startmenue-Shortcut entfernt
 
-6. Log-Hinweis
+7. Log-Hinweis
    - Bei Fehlern Installer- und App-Logs in `results/` oder QA-Protokoll dokumentieren
 
 ## Hinweise

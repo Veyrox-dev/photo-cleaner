@@ -83,10 +83,10 @@ Neues Modell: **FREE (einmalig 250 Bilder, kostenlos per E-Mail-Lizenz)** + **PR
 - ✅ E2E-Runbook erstellt: `docs/guides/STRIPE_SUPABASE_E2E.md`
 - ⬜ Echter Stripe-Checkout mit Signaturpfad offen: Checkout -> Webhook -> Lizenzmail -> Aktivierung
 
-### Slice 4 · Guardrails + Tests
-- Unit-Tests für Free-Quota (250) + PRO unlimited ergänzen
-- Regression-Tests: alte ENTERPRISE-Lizenzen werden als PRO akzeptiert
-- Smoke-Test-Checkliste um Lizenzfälle FREE/PRO erweitern
+### Slice 4 · Guardrails + Tests (✅ umgesetzt)
+- ✅ Unit-/E2E-Tests für Free-Quota (250) + PRO unlimited ergänzt
+- ✅ Regression-Tests ergänzt: alte ENTERPRISE-Eingaben werden als PRO akzeptiert
+- ✅ Smoke-Test-Checkliste um Lizenzfälle FREE/PRO erweitert (`docs/guides/MSI_BUILD.md`, `scripts/smoke_test_protocol.py`)
 
 ---
 

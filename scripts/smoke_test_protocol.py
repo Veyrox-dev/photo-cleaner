@@ -30,7 +30,9 @@ def main() -> None:
     print("2) Launch EXE on clean Windows VM")
     print("3) Import 20 images")
     print("4) Check logs for: [INIT], [DEPS], [WARMUP]")
-    print("5) Submit report with timestamps + any errors")
+    print("5) FREE-Lizenzfall pruefen: >250 Bilder blockiert mit Upgrade-Hinweis")
+    print("6) PRO-Lizenzfall pruefen: gleiche Bibliothek ohne Limit verarbeitbar")
+    print("7) Submit report with timestamps + any errors")
     print("")
 
     if exe_path.exists():
