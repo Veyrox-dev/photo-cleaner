@@ -247,7 +247,7 @@ conn.execute("PRAGMA key = 'user_passwort'")
 - ❌ Nutzer muss Passwort eingeben (UX-Impact)
 - ❌ Passwort vergessen = Daten verloren
 
-**Empfehlung:** Als **opt-in Feature** für PRO/ENTERPRISE
+**Empfehlung:** Als **opt-in Feature** fuer PRO oder fuer spaetere Business-/Team-Pakete
 
 ---
 
@@ -365,7 +365,7 @@ def verify_certificate(cert):
 - Juristen (Mandanten-Fotos)
 - Behörden (DSGVO-Compliance)
 
-**Preis:** ENTERPRISE-Tier (+50€/Jahr)
+**Preis:** spaeteres Add-on oder Business-Paket, nicht Teil des aktuellen Launch-Modells
 
 ---
 
@@ -384,7 +384,7 @@ def verify_certificate(cert):
 
 #### 3.2 DSGVO-Zertifizierung
 
-**Für Enterprise-Kunden wichtig:**
+**Fuer spaetere Business-Kunden wichtig:**
 - Privacy Impact Assessment (PIA)
 - Data Processing Agreement (DPA)
 - ISO 27001 Compliance
@@ -411,7 +411,7 @@ def verify_certificate(cert):
 
 ---
 
-### Für Enterprise-Nutzer (Firmen)
+### Fuer Firmenumgebungen
 
 ✅ **DO:**
 - Separate Benutzerkonten pro Mitarbeiter
@@ -608,12 +608,12 @@ Deine **Bilder bleiben sicher**, weil:
 - [ ] Opt-in Datenbank-Verschlüsselung (SQLCipher)
 
 ### Oktober 2026 (v1.0.0)
-- [ ] Privacy-First Mode (ENTERPRISE)
+- [ ] Privacy-First Mode (separates Business-Add-on, falls spaeter noetig)
 - [ ] Externe Security Audit (cure53)
 - [ ] Bug Bounty Programm (HackerOne)
 
 ### 2027 (v1.1.0+)
-- [ ] ISO 27001 Zertifizierung (für Enterprise)
+- [ ] ISO 27001 Zertifizierung (fuer spaetere Business-Anforderungen)
 - [ ] Data Processing Agreement (DPA) für Firmen
 - [ ] E2E-verschlüsselte Backups (optional)
 
@@ -636,7 +636,7 @@ Deine **Bilder bleiben sicher**, weil:
 
 **Belohnung:**
 - Hall of Fame auf Website
-- Kostenlose ENTERPRISE-Lizenz (1 Jahr)
+- Kostenlose PRO-Lizenz (1 Jahr) oder spaeterer Business-Zugang
 - Bug Bounty: 50-500€ (ab v1.0.0)
 
 ---
@@ -654,7 +654,7 @@ Deine **Bilder bleiben sicher**, weil:
 - ❌ Medical Imaging (HIPAA-Compliance fehlt)
 - ❌ Forensik (keine Chain-of-Custody)
 
-**Diese Features kommen später (ENTERPRISE-Tier v1.1.0+)**
+**Diese Features kommen spaeter als optionale Business-/Compliance-Erweiterungen**
 
 ---
 

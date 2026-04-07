@@ -87,6 +87,13 @@ serve(async (req: Request) => {
     // 2. Handle payment_intent.succeeded event
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
+      const metadataPlan = String(session.metadata?.plan || "pro").toLowerCase();
+
+      if (metadataPlan !== "pro") {
+        throw new Error(
+          `Unexpected plan metadata '${metadataPlan}'. Expected 'pro'.`
+        );
+      }
 
       const checkoutEmail =
         session.customer_email ||
@@ -104,7 +111,7 @@ serve(async (req: Request) => {
       const purchaseData: PurchaseData = {
         email,
         name: session.customer_details?.name || "Customer",
-        plan: "pro", // Enterprise removed: all paid checkouts map to PRO
+        plan: "pro", // Paid checkouts are pinned to PRO in current model
         stripe_payment_id: session.payment_intent,
         amount: session.amount_total / 100, // Cent to Euro
       };

@@ -1,317 +1,202 @@
 # PhotoCleaner Go-to-Market-Strategie 2026
 
-**Dokumentversion:** 1.0  
-**Datum:** 7. Februar 2026  
-**Status:** Aktive Strategie (v0.8.4+)
+**Dokumentversion:** 2.0  
+**Datum:** 7. April 2026  
+**Status:** Aktive Strategie (FREE/PRO-Modell)
 
 ---
 
 ## Executive Summary
 
-PhotoCleaner ist eine Windows-Desktop-App, die Bildanalyse nutzt, um Fotoarchive intelligent zu bereinigen und Duplikate zu entfernen. Die Go-to-Market-Strategie fokussiert auf die Konvertierung von Power-Usern und Fotografen von der kostenlosen Nutzung zu zahlenden Pro- und Enterprise-Kunden durch klaren Mehrwert und transparente Freemium-Preise.
+PhotoCleaner ist eine Windows-Desktop-App fuer intelligente Foto-Bereinigung mit klarem Privacy-First-Fokus. Das aktuelle Vermarktungsmodell ist bewusst einfach:
 
-**Strategisches Ziel:** €15K+ MRR bis Q3 2026 durch 150+ aktive Pro-Abos und 20+ Enterprise-Deployments.
+- **FREE:** Lizenz per E-Mail, einmalig insgesamt 250 Bilder
+- **PRO:** jaehrliches Abo, unbegrenzte Analyse, Premium-Features
 
----
+Die Strategie konzentriert sich auf drei Dinge:
 
-## Marktpotenzial
+1. moeglichst wenig Reibung bis zur ersten erfolgreichen Analyse,
+2. klare Upgrade-Ausloeser beim FREE-Limit,
+3. glaubwuerdige Positionierung gegenueber cloudlastigen oder ueberladenen Alternativen.
 
-### Zielsegmente
-
-1. **Content Creator & Fotografen** (Primär)
-   - Schmerzpunkt: Verwaltung von 50K–500K Fotos über mehrere Geräte hinweg
-   - Zahlungsbereitschaft: €39–€150/Jahr für zuverlässige Deduplizierung + Qualitätsanalyse
-   - TAM: ~500K aktive Fotografen im DACH-Raum (Windows)
-
-2. **Fotostudios & Agenturen** (Sekundär)
-   - Schmerzpunkt: Batch-Verarbeitung, Asset-Organisation, Archiv-Compliance
-   - Zahlungsbereitschaft: €1.500–€5.000/Jahr (Enterprise)
-   - TAM: ~5K Studios im DACH-Raum
-
-3. **Gelegenheitsnutzer** (Free-Tier)
-   - Schmerzpunkt: sporadische Duplikate (500–2.000 Fotos)
-   - Wert: Try-before-buy-Zielgruppe, Conversion-Potenzial
-   - TAM: ~2 Mio. Windows-Nutzer mit Foto-Altlasten
-
-### Markttreiber
-
-- **Adoption:** Face Detection, Quality Scoring und automatisches Cleanup sprechen Tech-Affine an
-- **Privacy-First:** Offline-First-Modell (statt Cloud) passt zu Datenschutzbedenken
-- **Reife der CV-Technik:** MediaPipe/TensorFlow ist desktop-tauglich
-- **Windows-Markt-Lücke:** Kein dominanter Anbieter für KI-gestützte Offline-Fotobereinigung
+**Strategisches Ziel:** Ein belastbarer Launch mit nachvollziehbarer FREE→PRO-Conversion und einem wiederholbaren organischen Akquisekanal bis Q3 2026.
 
 ---
 
-## Wettbewerbsanalyse
+## Produkt- und Angebotsstruktur
 
-### Zentrale Wettbewerber
+### FREE
+- Preis: **0 EUR**
+- Aktivierung: E-Mail-Lizenz
+- Nutzung: **einmalig insgesamt 250 Bilder** pro Nutzer/Geraetebindung
+- Zweck: Produkt ausprobieren, Vertrauen aufbauen, echten Mehrwert zeigen
 
-| Wettbewerber | Preis | Zielgruppe | Stärken | Lücken |
-|---|---|---|---|---|
-| **Duplicate Photo Cleaner** | Free + Pro €6,99 | Casual | Einfache UI, plattformübergreifend | Keine Face Detection, nur Hashing |
-| **Gemini Photos** (Google) | Free + Pro €8,99/Monat | Casual | Cloud-Sync, Speicher | Datenschutz, Abo-Müdigkeit |
-| **Adobe Lightroom** | Pro €9,99/Monat | Profis | Vollständiges DAM, Editing | Overkill fürs Cleanup, teuer |
-| **Lokale Tools** (ImageMagick, etc.) | Free | Devs | Scriptbar, offline | CLI-only, keine UI |
+### PRO
+- Preis: **jaehrliches Abo**
+- Nutzung: **unbegrenzte Analyse**
+- Enthalten:
+  - Face Detection
+  - Batch-Processing fuer grosse Archive
+  - HEIC-Support
+  - erweiterte Analyse- und Komfortfunktionen
+  - Online-Validierung mit Offline-Grace-Mechanik
 
-### Wettbewerbsvorteile von PhotoCleaner
+### Konsequenz fuer Messaging
+- Kein Trial-Tier
+- Kein Enterprise-Tier
+- Keine komplexe Preis-Tabelle mit Team-Varianten in der Launch-Phase
+- Ein klares Upgrade-Narrativ: **FREE zum Verstehen, PRO fuer echten Regelbetrieb**
 
-1. **Face Detection + Quality Scoring:** Einzige Offline-Desktop-App mit MediaPipe-Filterung
-2. **Gerätegebundene Lizenz:** verhindert Quota-Reset-Exploits, faire Preislogik
-3. **Transparenter Freemium-Ansatz:** 1000 Bilder klar kommuniziert, kein verstecktes Upsell
-4. **Performance:** Lokale Verarbeitung, geeignet für 100K+ Archive
-5. **Privacy-First:** Analyse bleibt lokal; Cloud-Snapshots nur für Pro (optional)
+---
+
+## Zielsegmente
+
+### 1. Fotografen und Power-User
+- grosse, unaufgeraeumte Fotoarchive
+- wiederkehrende Dubletten durch Burst, Backups, Exporte
+- hohe Zahlungsbereitschaft fuer lokale, schnelle, praezise Bereinigung
+
+### 2. Content Creator
+- viele Serien mit kleinen Variationen
+- Bedarf an schneller visueller Vorauswahl
+- hoher Nutzen durch Face Detection und Batch-Workflows
+
+### 3. Datenschutzsensible Privatnutzer
+- moechten keine Cloud-Pflicht fuer Fotoanalyse
+- reagieren gut auf lokales Processing und transparentes Lizenzmodell
 
 ---
 
 ## Positionierung
 
-### Markenversprechen
+**Kernbotschaft:**  
+"PhotoCleaner hilft dir, grosse Fotoarchive lokal, schnell und nachvollziehbar aufzuraeumen, ohne deine Bilddaten in eine Cloud zu schieben."
 
-**"Intelligente Foto-Bereinigung für Fotografen und Power-User, die Privatsphäre und Präzision wollen."**
-
-### Nutzenversprechen je Tier
-
-#### FREE
-- **Preis:** €0
-- **Limit:** 1000 Bilder pro Gerät und Monat
-- **Funktionen:**
-  - Duplikaterkennung (pHash, Hamming-Distanz ≤5)
-  - Basis-Qualitätsfilter (Auflösung, Schärfe, Belichtung)
-  - Offline-only Analyse
-- **Use Case:** Testen, gelegentliche Bereinigung
-- **CTA:** "Kostenlos starten – ohne Kreditkarte"
-
-#### PRO
-- **Preis:** €39/Jahr (€3,25/Monat)
-- **Limit:** unbegrenzte Analyse
-- **Funktionen:**
-  - ✅ Alle FREE-Features
-  - ✅ Face Detection (MediaPipe)
-  - ✅ Batch-Processing (100K+ Bilder pro Lauf)
-  - ✅ HEIC-Support (Apple-Fotos)
-  - ✅ Erweiterter Cache + Speed-Optimierung (2–8× schneller)
-  - ✅ Qualitäts-Analytics (Metadaten, erweiterte Filter)
-  - ✅ Cloud-Snapshots (7 Tage Offline-Grace)
-- **Zielgruppe:** Fotografen, Creator, Power-User
-- **CTA:** "Pro-Analyse freischalten – €39/Jahr"
-
-#### ENTERPRISE
-- **Preis:** €149/Jahr (€12,42/Monat) + optionaler Support
-- **Limit:** unbegrenzte Analyse + Teamverwaltung
-- **Funktionen:**
-  - ✅ Alle PRO-Features
-  - ✅ REST API (Integration)
-  - ✅ Team-Lizenzen (5 Seats inkl., +€10/Seat)
-  - ✅ White-Label-Optionen
-  - ✅ Priority-Support (24h E-Mail SLA)
-  - ✅ Archiv-Compliance-Reports
-- **Zielgruppe:** Studios, Agenturen, Enterprise
-- **CTA:** "Teamlösung anfragen"
+### Differenzierung
+- **Offline-First:** Analyse lokal statt Cloud-Zwang
+- **Klare Upgrade-Grenze:** FREE mit echter Nutzung, aber bewusst begrenzt
+- **Praxisnutzen statt Feature-Liste:** Duplikate, Qualitaet, Gesichter, schnellere Entscheidung
+- **Windows-Fokus:** kein generisches Massenprodukt, sondern ein spezialisiertes Desktop-Tool
 
 ---
 
-## Pricing-Strategie
+## Pricing-Hypothese
 
-### Begründung
+### FREE
+- Das Limit von **250 Bildern insgesamt** ist gross genug fuer einen realen Testlauf.
+- Gleichzeitig ist es klein genug, um Power-User nicht dauerhaft im Free-Tier zu halten.
 
-- **FREE (1000 Bilder/Monat):** passt zu Casual-Usage; triggert Upgrade bei Limit-Erreichen
-- **PRO (€39/Jahr):**
-  - *Positionierung:* günstiger als Adobe (€119,88/Jahr)
-  - *Modell:* Jahreszahlung reduziert Churn und erhöht LTV
-  - *Wettbewerb:* 3–6× mehr Funktionen als Gratis-Tools
-- **ENTERPRISE (€149/Jahr):**
-  - *Positionierung:* skalierbar für Teams, 4× höherer Mehrwert
-  - *Modell:* Jahreszahlung + Sitzplatz-Expansion
-  - *Marge:* 75%+ Bruttomarge
+### PRO
+- Das Abo muss klar als Produktivmodus erkennbar sein.
+- Die Zahlungsbereitschaft entsteht nicht aus "noch ein Feature", sondern aus:
+  - unbegrenzter Analyse,
+  - Zeitersparnis bei grossen Bibliotheken,
+  - weniger manueller Sichtung,
+  - robusterem Alltagseinsatz.
 
-### Monetarisierungsnotizen
-
-- **Kein Time-Gate:** Free Tier dauerhaft, nicht zeitlich limitiert
-- **Keine Freemium-Nags:** ehrlicher Upgrade-Punkt beim Limit
-- **Gerätebindung:** verhindert Umgehung, fairer Preis für Heavy User
+### Preis-Kommunikation
+- Preis in allen aktiven Kanaelen einheitlich fuehren.
+- Keine veralteten Referenzen auf alte Tier-Modelle, Monatslimits oder Enterprise-Angebote.
 
 ---
 
-## Go-to-Market-Taktiken
+## Launch-Funnel
 
-### Phase 1: Product-Market-Fit-Validierung (Feb–Mär 2026)
+### 1. Einstieg
+- Website oder GitHub-Release erklaert den Nutzen in einem Satz.
+- Installer/README fuehren schnell zur ersten Analyse.
+- FREE-Lizenz per E-Mail ist einfach genug, um Einstiegshuerden niedrig zu halten.
 
-**Ziel:** Nachfrage bestätigen, Messaging schärfen, erste 50 zahlende Kunden
+### 2. Aktivierung
+- Nutzer aktiviert FREE.
+- Erste Analyse liefert sofort sichtbaren Mehrwert.
+- App kommuniziert transparent, wie viel FREE-Kontingent verbleibt.
 
-**Taktiken:**
-1. **Release v0.8.2** mit sichtbaren Verbesserungen (Fast Build, Logging, FREE Tier)
-2. **Product Hunt Launch** (1-Tages-Kampagne, Fokus: "offline AI photo cleaner")
-3. **Outreach an Foto-Blogs/YouTuber** (50 Reviews)
-   - PRO gratis für 1 Jahr anbieten
-   - Ziel: Photography Basics, DPReview, CreativeLive
-4. **Reddit-Communities** (r/photography, r/PhotographyGear, r/WindowsPC)
-   - Thread: "AI-Foto-Deduplikator gebaut – 1000 Bilder gratis, PRO €39/Jahr"
-5. **Social Seeding** (X/Twitter, Instagram-Fotografie)
-   - Fokus: Vorher/Nachher-Demos, Bulk-Cleanup-Videos
+### 3. Upgrade
+- Upgrade-Moment ist nicht abstrakt, sondern konkret:
+  - Limit erreicht,
+  - Face Detection benoetigt,
+  - grosse Bibliothek in einem Durchlauf bearbeiten,
+  - HEIC oder Komfortfunktionen gewuenscht.
 
-### Phase 2: Conversion-Optimierung (Apr–Mai 2026)
-
-**Ziel:** PRO-Conversion von 5% auf 10%+
-
-**Taktiken:**
-1. **Onboarding optimieren:** Feature-Highlights direkt nach Limit-Erreichen
-2. **E-Mail-Nurture:** Free → Pro Upgrade
-   - E-Mail 1: "Du hast 1000 Bilder bereinigt – unbegrenzt für €39/Jahr"
-   - E-Mail 2: "Was Pro-Nutzer entdecken: Face Detection + Batch-Processing"
-3. **Content Marketing:** 2–3 Guides/Monat
-   - "5 Gründe, warum KI-Cleanup schneller ist"
-   - "So archivieren Fotografen 100K+ Libraries"
-4. **Referral-Programm:** €10 Credit pro geworbenem Kunden
-
-### Phase 3: Team/Enterprise-Expansion (Jun–Aug 2026)
-
-**Ziel:** 10+ Enterprise-Kunden, €2–3K MRR
-
-**Taktiken:**
-1. **Direct Outreach:** Top-100 Studios + Agenturen
-   - Demo, White-Label-Trial, API Early Access
-2. **Case Study:** Studio-Referenz (z.B. "50K Archiv in 2 Tagen")
-3. **Integrationen:** Zapier/IFTTT für Archiv-Workflows
-4. **Webinar-Serie:** "AI Photo Management for Teams"
+### 4. Retention
+- PRO muss sich im Alltag rechtfertigen durch Zuverlaessigkeit, Geschwindigkeit und geringe Reibung.
+- Die wichtigsten Hebel sind Stabilitaet, klare UI und schnelle Builds/Installer.
 
 ---
 
-## Pricing- und Umsatzmodell
+## Vertriebskanaele
 
-### Finanzannahmen (konservativ)
+### Kurzfristig
+- GitHub Releases und Projektseite
+- Reddit / Foto-Communities / Windows-Communities
+- kurze Demo-Clips mit Vorher-Nachher-Effekt
+- direkte Ansprache von Power-Usern und Fotografen im privaten Netzwerk
 
-| Kennzahl | Wert | Hinweis |
-|---|---|---|
-| Conversion Rate (FREE → PRO) | 5% | 50K Free Nutzer → 2.500 PRO/Jahr |
-| PRO-Churn | 15%/Jahr | 40% Renewal bei High Engagement |
-| LTV (PRO) | €156 | €39 Jahr 1 × 40% Renewal × 1,5 Jahre |
-| CAC | €2–5 | organisch, ohne Paid Ads |
-| COGS | 10% | ~€3,90 pro PRO/Jahr |
-| Bruttomarge | 90% | ~€35,10 Gewinn pro PRO/Jahr |
-
-### Umsatz-Prognosen
-
-| Zeitraum | Free Users | PRO Kunden | Enterprise Kunden | MRR | ARR |
-|---|---|---|---|---|---|
-| **Feb 2026 (Launch)** | 5.000 | 10 | 0 | €32,50 | €390 |
-| **Mai 2026** | 25.000 | 120 | 2 | €422,50 | €5.070 |
-| **Aug 2026** | 75.000 | 380 | 8 | €1.380 | €16.540 |
-| **Dez 2026** | 150.000 | 750 | 15 | €2.668,75 | €32.025 |
-
-**Strategische Notizen:**
-- Break-even: ~€500 MRR
-- Profitabilität: ab Mai 2026
-- Wachstumstreiber: organisch + PR + Community
+### Mittelfristig
+- Content-Marketing mit konkreten Problemloesungen
+- SEO rund um Dubletten, Foto-Auswahl, HEIC, lokales Aufraeumen
+- einfache E-Mail-Sequenz fuer FREE-Nutzer mit echtem Produktfokus statt Marketing-Floskeln
 
 ---
 
-## Erfolgsmessung & KPIs
+## Kernmetriken
 
-### Kernmetriken
+### Produkt
+- Aktivierungen der FREE-Lizenz
+- Anteil erfolgreicher Erstanalysen
+- Zeit bis zum ersten sichtbaren Ergebnis
+- Fehlerquote in Aktivierung und Checkout
 
-| KPI | Ziel | Review |
-|---|---|---|
-| **FREE → PRO Conversion** | 5%+ | wöchentlich |
-| **PRO Churn** | <20% | monatlich |
-| **NRR** | >110% | quartalsweise |
-| **CAC** | <€5 | monatlich |
-| **LTV** | >€150 | quartalsweise |
-| **LTV:CAC** | >30:1 | quartalsweise |
+### Kommerziell
+- FREE→PRO-Conversion
+- Anteil der Upgrades nach Limit-Erreichen
+- Refund-Rate / fruehe Kuendigungen
+- Support-Aufwand pro zahlendem Nutzer
 
-### Sekundäre Metriken
-
-- **DAU/MAU:** Ziel 40%+
-- **PRO-Feature-Nutzung:** 80%+ nutzen Face Detection mindestens einmal
-- **Support Tickets:** <5/Monat je 100 Kunden
-- **NPS:** >40
-
----
-
-## Customer Stories & Use Cases
-
-### Persona 1: Sarah, Content Creator
-*"Ich schieße täglich 200+ Fotos. PhotoCleaner spart mir 8 Stunden pro Woche durch Batch-Processing und Qualitätsfilter. €39/Jahr ist ein No-Brainer."*
-
-- Problem: 2.000+ Bilder/Monat, Duplikate durch Burst Mode
-- Lösung: PRO Batch-Processing + Face Detection
-- Conversion: Upgrade nach 2 Wochen (Limit erreicht)
-
-### Persona 2: Marco, Studio-Besitzer
-*"Archivverwaltung für 10 Fotografen war Chaos. Die PhotoCleaner-API räumt unsere Ingestion-Pipeline automatisch auf. White-Label spart täglich 2 Stunden."*
-
-- Problem: Team-Workflow, Compliance, client-facing Tool
-- Lösung: ENTERPRISE API + White-Label + Team-Seats
-- Deal Size: €1.500/Jahr + €200/Jahr pro zusätzlichem Mitarbeiter
+### Operativ
+- Build- und Installer-Stabilitaet
+- Lizenzserver-Verfuegbarkeit
+- Erfolgsquote bei Checkout, Webhook und Lizenzzustellung
 
 ---
 
-## Risiko-Management
+## Risiken und Gegenmassnahmen
 
-### Hauptrisiken & Maßnahmen
-
-| Risiko | Maßnahme |
+| Risiko | Gegenmassnahme |
 |---|---|
-| **TensorFlow/MediaPipe Stabilität** | Fallback-Modus ohne Face Detection, Releases beobachten |
-| **Hoher Churn** | Roadmap-Transparenz, monatliche Tipps/Newsletter |
-| **Langsame Enterprise Sales** | Fokus auf PRO-Wachstum, Enterprise als Upside |
-| **Starker Wettbewerber** | Community-Lock-in + API-Integrationen |
-| **Supabase-Kosten steigen** | Kostenmodell; ggf. Self-Hosting ab €5K ARR |
+| FREE-Limit wirkt zu knapp | In Kommunikation auf realen Testfall fokussieren; falls noetig spaeter anheben, aber nicht vor belastbaren Daten |
+| PRO wirkt zu abstrakt | Upgrade-Texte immer an konkrete Vorteile koppeln: unbegrenzt, Face Detection, grosse Archive |
+| Aktivierung/Checkout frustriert | Stripe/Supabase-Fluss automatisiert testen und Smoke-Checks beibehalten |
+| Produkt wirkt wie "noch ein Dedupe-Tool" | Offline-First, Gesichtsanalyse und Workflow-Geschwindigkeit offensiv zeigen |
+| Zu viele GTM-Ideen gleichzeitig | Erst einen funktionierenden Kernkanal aufbauen, dann skalieren |
 
 ---
 
-## 12-Monats-Roadmap (Feb 2026 – Jan 2027)
+## Prioritaeten fuer die naechsten 90 Tage
 
-### Q1 2026: Foundation (Feb–Apr)
-- ✅ v0.8.2 Release (FREE Tier, Build-Verbesserungen)
-- GTM-Kampagnen (Product Hunt, Reddit, Blogs)
-- Analytics (Plausible) für Funnel-Tracking
-- Erste Kundeninterviews (50 zahlende Nutzer)
+1. **Launch-Dokumentation konsistent halten**  
+   Keine alten Tier-Modelle oder Preise mehr in aktiven Dokumenten, UI-Texten oder Website-Assets.
 
-### Q2 2026: Optimization (Mai–Jul)
-- E-Mail-Nurture live
-- Website-Refresh (Case Studies, Pricing)
-- Erste Enterprise-Deals (Ziel: 5+)
-- Content Marketing (1–2 Posts/Woche)
+2. **Checkout- und Aktivierungsfluss haerten**  
+   Stripe-Testmodus, Webhook, Mail-Zustellung und Aktivierung reproduzierbar pruefen.
 
-### Q3 2026: Scale (Aug–Okt)
-- Referral-Programm
-- Zapier/IFTTT-Integrationen
-- Webinar-Serie (monatlich)
-- Ziel: €2.500+ MRR
+3. **Upgrade-Messaging in App und Website schaerfen**  
+   Nicht generisch "Premium", sondern klar: unbegrenzt, schneller, fuer grosse Archive.
 
-### Q4 2026: Team & Future (Nov–Jan)
-- Profitabilität bewerten
-- v1.0 Feature-Set planen
-- Partnerschaften prüfen (Plattformen/Agenturen)
+4. **Einen organischen Akquisekanal sauber bespielen**  
+   Lieber ein funktionierender Kanal mit Feedback-Loop als viele halb gepflegte Kanaele.
 
 ---
 
 ## Fazit
 
-PhotoCleaner besetzt eine klare Lücke: Fotografen und Power-User brauchen intelligente, offlinefähige Foto-Bereinigung. Das **transparente Freemium-Modell** (€0 Einstieg, €39/Jahr Pro) baut Vertrauen auf, während die **gerätegebundene Quota** fairen Wert sicherstellt.
+Die neue GTM-Logik ist absichtlich einfacher als die alte Planung. Kein Trial, kein Enterprise, kein kompliziertes Seat-Modell. Stattdessen ein klarer Trichter: **FREE mit echter Produkterfahrung, PRO fuer unbegrenzten produktiven Einsatz.**
 
-**Erfolgsformel:** exzellentes Produkt (✅ shipping), organisches Wachstum (Product Hunt, Communitys) und featuregetriebene Conversion (unlimited Analyse für €39/Jahr, günstiger als die meisten Alternativen bei höherem Funktionsumfang).
-
-**Ziel 6 Monate:** 200+ PRO-Kunden + 5+ Enterprise-Deals = €1.500+ MRR und validierter Product-Market-Fit.
-
----
-
-## Anhang: Feature-Matrix
-
-| Feature | PhotoCleaner FREE | PhotoCleaner PRO | PhotoCleaner ENTERPRISE | Duplicate Photo Cleaner | Adobe Lightroom | Google Photos |
-|---|---|:-:|:-:|---|---|---|
-| **Duplikaterkennung** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **Face Detection** | ❌ | ✅ | ✅ | ❌ | ⚠️ (limitiert) | ✅ |
-| **Batch-Processing** | ❌ | ✅ | ✅ | ❌ | ⚠️ (langsam) | ⚠️ (cloud) |
-| **HEIC Support** | ❌ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| **Offline-Analyse** | ✅ | ✅ | ✅ | ✅ | ⚠️ (cloud) | ❌ |
-| **API/Integration** | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ |
-| **Team-Lizenzen** | ❌ | ❌ | ✅ | ❌ | ⚠️ (Org) | ⚠️ (Family) |
-| **White-Label** | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **Preis (Jahr)** | €0 | €39 | €149 | €6,99 | €119,88 | €119,88 |
+Wenn Produkt, Aktivierung und Upgrade-Kommunikation sauber ineinandergreifen, ist dieses Modell deutlich leichter zu testen, zu erklaeren und iterativ zu verbessern als die vorherige Mehr-Tier-Struktur.
 
 ---
 
 **Dokumentverantwortung:** Development Team  
-**Nächste Review:** 1. Mai 2026 (Post-Launch-Metriken)  
-**Kontakt:** [chris@photocleaner.local]
+**Naechste Review:** nach den ersten belastbaren FREE→PRO-Daten  
+**Kontakt:** chris@photocleaner.local

@@ -76,7 +76,7 @@ Activation codes are now Ed25519-signed as well.
 The payload format is the same, but the `sig` field is an Ed25519 signature:
 
 - `mid` (machine id)
-- `type` (PRO/ENTERPRISE)
+- `type` (FREE/PRO in current docs; legacy ENTERPRISE values remain compatibility inputs)
 - `exp` (YYYY-MM-DD)
 - `nonce`
 - `sig` (Ed25519 signature over the payload without `sig`)

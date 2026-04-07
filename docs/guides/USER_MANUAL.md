@@ -138,8 +138,9 @@ Auto-Selection marks the best image in each group. Details:
 - Export is safe; originals remain unchanged.
 
 ### Licenses (Short)
-- FREE/TRIAL/PRO/ENTERPRISE
-- Offline use is supported with local cache
+- FREE includes one-time lifetime usage for 250 images total
+- PRO unlocks unlimited analysis and premium features
+- Offline use is supported with a signed local cache
 
 Details: [LICENSE_SYSTEM.md](LICENSE_SYSTEM.md)
 

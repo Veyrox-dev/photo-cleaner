@@ -15,6 +15,7 @@
 - [Auto Selection](AUTO_SELECTION.md) - Automatic image selection guide
 - [Cleanup Guide](CLEANUP.md) - Safe deletion workflow
 - [MSI Build](MSI_BUILD.md) - Installer build and smoke-test procedure
+- [Stripe + Supabase E2E](STRIPE_SUPABASE_E2E.md) - Checkout to activation validation runbook
 
 ## Related
 - See [Standards](../standards/) for quality metrics and audits
