@@ -34,6 +34,9 @@ def check_phash_support(logger_instance: logging.Logger | None = None) -> bool:
 
     log = logger_instance or logging.getLogger(__name__)
     try:
+        # Pre-initialize numpy before scipy to avoid frozen-build TypeError
+        import numpy as _np
+        _np.zeros(1)
         import scipy
 
         _PHASH_SCIPY_VERSION = getattr(scipy, "__version__", "unknown")

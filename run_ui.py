@@ -374,7 +374,8 @@ def main():
     # Initialize app config BEFORE other imports use it
     app_dir = Path(__file__).resolve().parent
     AppConfig.set_app_dir(app_dir)
-    mode_str = os.environ.get("PHOTOCLEANER_MODE", "DEBUG").upper()  # Default to DEBUG for development
+    _default_mode = "RELEASE" if getattr(sys, "frozen", False) else "DEBUG"
+    mode_str = os.environ.get("PHOTOCLEANER_MODE", _default_mode).upper()
     mode = AppMode.DEBUG if mode_str == "DEBUG" else AppMode.RELEASE
     AppConfig.set_mode(mode)
 
@@ -481,9 +482,6 @@ def main():
         )
         sys.exit(1)
 
-    from photo_cleaner.core.hasher import check_phash_support
-    check_phash_support(logger)
-
     # Ensure DLL search paths are available before TensorFlow import in frozen builds
     _prepare_windows_dll_search_paths(app_dir, logger)
     if mode == AppMode.DEBUG:
@@ -579,7 +577,11 @@ def main():
             logger.info("NumPy initialized successfully")
         except Exception as e:
             logger.warning(f"NumPy initialization: {e}")
-        
+
+        # Check pHash AFTER numpy is initialized to avoid TypeError in frozen builds
+        from photo_cleaner.core.hasher import check_phash_support
+        check_phash_support(logger)
+
         splash.show_progress(t("splash_preparing_ui"), 80)
         from photo_cleaner.ui.modern_window import run_modern_ui
         logger.info("UI module loaded successfully")

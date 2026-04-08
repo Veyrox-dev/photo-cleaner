@@ -38,6 +38,12 @@ Protokoll: `docs/guides/MSI_BUILD.md` · Script: `scripts/smoke_test_protocol.py
 
 ## 📋 Nächste Schritte (kein Launch-Blocker, aber sinnvoll)
 
+### Status-Delta (2026-04-08)
+
+- Woche-1-Trust-Foundation ist in der Umsetzung und teilweise abgeschlossen (Explainability + Confidence-Heuristik + Tests).
+- Fokus bis morgen: Review-Queue fuer Low-Confidence und Group-Confidence-Diagnostik fertigziehen.
+- MSI-Retest ist fuer den naechsten Testtag eingeplant, inklusive Verifikation von pHash und sichtbaren Duplikat-Gruppen.
+
 ### 1 · MSI Smoke-Test auf Virgin Windows
 Installer (`.msi`) auf einer frischen Maschine validieren: Install → Upgrade → Uninstall.
 Separat und ergänzend zu den EXE-Smoke-Tests.

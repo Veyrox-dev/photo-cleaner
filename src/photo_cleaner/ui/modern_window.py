@@ -141,6 +141,11 @@ from photo_cleaner.ui.color_constants import (
     to_rgba,
 )
 from photo_cleaner.ui.score_explanation import build_score_explanation
+from photo_cleaner.ui.group_confidence import (
+    build_group_diagnostics,
+    classify_group_confidence,
+    compute_file_confidence_bucket,
+)
 from photo_cleaner.ui.theme_manager import ThemeManager
 
 
@@ -1029,6 +1034,8 @@ class GroupRow:
     similarity: float
     needs_review_count: int = 0
     confidence_score: int = 0
+    confidence_level: str = "none"
+    diagnostics_text: str = ""
 
 
 @dataclass
@@ -4714,6 +4721,10 @@ class ModernMainWindow(QMainWindow):
         self.needs_review_only_cb.setToolTip("Zeige nur Gruppen mit niedriger Confidence oder unvollstaendiger Analyse")
         self.needs_review_only_cb.stateChanged.connect(self._apply_group_filter)
         layout.addWidget(self.needs_review_only_cb)
+
+        self.needs_review_counter_label = QLabel("Needs Review: 0")
+        self.needs_review_counter_label.setStyleSheet("padding: 2px 4px; font-size: 11px;")
+        layout.addWidget(self.needs_review_counter_label)
         
         self.group_list = QListWidget()
         self.group_list.itemSelectionChanged.connect(self._on_group_selected)
@@ -5075,6 +5086,34 @@ class ModernMainWindow(QMainWindow):
                    SUM(CASE WHEN f.file_status = 'DELETE' THEN 1 ELSE 0 END) AS delete_cnt,
                    MAX(d.similarity_score) AS sim,
                    SUM(CASE WHEN f.quality_score IS NOT NULL THEN 1 ELSE 0 END) AS analyzed_cnt,
+                   MIN(
+                       CASE
+                           WHEN f.quality_score IS NULL THEN 0
+                           WHEN (f.sharpness_component IS NULL AND f.lighting_component IS NULL AND f.resolution_component IS NULL AND f.face_quality_component IS NULL)
+                               THEN 10
+                           WHEN (
+                               f.quality_score >= 75
+                               AND COALESCE(f.sharpness_component, 100) >= 60
+                               AND COALESCE(f.lighting_component, 100) >= 60
+                               AND COALESCE(f.resolution_component, 100) >= 60
+                               AND COALESCE(f.face_quality_component, 100) >= 60
+                           ) THEN 100
+                           WHEN (
+                               f.quality_score < 45
+                               OR COALESCE(f.sharpness_component < 30, 0)
+                               OR COALESCE(f.lighting_component < 30, 0)
+                               OR COALESCE(f.resolution_component < 30, 0)
+                               OR COALESCE(f.face_quality_component < 30, 0)
+                               OR (
+                                   (CASE WHEN f.sharpness_component < 45 THEN 1 ELSE 0 END)
+                                   + (CASE WHEN f.lighting_component < 45 THEN 1 ELSE 0 END)
+                                   + (CASE WHEN f.resolution_component < 45 THEN 1 ELSE 0 END)
+                                   + (CASE WHEN f.face_quality_component < 45 THEN 1 ELSE 0 END)
+                               ) >= 2
+                           ) THEN 25
+                           ELSE 65
+                       END
+                   ) AS min_conf_bucket,
                    SUM(
                        CASE
                            WHEN f.quality_score IS NULL THEN 0
@@ -5090,7 +5129,15 @@ class ModernMainWindow(QMainWindow):
                            ) THEN 1
                            ELSE 0
                        END
-                     ) AS needs_review_cnt
+                                         ) AS needs_review_cnt,
+                                     SUM(CASE WHEN f.sharpness_component < 45 THEN 1 ELSE 0 END) AS weak_sharpness_cnt,
+                                     SUM(CASE WHEN f.lighting_component < 45 THEN 1 ELSE 0 END) AS weak_lighting_cnt,
+                                     SUM(CASE WHEN f.resolution_component < 45 THEN 1 ELSE 0 END) AS weak_resolution_cnt,
+                                     SUM(CASE WHEN f.face_quality_component < 45 THEN 1 ELSE 0 END) AS weak_face_cnt,
+                                     SUM(CASE WHEN f.sharpness_component >= 75 THEN 1 ELSE 0 END) AS strong_sharpness_cnt,
+                                     SUM(CASE WHEN f.lighting_component >= 75 THEN 1 ELSE 0 END) AS strong_lighting_cnt,
+                                     SUM(CASE WHEN f.resolution_component >= 75 THEN 1 ELSE 0 END) AS strong_resolution_cnt,
+                                     SUM(CASE WHEN f.face_quality_component >= 75 THEN 1 ELSE 0 END) AS strong_face_cnt
             FROM duplicates d
             JOIN files f ON f.file_id = d.file_id
             WHERE f.is_deleted = 0
@@ -5104,10 +5151,19 @@ class ModernMainWindow(QMainWindow):
         
         for r in rows:
             analyzed_count = int(r[7] or 0)
-            needs_review_count = int(r[8] or 0)
-            confidence_score = 0
-            if analyzed_count > 0:
-                confidence_score = int(round(((analyzed_count - needs_review_count) / analyzed_count) * 100))
+            min_conf_bucket = int(r[8] or 0)
+            needs_review_count = int(r[9] or 0)
+            confidence_score = min_conf_bucket if analyzed_count > 0 else 0
+            diagnostics_text = build_group_diagnostics(
+                weak_sharpness=int(r[10] or 0),
+                weak_lighting=int(r[11] or 0),
+                weak_resolution=int(r[12] or 0),
+                weak_face=int(r[13] or 0),
+                strong_sharpness=int(r[14] or 0),
+                strong_lighting=int(r[15] or 0),
+                strong_resolution=int(r[16] or 0),
+                strong_face=int(r[17] or 0),
+            )
 
             grp = GroupRow(
                 group_id=str(r[0]),
@@ -5119,6 +5175,8 @@ class ModernMainWindow(QMainWindow):
                 similarity=float(r[6] or 0.0),
                 needs_review_count=needs_review_count,
                 confidence_score=confidence_score,
+                confidence_level=classify_group_confidence(confidence_score),
+                diagnostics_text=diagnostics_text,
             )
 
             if hide_completed_groups and grp.open_count == 0:
@@ -5179,13 +5237,13 @@ class ModernMainWindow(QMainWindow):
                 resolution_score=float(resolution) if resolution is not None else None,
                 face_quality_score=float(face_quality) if face_quality is not None else None,
             )
-            confidence_map = {
-                "high": 100,
-                "medium": 65,
-                "low": 25,
-                "incomplete": 10,
-                None: 0,
-            }
+            confidence_score = compute_file_confidence_bucket(
+                quality_score=float(quality_score) if quality_score is not None else None,
+                sharpness_score=float(sharpness) if sharpness is not None else None,
+                lighting_score=float(lighting) if lighting is not None else None,
+                resolution_score=float(resolution) if resolution is not None else None,
+                face_quality_score=float(face_quality) if face_quality is not None else None,
+            )
 
             single_grp = GroupRow(
                 group_id=f"SINGLE_{file_id}",
@@ -5195,8 +5253,10 @@ class ModernMainWindow(QMainWindow):
                 decided_count=0,
                 delete_count=0,
                 similarity=0.0,
-                needs_review_count=1 if explanation.confidence_level in ("low", "incomplete") else 0,
-                confidence_score=confidence_map.get(explanation.confidence_level, 0),
+                needs_review_count=1 if confidence_score in (10, 25) else 0,
+                confidence_score=confidence_score,
+                confidence_level=classify_group_confidence(confidence_score),
+                diagnostics_text=explanation.component_summary_text or "Diagnose: Einzelbild",
             )
             result.append(single_grp)
             self.group_lookup[single_grp.group_id] = single_grp
@@ -5237,7 +5297,7 @@ class ModernMainWindow(QMainWindow):
             else:
                 label = f"Group {grp.group_id} ({grp.total} images)"
 
-            label = f"{label} | Conf {grp.confidence_score}%"
+            label = f"{label} | Conf {grp.confidence_score}% ({grp.confidence_level})"
             
             if term and term not in label.lower() and term not in str(grp.sample_path).lower():
                 continue
@@ -5285,13 +5345,15 @@ class ModernMainWindow(QMainWindow):
                     f"📷 EINZELBILD - ENTSCHEIDUNG BENÖTIGT\n"
                     f"Datei: {grp.sample_path.name}\n"
                     f"Status: Noch nicht entschieden{needs_review_hint}\n"
-                    f"Confidence: {grp.confidence_score}%"
+                    f"Confidence: {grp.confidence_score}% ({grp.confidence_level})\n"
+                    f"{grp.diagnostics_text}"
                 )
             else:
                 item.setToolTip(
                     f"Open: {grp.open_count} | Decided: {grp.decided_count} | Delete: {grp.delete_count}\n"
                     f"{('⚠️ AKTION ERFORDERLICH' if grp.open_count > 0 else '✅ Vollständig entschieden')}{needs_review_hint}\n"
-                    f"Confidence: {grp.confidence_score}%"
+                    f"Confidence: {grp.confidence_score}% ({grp.confidence_level})\n"
+                    f"{grp.diagnostics_text}"
                 )
             
             status_color.setAlpha(bg_alpha)
@@ -5300,6 +5362,15 @@ class ModernMainWindow(QMainWindow):
             self.group_list.addItem(item)
         
         logger.info(f"[UI] _render_groups() added {render_count} items to list (filtered from {len(self.groups)} total groups)")
+        if hasattr(self, "needs_review_counter_label"):
+            total_needs_review = sum(1 for grp in self.groups if grp.needs_review_count > 0)
+            visible_needs_review = sum(
+                1
+                for i in range(self.group_list.count())
+                if self.group_lookup.get(str(self.group_list.item(i).data(Qt.UserRole)))
+                and self.group_lookup[str(self.group_list.item(i).data(Qt.UserRole))].needs_review_count > 0
+            )
+            self.needs_review_counter_label.setText(f"Needs Review: {visible_needs_review} / {total_needs_review}")
         
         # FIX (Feb 23, 2026): Clear old thumbnail requests to prevent race condition
         # Without this, callbacks for old indices would cause "invalid index" warnings
@@ -5577,7 +5648,10 @@ class ModernMainWindow(QMainWindow):
         
         grp = self.group_lookup.get(self.current_group)
         if grp and grp.group_id:
-            self.grid_title.setText(f"<h3>{t('group_title').format(id=grp.group_id, count=len(self.files_in_group))}</h3>")
+            self.grid_title.setText(
+                f"<h3>{t('group_title').format(id=grp.group_id, count=len(self.files_in_group))}</h3>"
+                f"<small>Confidence: {grp.confidence_score}% ({grp.confidence_level}) | {grp.diagnostics_text}</small>"
+            )
         else:
             # Fallback: Group nicht in lookup - Log und zeige generischen Title
             logger.debug(f"Group {self.current_group} not in lookup, using generic title")

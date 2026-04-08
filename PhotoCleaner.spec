@@ -47,6 +47,10 @@ except Exception:
 
 scipy_datas, scipy_binaries, scipy_hiddenimports = collect_all('scipy')
 mediapipe_datas, mediapipe_binaries, mediapipe_hiddenimports = collect_all('mediapipe')
+try:
+    pillow_heif_datas, pillow_heif_binaries, pillow_heif_hiddenimports = collect_all('pillow_heif')
+except Exception:
+    pillow_heif_datas, pillow_heif_binaries, pillow_heif_hiddenimports = [], [], []
 
 # Explicitly collect Haar Cascade XMLs from cv2 (collect_data_files() can miss these)
 haar_xml_files = []
@@ -75,13 +79,13 @@ except Exception:
 a = Analysis(
     ['run_ui.py'],
     pathex=['.', 'src'],
-    binaries=tf_binaries + tf_extra_binaries + scipy_binaries + mediapipe_binaries,
+    binaries=tf_binaries + tf_extra_binaries + scipy_binaries + mediapipe_binaries + pillow_heif_binaries,
     datas=[
         # Assets (Icons, Splash Screen)
         ('assets/*.ico', 'assets'),
         ('assets/*.png', 'assets'),
         ('assets/third_party/vc_runtime/*.dll', '.'),
-    ] + photo_cleaner_datas + collect_data_files('mtcnn', includes=['data/*.npy']) + haar_xml_files + scipy_datas + mediapipe_datas,
+    ] + photo_cleaner_datas + collect_data_files('mtcnn', includes=['data/*.npy']) + haar_xml_files + scipy_datas + mediapipe_datas + pillow_heif_datas,
     hiddenimports=[
         # === NUMPY (MUST BE FIRST - Critical for proper initialization) ===
         'numpy',
@@ -151,7 +155,7 @@ a = Analysis(
         # Note: jaraco modules are vendored inside pkg_resources, not standalone
         'setuptools',
         'pkg_resources',
-    ] + collect_submodules('photo_cleaner') + scipy_hiddenimports + mediapipe_hiddenimports,
+    ] + collect_submodules('photo_cleaner') + scipy_hiddenimports + mediapipe_hiddenimports + pillow_heif_hiddenimports,
     hookspath=['build_hooks'],
     hooksconfig={},
     runtime_hooks=[],  # REMOVED - runtime hooks cause numpy import failures

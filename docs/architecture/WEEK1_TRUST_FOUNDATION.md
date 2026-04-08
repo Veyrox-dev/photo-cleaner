@@ -98,8 +98,61 @@ Started in this slice:
 - wired explainability into Modern UI detail surfaces
 - added unit tests for confidence mapping and legacy-score fallback
 
+Completed status for Week 1 foundations:
+
+- Explainable score breakdown in Modern UI: done
+- Confidence heuristic helper: done
+- Confidence mapping unit tests: done
+- Legacy-score fallback hint: done
+
+Open items to finish Week 1:
+
+- route low-confidence items into a review queue (UI filter + counter)
+- define group-level confidence aggregation rule (min/median guardrail)
+- finalize KPI targets and measurement hooks
+
 Next slices:
 
 1. route low-confidence items into a review queue
 2. add group-level confidence and group diagnostics
 3. implement merge/split persistence plus undo integration
+
+## Week 1 Completion Plan (2026-04-08 to 2026-04-09)
+
+### Step 1 (today): Review Queue foundation
+
+- Add deterministic flag `needs_review` from existing confidence levels.
+- Surface a dedicated filter in the review flow for low-confidence files.
+- Show a visible counter (`Needs Review: N`) near existing result controls.
+
+Acceptance for Step 1:
+
+- low-confidence files are discoverable in one click
+- no false zero values for missing component data
+- existing behavior for high-confidence items stays unchanged
+
+### Step 2 (today): Group confidence rule draft
+
+- Define group confidence as conservative aggregate (lowest confidence dominates).
+- Add diagnostics text per group: strongest and weakest component patterns.
+- Keep this as read-only diagnostics in Week 1 (no merge/split logic yet).
+
+Acceptance for Step 2:
+
+- every group has a confidence label
+- low-confidence groups are visually distinguishable
+- diagnostics remain consistent with file-level explanations
+
+### Step 3 (tomorrow): MSI test pass and gate logging
+
+- Run new MSI smoke test on target machine (Install -> First run -> Scan -> Duplicate groups visible).
+- Validate that perceptual hashing is active (non-zero hashed files on mixed JPG/HEIC set).
+- Capture startup latency and confirm no long TensorFlow diagnostic stall in production mode.
+
+Smoke test checklist:
+
+- app starts without freeze
+- indexing completes without cancellation loop
+- duplicate groups are shown
+- review filter for low confidence works
+- no critical error in log for pHash initialization

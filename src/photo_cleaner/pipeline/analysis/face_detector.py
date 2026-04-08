@@ -359,7 +359,7 @@ class FaceDetector:
     
     def _analyze_faces_mtcnn(self, img: NDArray) -> FaceQuality:
         """MTCNN + MediaPipe two-stage face detection."""
-        global _MTCNN_WARNING_LOGGED
+        global _MTCNN_WARNING_LOGGED, MTCNN_AVAILABLE
         
         try:
             if not MTCNN_AVAILABLE:
@@ -394,6 +394,7 @@ class FaceDetector:
                             self._mtcnn_detector_cache = MTCNN()
                         except Exception as e:
                             MTCNN_AVAILABLE = False
+                            self._mtcnn_detector_cache = None
                             _MTCNN_WARNING_LOGGED = False
                             logger.error(f"MTCNN initialization failed: {e}. Falling back to Haar.")
                             return None
