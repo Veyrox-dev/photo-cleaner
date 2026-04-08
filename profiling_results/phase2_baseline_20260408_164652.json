@@ -1,0 +1,12 @@
+{
+  "profiling_date": "2026-04-08T16:46:49.444371",
+  "phase": "Phase 2 Week 1",
+  "goal": "Establish baseline and identify Top 5 bottlenecks",
+  "test_runs": [
+    {
+      "stage_name": "profile_250_sample",
+      "error": "name 'os' is not defined",
+      "timestamp": "2026-04-08T16:46:52.743835"
+    }
+  ]
+}

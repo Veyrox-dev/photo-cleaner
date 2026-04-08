@@ -145,20 +145,20 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 ## 🗺️ Nächste 8 Wochen (max. 2 Entwickler)
 
 ### Woche 1
-- Produkt- und UX-Spezifikation für Vertrauen, Confidence, Merge/Split, Undo
-- KPI-Ziele definieren: Trust, False Split/Merge, Time-to-first-result
-- Testbasis und Benchmark-Kriterien fixieren
+- ✅ Produkt- und UX-Spezifikation für Vertrauen, Confidence, Merge/Split, Undo
+- ✅ KPI-Ziele definieren: Trust, False Split/Merge, Time-to-first-result
+- ✅ Testbasis und Benchmark-Kriterien fixieren
 
 ### Woche 2
-- Datenmodell für Explainability und Confidence fertigstellen
-- UI-Konzept für Badges, Score-Details und Review-Hinweise
-- Unit-Tests für Score-to-Confidence-Mapping
-- Technisches Startdokument: `docs/architecture/WEEK1_TRUST_FOUNDATION.md`
+- ✅ Datenmodell für Explainability und Confidence fertigstellen
+- ✅ UI-Konzept für Badges, Score-Details und Review-Hinweise
+- ✅ Unit-Tests für Score-to-Confidence-Mapping
+- ✅ Technisches Startdokument: `docs/architecture/WEEK1_TRUST_FOUNDATION.md`
 
 ### Woche 3
-- Merge/Split-Flow inklusive Persistenz und Recovery implementieren
-- Undo-/Action-Log-Verhalten finalisieren
-- Sicherheitsregressionen für Delete/Export ergänzen
+- ✅ Merge/Split-Flow inklusive Persistenz und Recovery implementiert
+- ▶ Undo-/Action-Log-Verhalten finalisieren
+- ▶ Sicherheitsregressionen für Delete/Export ergänzen
 
 ### Woche 4
 - Onboarding, Smart Filter und Quota-/Upgrade-Messaging umsetzen

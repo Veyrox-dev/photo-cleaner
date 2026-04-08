@@ -140,3 +140,51 @@ def test_undo_group_split_restores_original_group() -> None:
     group_2 = conn.execute("SELECT group_id FROM duplicates WHERE file_id = 2").fetchone()
     assert group_2 is not None
     assert group_2[0] == "G1"
+
+
+def test_describe_last_action_for_group_split() -> None:
+    conn = _setup_conn()
+    history = HistoryRepository(conn)
+
+    history.record_group_reassignment(
+        action_id="GROUP_SPLIT_2",
+        file_id=1,
+        old_group_id="G1",
+        new_group_id="SPLIT_2",
+        reason="source=split",
+    )
+    conn.commit()
+
+    description = history.describe_last_action()
+
+    assert description is not None
+    assert description["kind"] == "group_split"
+    assert description["count"] == 1
+
+
+def test_recent_actions_returns_latest_first() -> None:
+    conn = _setup_conn()
+    history = HistoryRepository(conn)
+
+    history.record_group_reassignment(
+        action_id="GROUP_MERGE_2",
+        file_id=1,
+        old_group_id="G1",
+        new_group_id="MERGED_2",
+        reason="source=merge",
+    )
+    conn.execute(
+        """
+        INSERT INTO status_history (action_id, file_id, file_path, old_status, new_status, old_locked, new_locked, old_decided_at, new_decided_at, reason)
+        VALUES ('MANUAL_2', 1, 'a.jpg', 'UNDECIDED', 'KEEP', 0, 0, NULL, 123.0, 'manual test')
+        """
+    )
+    conn.commit()
+
+    recent = history.recent_actions(limit=2)
+
+    assert len(recent) == 2
+    assert recent[0]["action_id"] == "MANUAL_2"
+    assert recent[0]["kind"] == "status_change"
+    assert recent[1]["action_id"] == "GROUP_MERGE_2"
+    assert recent[1]["kind"] == "group_merge"

@@ -18,6 +18,7 @@ import cProfile
 import io
 import json
 import logging
+import os
 import pstats
 import sys
 import time
@@ -31,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from photo_cleaner.profiling.profiler import PerformanceProfiler, PerformanceSession
 from photo_cleaner.db.schema import Database
 from photo_cleaner.pipeline.pipeline import PhotoCleanerPipeline, PipelineConfig
+from photo_cleaner.license.license_manager import initialize_license_system
 
 logging.basicConfig(
     level=logging.INFO,
@@ -167,6 +169,9 @@ def run_baseline_profiling(
     Returns:
         Complete profiling results
     """
+    test_data_root = test_data_root.resolve()
+    output_dir = output_dir.resolve()
+
     results = {
         "profiling_date": datetime.now().isoformat(),
         "phase": "Phase 2 Week 1",
@@ -186,8 +191,8 @@ def run_baseline_profiling(
         test_configs = [
             {
                 "name": "1k_images_baseline",
-                "folder": test_data_root / "1k",
-                "db": output_dir / "profile_1k.db",
+                "folder": (test_data_root / "1k").resolve(),
+                "db": (output_dir / "profile_1k.db").resolve(),
                 "config": PipelineConfig(
                     use_cache=False,  # Cold run
                     use_face_mesh=use_face_mesh,
@@ -196,8 +201,8 @@ def run_baseline_profiling(
             },
             {
                 "name": "5k_images_medium",
-                "folder": test_data_root / "5k",
-                "db": output_dir / "profile_5k.db",
+                "folder": (test_data_root / "5k").resolve(),
+                "db": (output_dir / "profile_5k.db").resolve(),
                 "config": PipelineConfig(
                     use_cache=False,
                     use_face_mesh=use_face_mesh,
@@ -206,8 +211,8 @@ def run_baseline_profiling(
             },
             {
                 "name": "10k_images_target",
-                "folder": test_data_root / "10k",
-                "db": output_dir / "profile_10k.db",
+                "folder": (test_data_root / "10k").resolve(),
+                "db": (output_dir / "profile_10k.db").resolve(),
                 "config": PipelineConfig(
                     use_cache=False,
                     use_face_mesh=use_face_mesh,
@@ -216,8 +221,8 @@ def run_baseline_profiling(
             },
             {
                 "name": "50k_images_stress",
-                "folder": test_data_root / "50k",
-                "db": output_dir / "profile_50k.db",
+                "folder": (test_data_root / "50k").resolve(),
+                "db": (output_dir / "profile_50k.db").resolve(),
                 "config": PipelineConfig(
                     use_cache=False,
                     use_face_mesh=use_face_mesh,
@@ -226,8 +231,8 @@ def run_baseline_profiling(
             },
             {
                 "name": "100k_images_stress",
-                "folder": test_data_root / "100k",
-                "db": output_dir / "profile_100k.db",
+                "folder": (test_data_root / "100k").resolve(),
+                "db": (output_dir / "profile_100k.db").resolve(),
                 "config": PipelineConfig(
                     use_cache=False,
                     use_face_mesh=use_face_mesh,
@@ -241,8 +246,8 @@ def run_baseline_profiling(
         test_configs = [
             {
                 "name": f"profile_{test_data_root.name}",
-                "folder": test_data_root,
-                "db": output_dir / f"profile_{test_data_root.name}.db",
+                "folder": test_data_root.resolve(),
+                "db": (output_dir / f"profile_{test_data_root.name}.db").resolve(),
                 "config": PipelineConfig(
                     use_cache=False,
                     use_face_mesh=use_face_mesh,
@@ -396,6 +401,10 @@ def main():
     
     # Setup output directory
     args.output.mkdir(parents=True, exist_ok=True)
+
+    # The pipeline expects a globally initialized license manager, even for FREE-tier profiling runs.
+    os.environ["PHOTOCLEANER_SKIP_FREE_QUOTA"] = "1"
+    initialize_license_system(Path.cwd())
     
     # Run profiling
     logger.info("Starting Phase 2 Week 1 Baseline Profiling...")

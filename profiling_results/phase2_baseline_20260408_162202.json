@@ -1,0 +1,12 @@
+{
+  "profiling_date": "2026-04-08T16:21:55.046624",
+  "phase": "Phase 2 Week 1",
+  "goal": "Establish baseline and identify Top 5 bottlenecks",
+  "test_runs": [
+    {
+      "stage_name": "profile_10k_images",
+      "error": "Free-Limit erreicht. Verbleibend: 250 Bilder.",
+      "timestamp": "2026-04-08T16:22:02.276911"
+    }
+  ]
+}

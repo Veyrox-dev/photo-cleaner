@@ -19,6 +19,84 @@ class HistoryRepository:
         row = cur.fetchone()
         return row[0] if row else None
 
+    def describe_action(self, action_id: str) -> Optional[dict]:
+        cur = self.conn.execute(
+            """
+            SELECT file_id, old_status, new_status, old_locked, new_locked, reason
+            FROM status_history
+            WHERE action_id = ?
+            ORDER BY history_id DESC
+            """,
+            (action_id,),
+        )
+        rows = cur.fetchall()
+        if not rows:
+            return None
+
+        count = len(rows)
+        group_reasons = [
+            str(reason) for _file_id, _old_status, _new_status, _old_locked, _new_locked, reason in rows
+            if reason and str(reason).startswith(_GROUP_REASSIGN_REASON_PREFIX)
+        ]
+        if group_reasons:
+            source = "reassign"
+            payload = group_reasons[0][len(_GROUP_REASSIGN_REASON_PREFIX):]
+            for chunk in payload.split(";"):
+                if chunk.startswith("source="):
+                    source = chunk.split("=", 1)[1].strip()
+                    break
+            kind = {
+                "merge": "group_merge",
+                "split": "group_split",
+            }.get(source, "group_reassign")
+            return {"action_id": action_id, "kind": kind, "count": count}
+
+        old_statuses = {str(old_status) for _file_id, old_status, _new_status, _old_locked, _new_locked, _reason in rows}
+        new_statuses = {str(new_status) for _file_id, _old_status, new_status, _old_locked, _new_locked, _reason in rows}
+        old_locked = {int(old_locked) for _file_id, _old_status, _new_status, old_locked, _new_locked, _reason in rows}
+        new_locked = {int(new_locked) for _file_id, _old_status, _new_status, _old_locked, new_locked, _reason in rows}
+
+        if old_statuses == new_statuses and old_locked != new_locked:
+            return {
+                "action_id": action_id,
+                "kind": "lock_toggle",
+                "count": count,
+                "locked": 1 in new_locked,
+            }
+
+        new_status = next(iter(new_statuses), None)
+        return {
+            "action_id": action_id,
+            "kind": "status_change",
+            "count": count,
+            "new_status": new_status,
+        }
+
+    def describe_last_action(self) -> Optional[dict]:
+        action_id = self.last_action_id()
+        if not action_id:
+            return None
+        return self.describe_action(action_id)
+
+    def recent_actions(self, limit: int = 5) -> list[dict]:
+        cur = self.conn.execute(
+            """
+            SELECT action_id
+            FROM status_history
+            GROUP BY action_id
+            ORDER BY MAX(history_id) DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        action_ids = [str(row[0]) for row in cur.fetchall()]
+        actions: list[dict] = []
+        for action_id in action_ids:
+            description = self.describe_action(action_id)
+            if description:
+                actions.append(description)
+        return actions
+
     def record_group_reassignment(
         self,
         *,

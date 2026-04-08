@@ -155,6 +155,11 @@ a = Analysis(
         # Note: jaraco modules are vendored inside pkg_resources, not standalone
         'setuptools',
         'pkg_resources',
+        'platformdirs',
+        'platformdirs.api',
+        'platformdirs.windows',
+        'platformdirs.unix',
+        'platformdirs.macos',
     ] + collect_submodules('photo_cleaner') + scipy_hiddenimports + mediapipe_hiddenimports + pillow_heif_hiddenimports,
     hookspath=['build_hooks'],
     hooksconfig={},

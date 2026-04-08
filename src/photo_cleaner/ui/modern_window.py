@@ -5547,27 +5547,6 @@ class ModernMainWindow(QMainWindow):
         
         layout.addSpacing(10)
         
-        # Vergleichs-Button (aktiviert wenn 2 ausgewählt)
-        self.compare_btn = QPushButton(t("compare_two"))
-        self.compare_btn.setEnabled(False)
-        self.compare_btn.setStyleSheet(
-            _build_button_style(get_semantic_colors()["warning"], padding="12px 14px")
-        )
-        self.compare_btn.clicked.connect(self._open_comparison)
-        self.compare_btn.hide()
-        layout.addWidget(self.compare_btn)
-
-        self.split_group_btn = QPushButton(t("split_group"))
-        self.split_group_btn.setEnabled(False)
-        self.split_group_btn.setStyleSheet(
-            _build_button_style(get_semantic_colors()["info"], padding="10px 12px", font_size=12)
-        )
-        self.split_group_btn.clicked.connect(self._split_selected_from_group)
-        self.split_group_btn.hide()
-        layout.addWidget(self.split_group_btn)
-        
-        layout.addSpacing(10)
-        
         # PHASE E: Enhanced visibility of Merge/Split/Compare + action buttons
         action_header = QLabel(t("phase_e_action_visibility"))
         action_header.setStyleSheet(f"font-weight: bold; color: {get_theme_colors()['text']}; font-size: 11px;")
@@ -5602,6 +5581,23 @@ class ModernMainWindow(QMainWindow):
         )
         self.undo_btn.clicked.connect(self._undo)
         layout.addWidget(self.undo_btn)
+
+        recent_actions_title = QLabel(f"<b>{t('recent_actions')}</b>")
+        recent_actions_title.setStyleSheet(f"color: {get_theme_colors()['text']}; font-size: 11px;")
+        layout.addWidget(recent_actions_title)
+
+        self.recent_actions_label = QLabel(t("no_recent_actions"))
+        self.recent_actions_label.setWordWrap(True)
+        self.recent_actions_label.setStyleSheet(
+            _build_surface_style()
+            + f" color: {get_theme_colors()['text']}; padding: 8px; font-size: 11px;"
+        )
+        layout.addWidget(self.recent_actions_label)
+
+        self.action_feedback_label = QLabel("")
+        self.action_feedback_label.setWordWrap(True)
+        self.action_feedback_label.hide()
+        layout.addWidget(self.action_feedback_label)
         
         layout.addSpacing(8)
         
@@ -5637,6 +5633,7 @@ class ModernMainWindow(QMainWindow):
         layout.addWidget(self.lock_btn)
         
         layout.addStretch()
+        self._refresh_recent_actions_ui()
         return panel
     
     def _build_status_bar(self) -> QWidget:
@@ -6688,8 +6685,21 @@ class ModernMainWindow(QMainWindow):
     
     def _undo(self):
         """Letzte Aktion rückgängig machen."""
+        last_action = self.history.describe_last_action()
         res = self.actions.ui_undo()
-        self._show_status_message(res.get("message", "Rückgängig erfolgreich"))
+        if not res.get("ok"):
+            self._show_status_message(res.get("message", t("nothing_to_undo")), error=True)
+            return
+        if not res.get("undone"):
+            QMessageBox.information(self, t("undo_title"), t("nothing_to_undo"))
+            self._refresh_recent_actions_ui()
+            return
+        if last_action:
+            self._show_status_message(
+                t("action_undone").format(action=self._format_action_summary(last_action))
+            )
+        else:
+            self._show_status_message(t("action_undone_generic"))
         self._reload_after_action()
     
     def _shortcut_split_group(self):
@@ -6725,6 +6735,7 @@ class ModernMainWindow(QMainWindow):
             
             self._update_selection_ui()
         
+        self._refresh_recent_actions_ui()
         self._update_progress()
 
     def _split_selected_from_group(self):
@@ -6881,13 +6892,63 @@ class ModernMainWindow(QMainWindow):
     
     def _show_status_message(self, message: str, error: bool = False):
         """Show status message."""
-        # Avoid overwriting progress status with action messages
+        if hasattr(self, "action_feedback_label") and self.action_feedback_label is not None:
+            self.action_feedback_label.setText(message)
+            semantic_colors = get_semantic_colors()
+            bg = semantic_colors["error"] if error else get_theme_colors()["alternate_base"]
+            fg = "white" if error else get_theme_colors()["text"]
+            self.action_feedback_label.setStyleSheet(
+                f"background-color: {bg}; color: {fg}; padding: 8px; border-radius: 8px; font-size: 11px;"
+            )
+            self.action_feedback_label.show()
+
         if error:
             logger.warning("Status message suppressed: %s", message)
         else:
             logger.info("Status message suppressed: %s", message)
         self._refresh_kpi_label()
+        self._refresh_recent_actions_ui()
         self._update_progress()
+
+    def _format_action_summary(self, action: dict) -> str:
+        """Format a history action for the UI action log."""
+        kind = str(action.get("kind", ""))
+        count = int(action.get("count", 0) or 0)
+        if kind == "group_merge":
+            return t("action_summary_group_merge").format(count=count)
+        if kind == "group_split":
+            return t("action_summary_group_split").format(count=count)
+        if kind == "group_reassign":
+            return t("action_summary_group_reassign").format(count=count)
+        if kind == "lock_toggle":
+            return t("action_summary_lock_toggle").format(count=count)
+
+        status_key = str(action.get("new_status", "UNDECIDED"))
+        status_label_map = {
+            "KEEP": t("keep"),
+            "DELETE": t("delete"),
+            "UNSURE": t("unsure"),
+            "UNDECIDED": "Undecided",
+        }
+        return t("action_summary_status_change").format(
+            count=count,
+            status=status_label_map.get(status_key, status_key),
+        )
+
+    def _refresh_recent_actions_ui(self) -> None:
+        """Sync the recent action block with undoable DB history."""
+        if not hasattr(self, "recent_actions_label") or self.recent_actions_label is None:
+            return
+        recent_actions = self.history.recent_actions(limit=4)
+        if not recent_actions:
+            self.recent_actions_label.setText(t("no_recent_actions"))
+            if hasattr(self, "undo_btn") and self.undo_btn is not None:
+                self.undo_btn.setEnabled(False)
+            return
+        lines = [f"• {self._format_action_summary(action)}" for action in recent_actions]
+        self.recent_actions_label.setText("\n".join(lines))
+        if hasattr(self, "undo_btn") and self.undo_btn is not None:
+            self.undo_btn.setEnabled(True)
     
     def _refresh_kpi_label(self):
         """Phase F: Refresh compact KPI status label."""
@@ -7150,7 +7211,7 @@ class ModernMainWindow(QMainWindow):
             self.del_btn.setEnabled(True)
             self.unsure_btn.setEnabled(True)
             self.lock_btn.setEnabled(True)
-            self.undo_btn.setEnabled(True)
+            self.undo_btn.setEnabled(self.history.last_action_id() is not None)
     
     # Export
     

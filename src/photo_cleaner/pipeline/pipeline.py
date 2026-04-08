@@ -13,6 +13,7 @@ Pipeline stages:
 """
 
 import logging
+import os
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -178,17 +179,20 @@ class PhotoCleanerPipeline:
         logger.info(f"Starting pipeline on {folder_path}")
 
         # Enforce FREE quota before indexing (server-backed usage)
-        try:
-            from photo_cleaner.license import get_license_manager
-            from photo_cleaner.io.file_scanner import FileScanner
+        if os.environ.get("PHOTOCLEANER_SKIP_FREE_QUOTA", "0").lower() in ("1", "true", "yes"):
+            logger.warning("FREE quota check bypassed via PHOTOCLEANER_SKIP_FREE_QUOTA (profiling/test mode)")
+        else:
+            try:
+                from photo_cleaner.license import get_license_manager
+                from photo_cleaner.io.file_scanner import FileScanner
 
-            license_mgr = get_license_manager()
-            total_files = FileScanner(folder_path).count_files()
-            allowed, reason = license_mgr.check_and_consume_free_images(total_files)
-            if not allowed:
-                raise ValueError(reason or "Free-Limit erreicht. Bitte Upgrade auf PRO.")
-        except (ImportError, AttributeError) as e:
-            logger.warning("License check skipped: %s", e)
+                license_mgr = get_license_manager()
+                total_files = FileScanner(folder_path).count_files()
+                allowed, reason = license_mgr.check_and_consume_free_images(total_files)
+                if not allowed:
+                    raise ValueError(reason or "Free-Limit erreicht. Bitte Upgrade auf PRO.")
+            except (ImportError, AttributeError) as e:
+                logger.warning("License check skipped: %s", e)
         
         # Stage 1: Index
         logger.info("Stage 1: Indexing files...")

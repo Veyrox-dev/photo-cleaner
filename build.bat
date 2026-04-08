@@ -30,6 +30,10 @@ REM Install/ensure PyInstaller (pinned)
 echo Ensuring PyInstaller 6.7.x is installed...
 pip install pyinstaller==6.7.0 --quiet
 
+REM Ensure runtime dependency required by pkg_resources rthook is present
+echo Ensuring platformdirs is installed for frozen runtime...
+pip install platformdirs==4.2.1 --quiet
+
 REM Preflight check (strict)
 echo.
 echo Running preflight check...
