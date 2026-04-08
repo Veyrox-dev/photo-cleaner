@@ -11,9 +11,9 @@ def test_build_score_explanation_marks_high_confidence() -> None:
     )
 
     assert explanation.has_any_data is True
-    assert explanation.confidence_label == "Hohe Sicherheit"
+    assert explanation.confidence_label == "Sicher"
     assert explanation.confidence_level == "high"
-    assert explanation.strengths_text == "Staerken: Schaerfe, Belichtung, Aufloesung, Augen"
+    assert explanation.strengths_text == "Gut: Schaerfe, Belichtung, Aufloesung, Augen"
     assert explanation.concerns_text is None
     assert explanation.component_summary_text == "Treiber: Schaerfe 88% | Schwaechste Stelle: Belichtung 77%"
 
@@ -27,10 +27,10 @@ def test_build_score_explanation_marks_low_confidence_with_concerns() -> None:
         face_quality_score=24.0,
     )
 
-    assert explanation.confidence_label == "Bitte pruefen"
+    assert explanation.confidence_label == "Unsicher"
     assert explanation.confidence_level == "low"
-    assert explanation.concerns_text == "Bitte pruefen: Belichtung, Augen"
-    assert "Mindestens ein relevantes Signal" in explanation.tooltip_text
+    assert explanation.concerns_text == "Schwaecher: Belichtung, Augen"
+    assert "Mindestens ein wichtiges Bildmerkmal" in explanation.tooltip_text
 
 
 def test_build_score_explanation_requests_reanalysis_for_legacy_score() -> None:

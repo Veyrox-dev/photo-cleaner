@@ -54,6 +54,24 @@ class GroupScorer:
         """
         self.top_n = top_n
         self.auto_selector = AutoSelector()
+
+    def _effective_top_n_for_group(self, group_size: int) -> int:
+        """Return dynamic keep count based on group size.
+
+        Policy:
+        - <6 images: keep 1
+        - 6-11 images: keep 2
+        - >=12 images: keep 3
+
+        The configured `top_n` acts as an upper cap.
+        """
+        if group_size >= 12:
+            dynamic_top_n = 3
+        elif group_size >= 6:
+            dynamic_top_n = 2
+        else:
+            dynamic_top_n = 1
+        return max(1, min(self.top_n, dynamic_top_n))
     
     def score_group(
         self,
@@ -75,6 +93,7 @@ class GroupScorer:
         
         # Get full score list from auto_selector
         _, _, all_scores = self.auto_select_best_image(group_id, valid_results)
+        effective_top_n = self._effective_top_n_for_group(len(valid_results))
         
         # Create scored images: Top N = KEEP, rest = DELETE (ignore disqualified status here)
         scored_images = []
@@ -89,7 +108,7 @@ class GroupScorer:
             # Only count non-disqualified for keep/delete
             if not disqualified:
                 usable_count += 1
-                should_keep = usable_count <= self.top_n
+                should_keep = usable_count <= effective_top_n
             else:
                 should_keep = False
             
@@ -117,7 +136,7 @@ class GroupScorer:
         return GroupScore(
             group_id=group_id,
             images=scored_images,
-            top_n=self.top_n,
+            top_n=effective_top_n,
             num_keep=num_keep,
             num_delete=num_delete,
         )

@@ -64,8 +64,8 @@ def build_score_explanation(
     concerns = [metric.label for metric in metrics if metric.value < 45.0]
 
     component_summary_text = _build_component_summary(metrics)
-    strengths_text = f"Staerken: {', '.join(strengths)}" if strengths else None
-    concerns_text = f"Bitte pruefen: {', '.join(concerns)}" if concerns else None
+    strengths_text = f"Gut: {', '.join(strengths)}" if strengths else None
+    concerns_text = f"Schwaecher: {', '.join(concerns)}" if concerns else None
     confidence_label, confidence_reason, confidence_level = _classify_confidence(
         quality_score=quality_score,
         metrics=metrics,
@@ -144,7 +144,7 @@ def _classify_confidence(
     if needs_reanalysis:
         return (
             "Neu analysieren",
-            "Es liegt nur ein Gesamtscore ohne Komponenten vor.",
+            "Es fehlen Detailwerte fuer diese Datei.",
             "incomplete",
         )
 
@@ -156,28 +156,28 @@ def _classify_confidence(
 
     if quality_score is not None and quality_score >= 75.0 and min_value >= 60.0 and not concerns:
         return (
-            "Hohe Sicherheit",
-            "Alle Kernsignale liegen stabil im guten Bereich.",
+            "Sicher",
+            "Die wichtigen Bildmerkmale wirken stabil gut.",
             "high",
         )
 
     if len(concerns) >= 2 or min_value < 30.0 or (quality_score is not None and quality_score < 45.0):
         return (
-            "Bitte pruefen",
-            "Mindestens ein relevantes Signal ist deutlich schwach.",
+            "Unsicher",
+            "Mindestens ein wichtiges Bildmerkmal ist deutlich schwach.",
             "low",
         )
 
     if avg_value >= 60.0:
         return (
-            "Kurz pruefen",
-            "Die Signale sind brauchbar, aber nicht durchgaengig stark.",
+            "Manuell pruefen",
+            "Das Ergebnis ist brauchbar, aber nicht durchgaengig klar.",
             "medium",
         )
 
     return (
-        "Bitte pruefen",
-        "Die Signale sind gemischt und brauchen eine manuelle Sichtpruefung.",
+        "Unsicher",
+        "Die Bildmerkmale sind gemischt und sollten manuell geprueft werden.",
         "low",
     )
 

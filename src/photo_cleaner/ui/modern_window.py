@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import os
 import json
+import re
 import sqlite3
 import time
 from dataclasses import dataclass
@@ -475,12 +476,15 @@ class FolderSelectionDialog(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
         
         # Titel
-        title = QLabel(f"<h2>{t('welcome')}</h2>")
+        title = QLabel("<h2>Bilder importieren</h2>")
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("padding: 20px;")
+        title.setStyleSheet("padding: 16px 20px 8px 20px;")
         layout.addWidget(title)
         
-        desc = QLabel(t("select_folders_subtitle"))
+        desc = QLabel(
+            "Waehle Eingabe- und Ausgabeordner aus. "
+            "Danach startet die Analyse und zeigt den Fortschritt Schritt fuer Schritt."
+        )
         desc.setWordWrap(True)
         desc.setAlignment(Qt.AlignCenter)
         desc_color = get_text_hint_color()
@@ -1577,7 +1581,7 @@ class ImageDetailDialog(QDialog):
                 self.image_view.set_image(pixmap)
         except (OSError, IOError, ValueError, RuntimeError) as e:
             logger.error(f"Could not load image: {e}", exc_info=True)
-            QMessageBox.warning(self, "Error", f"Could not load image: {e}")
+            QMessageBox.warning(self, t("error"), t("load_image_failed").format(error=e))
 
 
 class ThumbnailCard(QWidget):
@@ -2517,6 +2521,8 @@ class ModernMainWindow(QMainWindow):
         self._rating_error_message: Optional[str] = None
         self._indexing_results: Optional[dict] = None
         self._progress_update_ts = 0.0
+        self._pipeline_start_ts = 0.0
+        self._pipeline_last_known_total = 0
         self._indexing_workflow = IndexingWorkflowController(self, self._center_progress_dialog_text)
         self._rating_workflow = RatingWorkflowController(self, RatingWorkerThread, QApplication.processEvents)
         self._selection_workflow = SelectionWorkflowController()
@@ -2702,12 +2708,20 @@ class ModernMainWindow(QMainWindow):
     def _start_async_indexing(self):
         """Start async indexing in background thread (v0.5.3)."""
         logger.info("Starting async indexing...")
+        self._pipeline_start_ts = time.monotonic()
+        self._pipeline_last_known_total = 0
 
         # BUG #3 FIX remains: controller builds a separate DB-backed indexer for thread safety
         indexer = self._indexing_workflow.build_indexer(self.db_path)
 
         progress = self._indexing_workflow.create_indexing_progress_dialog()
         self._indexing_progress_dialog = progress
+        self._update_progress_dialog(
+            progress,
+            value=0,
+            label="Schritt 1/3: Bilder einlesen und hashen...",
+            force=True,
+        )
 
         self.indexing_thread = self._indexing_workflow.create_indexing_thread(
             self.input_folder,
@@ -2754,13 +2768,37 @@ class ModernMainWindow(QMainWindow):
         except (AttributeError, RuntimeError, ValueError):
             return
 
+    def _format_eta(self, elapsed_sec: float, done: int, total: int) -> str:
+        if total <= 0 or done <= 0 or done >= total:
+            return ""
+        remaining = max(0.0, elapsed_sec * ((total - done) / done))
+        if remaining < 1.0:
+            return ""
+        if remaining < 60.0:
+            return f"ETA: {int(remaining)}s"
+        minutes = int(remaining // 60)
+        seconds = int(remaining % 60)
+        return f"ETA: {minutes}m {seconds}s"
+
+    def _extract_progress_counts(self, status_text: str) -> tuple[int, int]:
+        match = re.search(r"(\d+)\s*/\s*(\d+)", status_text or "")
+        if not match:
+            return (0, 0)
+        return (int(match.group(1)), int(match.group(2)))
+
     def _on_indexing_progress(self, current: int, total: int, status: str, progress_dialog):
         """Handle progress update from indexing thread."""
         if progress_dialog is None or not progress_dialog.isVisible():
             return
         if total > 0:
-            progress_dialog.setMaximum(total)
-            self._update_progress_dialog(progress_dialog, value=current, label=f"{status}\n({current}/{total})")
+            self._pipeline_last_known_total = total
+            stage_pct = min(70, int(round((current / total) * 70)))
+            elapsed = max(0.0, time.monotonic() - self._pipeline_start_ts)
+            eta = self._format_eta(elapsed, current, total)
+            label = f"Schritt 1/3: Bilder einlesen und hashen... ({current}/{total})"
+            if eta:
+                label += f"\n{eta}"
+            self._update_progress_dialog(progress_dialog, value=stage_pct, label=label)
     
     def _on_indexing_finished(self, results: dict, progress_dialog):
         """Handle successful indexing completion."""
@@ -2773,8 +2811,14 @@ class ModernMainWindow(QMainWindow):
                 progress_dialog.canceled.disconnect(self._cancel_indexing)
             except (RuntimeError, TypeError):
                 pass
-            progress_dialog.close()
-        self._indexing_progress_dialog = None
+            progress_dialog.canceled.connect(self._cancel_post_indexing)
+            self._update_progress_dialog(
+                progress_dialog,
+                value=70,
+                label="Schritt 2/3: Duplikatgruppen werden erstellt...",
+                force=True,
+            )
+        self._indexing_progress_dialog = progress_dialog
 
         logger.info(f"[UI] Indexing finished: {results}")
         self._indexing_results = results
@@ -2803,7 +2847,7 @@ class ModernMainWindow(QMainWindow):
         progress_dialog.close()
         self._indexing_progress_dialog = None
         logger.error(f"Indexing error: {error_msg}")
-        QMessageBox.critical(self, "Fehler", f"Fehler beim Scannen:\n{error_msg}")
+        QMessageBox.critical(self, t("error"), t("scan_failed").format(error=error_msg))
 
     def _start_post_indexing_analysis(self, results: dict) -> None:
         """Build duplicate groups and rate images without blocking the UI."""
@@ -2824,9 +2868,19 @@ class ModernMainWindow(QMainWindow):
         self._post_indexing_group_count = 0
         self._post_indexing_duplicate_images = 0
 
-        logger.info("[UI] Creating post-indexing progress dialog...")
-        progress = self._indexing_workflow.create_post_indexing_progress_dialog(
-            on_cancel=self._cancel_post_indexing,
+        logger.info("[UI] Reusing unified progress dialog for post-indexing...")
+        progress = self._indexing_progress_dialog
+        if progress is None:
+            progress = self._indexing_workflow.create_post_indexing_progress_dialog(
+                on_cancel=self._cancel_post_indexing,
+            )
+        progress.setMinimum(0)
+        progress.setMaximum(100)
+        self._update_progress_dialog(
+            progress,
+            value=70,
+            label="Schritt 2/3: Duplikatgruppen werden erstellt...",
+            force=True,
         )
         self._post_indexing_progress_dialog = progress
 
@@ -2877,7 +2931,12 @@ class ModernMainWindow(QMainWindow):
         if progress:
             progress.setMinimum(0)
             progress.setMaximum(100)
-            self._update_progress_dialog(progress, value=86, label="Bilder werden bewertet...", force=True)
+            self._update_progress_dialog(
+                progress,
+                value=75,
+                label="Schritt 3/3: Bildbewertung startet...",
+                force=True,
+            )
 
         logger.info("[DUPFINDER] Creating RatingWorkerThread...")
         thread_create_start = time.monotonic()
@@ -2909,12 +2968,24 @@ class ModernMainWindow(QMainWindow):
             self._post_indexing_progress_dialog.close()
             self._post_indexing_progress_dialog = None
         logger.error(f"Duplicate finder error: {error_msg}")
-        QMessageBox.critical(self, "Fehler", f"Fehler beim Duplikate-Suchen:\n{error_msg}")
+        QMessageBox.critical(self, t("error"), t("duplicate_search_failed").format(error=error_msg))
 
     def _on_rating_progress(self, pct: int, status: str) -> None:
         progress = self._post_indexing_progress_dialog
         if progress:
-            self._update_progress_dialog(progress, value=pct, label=status)
+            clamped = max(0, min(100, int(pct)))
+            mapped = 75 + int(round((clamped / 100) * 20))
+            done, total = self._extract_progress_counts(status)
+            eta = ""
+            if done > 0 and total > 0:
+                elapsed = max(0.0, time.monotonic() - self._pipeline_start_ts)
+                eta = self._format_eta(elapsed, done, total)
+            label = "Schritt 3/3: Bilder werden bewertet"
+            if done > 0 and total > 0:
+                label += f" ({done}/{total})"
+            if eta:
+                label += f"\n{eta}"
+            self._update_progress_dialog(progress, value=mapped, label=label)
 
     def _on_rating_error(self, error_msg: str) -> None:
         logger.error(f"Rating error: {error_msg}")
@@ -2944,7 +3015,8 @@ class ModernMainWindow(QMainWindow):
         if self._post_indexing_progress_dialog:
             self._update_progress_dialog(
                 self._post_indexing_progress_dialog,
-                label="Bilder werden geladen...",
+                value=95,
+                label="Schritt 3/3: Abschluss und Anzeige wird vorbereitet...",
                 force=True,
             )
 
@@ -2976,24 +3048,29 @@ class ModernMainWindow(QMainWindow):
 
     def _show_analysis_summary(self, rating_info: dict) -> None:
         results = self._indexing_results or {}
+        total_files = int(results.get("total_files", 0) or 0)
+        new_files = int(results.get("new_files", 0) or 0)
+        hashed_files = int(results.get("hashed_files", 0) or 0)
+        cached_files = int(results.get("cached_files", 0) or 0)
+        handled_files = hashed_files + cached_files
+        not_processed = max(0, new_files - handled_files)
+
         msg = (
-            f"Bildanalyse abgeschlossen!\n\n"
-            f"Bilder gesamt: {results.get('total_files', 0)}\n"
-            f"Neue Bilder: {results.get('new_files', 0)}\n"
-            f"Gescannt: {results.get('hashed_files', 0)}\n"
-            f"Aus Cache: {results.get('cached_files', 0)}\n"
-            f"Speedup: {results.get('speedup_factor', 1.0)}x\n\n"
-            f"Duplikate gefunden: {self._post_indexing_group_count} Gruppen ({self._post_indexing_duplicate_images} Bilder)"
+            "Analyse abgeschlossen.\n\n"
+            f"Gesamtbilder: {total_files}\n"
+            f"Neu verarbeitet: {new_files}\n"
+            f"Erfolgreich verarbeitet: {handled_files}\n"
+            f"Nicht verarbeitet: {not_processed}\n"
+            f"Gefundene Gruppen: {self._post_indexing_group_count}"
         )
 
-        if rating_info.get("rated"):
-            msg += "\n\nBewertung abgeschlossen: Bilder wurden automatisch eingeschaetzt."
-        if rating_info.get("warn"):
-            msg += "\nWarnung: Einige Bilder konnten nicht bewertet werden."
         if self._rating_error_message:
-            msg += f"\nFehler: {self._rating_error_message}"
+            msg += f"\n\nFehler:\n{self._rating_error_message}"
+            msg += "\n\nWenn das Problem wiederholt auftritt, bitte Fehler melden."
+        elif rating_info.get("warn"):
+            msg += "\n\nHinweis: Einige Bilder konnten nicht vollstaendig bewertet werden."
 
-        QMessageBox.information(self, "Fertig", msg)
+        QMessageBox.information(self, "Analyse fertig", msg)
     
     def _run_automatic_pipeline(self):
         """Führe vollautomatische Pipeline aus: Scannen → Indexieren → Duplikate finden → Qualität analysieren."""
@@ -3522,35 +3599,35 @@ class ModernMainWindow(QMainWindow):
             "QMenuBar::item { padding: 6px 10px; margin: 0px 2px; }"
         )
         
-        # 📁 Import Button
-        self.import_action = menubar.addAction("📁 " + t("import"))
+        # Import button
+        self.import_action = menubar.addAction(t("import"))
         self.import_action.triggered.connect(self._open_import_dialog)
         self.import_action.setToolTip(t("import_tooltip"))
         
-        # ⚙ Settings Button
-        self.settings_action = menubar.addAction("⚙ " + t("settings"))
+        # Settings button
+        self.settings_action = menubar.addAction(t("settings"))
         self.settings_action.triggered.connect(self._open_settings)
         self.settings_action.setToolTip(t("settings_tooltip"))
         
         # Add separator
         menubar.addSeparator()
         
-        # 🌐 Language dialog
-        self.language_action = menubar.addAction("🌐 " + t("language"))
+        # Language dialog
+        self.language_action = menubar.addAction(t("language"))
         self.language_action.triggered.connect(self._show_language_dialog)
         
-        # 🎨 Theme Switcher
-        theme_menu = menubar.addMenu("🎨 " + t("theme"))
+        # Theme switcher
+        theme_menu = menubar.addMenu(t("theme"))
         theme_menu.addAction(t("theme_dark")).triggered.connect(lambda: self._change_theme("dark"))
         theme_menu.addAction(t("theme_light")).triggered.connect(lambda: self._change_theme("light"))
         
-        # 🔐 License Button
-        self.license_action = menubar.addAction("🔐 " + t("license"))
+        # License button
+        self.license_action = menubar.addAction(t("license"))
         self.license_action.triggered.connect(self._show_license_dialog)
         self.license_action.setToolTip(t("license_tooltip"))
         
-        # ? Help Button
-        self.help_action = menubar.addAction("❔ " + t("help"))
+        # Help button
+        self.help_action = menubar.addAction(t("help"))
         self.help_action.triggered.connect(self._show_help)
         self.help_action.setToolTip(t("help_tooltip"))
         
@@ -3642,11 +3719,11 @@ class ModernMainWindow(QMainWindow):
             # Show confirmation with language name
             langs = get_langs()
             lang_name = langs.get(code, code)
-            self._show_status_message(f"✓ Language changed to {lang_name}")
+            self._show_status_message(f"Language changed to {lang_name}")
             logger.info(f"Language changed to {code}")
         except (KeyError, ValueError, TypeError, OSError) as e:
             logger.error(f"Error changing language: {e}", exc_info=True)
-            QMessageBox.warning(self, "Error", f"Could not change language: {e}")
+            QMessageBox.warning(self, t("error"), t("language_change_failed").format(error=e))
     
     def _update_ui_language(self):
         """Update all UI text elements after language change."""
@@ -3692,13 +3769,18 @@ class ModernMainWindow(QMainWindow):
             if hasattr(self, 'keep_btn'):
                 self.keep_btn.setText(t("keep"))
             if hasattr(self, 'del_btn'):
-                self.del_btn.setText(t("delete_confirm"))
+                self.del_btn.setText(t("delete"))
             if hasattr(self, 'unsure_btn'):
-                self.unsure_btn.setText(t("unsure_button"))
+                self.unsure_btn.setText(t("unsure"))
+            if hasattr(self, 'needs_review_only_cb'):
+                self.needs_review_only_cb.setText(t("needs_review_only"))
+                self.needs_review_only_cb.setToolTip(t("needs_review_only_tooltip"))
             if hasattr(self, 'lock_btn'):
                 self.lock_btn.setText(t("lock_unlock_button"))
             if hasattr(self, 'compare_btn'):
                 self.compare_btn.setText(t("compare_two"))
+            if hasattr(self, 'split_group_btn'):
+                self.split_group_btn.setText(t("split_group"))
             if hasattr(self, 'undo_btn'):
                 self.undo_btn.setText(t("undo_button"))
             
@@ -3763,12 +3845,12 @@ class ModernMainWindow(QMainWindow):
             manager = ThemeManager.instance()
             manager.change_theme(theme, main_window=self)  # type: ignore
             
-            self._show_status_message(f"✓ Theme switched to {theme.capitalize()}")
+            self._show_status_message(f"Theme switched to {theme.capitalize()}")
             logger.info(f"Theme changed to {theme}")
         except (RuntimeError, AttributeError, ValueError) as e:
             logger.error(f"Error changing theme: {e}", exc_info=True)
             from PySide6.QtWidgets import QMessageBox
-            QMessageBox.warning(self, "Error", f"Could not change theme: {e}")
+            QMessageBox.warning(self, t("error"), t("theme_change_failed").format(error=e))
     
     def _on_theme_changed(self, theme: str) -> None:
         """Callback when theme changes - refresh all dynamic colors.
@@ -3895,7 +3977,7 @@ class ModernMainWindow(QMainWindow):
             from photo_cleaner.ui.settings_dialog import SettingsDialog
             dialog = SettingsDialog(self, actions=self.actions)
             if dialog.exec():
-                self._show_status_message("✓ Einstellungen gespeichert")
+                self._show_status_message("Einstellungen gespeichert")
                 # Refresh UI with new settings
                 self.refresh_groups()
         except ImportError:
@@ -3906,7 +3988,7 @@ class ModernMainWindow(QMainWindow):
                 self._show_status_message("Qualitäts-Einstellungen geöffnet")
         except (ImportError, AttributeError, RuntimeError) as e:
             logger.debug("Settings open failed: %s", e)
-            QMessageBox.warning(self, "Fehler", f"Einstellungen konnten nicht geöffnet werden: {e}")
+            QMessageBox.warning(self, t("error"), t("settings_open_failed").format(error=e))
 
     def _has_any_images(self) -> bool:
         try:
@@ -4187,10 +4269,10 @@ class ModernMainWindow(QMainWindow):
                 self._user_settings["dlib_predictor_path"] = str(path)
                 os.environ["PHOTOCLEANER_DLIB_PREDICTOR_PATH"] = str(path)
                 self._save_user_settings()
-                QMessageBox.information(self, "Predictor gesetzt", f"dlib Predictor konfiguriert:\n{path}")
+                QMessageBox.information(self, t("predictor_set_title"), t("predictor_set_message").format(path=path))
         except (OSError, IOError, ValueError) as e:
             logger.error(f"Failed to set dlib predictor: {e}", exc_info=True)
-            QMessageBox.warning(self, "Fehler", f"Konnte Predictor nicht setzen: {e}")
+            QMessageBox.warning(self, t("error"), t("predictor_set_failed").format(error=e))
     
     def _build_quality_settings_panel(self) -> QWidget:
         """Erstelle ausklappbares Qualitäts-Einstellungen Panel."""
@@ -4590,7 +4672,7 @@ class ModernMainWindow(QMainWindow):
             
             self.quality_status_label.setText(f"✓ Voreinstellung '{new_name}' gespeichert")
         else:
-            QMessageBox.warning(self, "Fehler", f"Konnte Preset nicht speichern:\n{error}")
+            QMessageBox.warning(self, t("error"), t("preset_save_failed").format(error=error))
     
     def _delete_current_preset(self):
         """Lösche aktuelles Preset."""
@@ -4621,7 +4703,7 @@ class ModernMainWindow(QMainWindow):
                 
                 self.quality_status_label.setText(f"✓ Voreinstellung gelöscht")
             else:
-                QMessageBox.warning(self, "Fehler", f"Konnte Preset nicht löschen:\n{error}")
+                QMessageBox.warning(self, t("error"), t("preset_delete_failed").format(error=error))
     
     def _reset_presets(self):
         """Setze alle Presets auf Standard zurück."""
@@ -4717,12 +4799,12 @@ class ModernMainWindow(QMainWindow):
         self.search_box.textChanged.connect(self._apply_group_filter)
         layout.addWidget(self.search_box)
 
-        self.needs_review_only_cb = QCheckBox("Needs Review")
-        self.needs_review_only_cb.setToolTip("Zeige nur Gruppen mit niedriger Confidence oder unvollstaendiger Analyse")
+        self.needs_review_only_cb = QCheckBox(t("needs_review_only"))
+        self.needs_review_only_cb.setToolTip(t("needs_review_only_tooltip"))
         self.needs_review_only_cb.stateChanged.connect(self._apply_group_filter)
         layout.addWidget(self.needs_review_only_cb)
 
-        self.needs_review_counter_label = QLabel("Needs Review: 0")
+        self.needs_review_counter_label = QLabel(t("needs_review_counter").format(visible=0, total=0))
         self.needs_review_counter_label.setStyleSheet("padding: 2px 4px; font-size: 11px;")
         layout.addWidget(self.needs_review_counter_label)
         
@@ -4749,7 +4831,7 @@ class ModernMainWindow(QMainWindow):
         
         # NEW Feature 3: Merge Groups Button
         merge_btn_layout = QHBoxLayout()
-        self.merge_groups_btn = QPushButton("🔗 " + t("merge_groups"))
+        self.merge_groups_btn = QPushButton(t("merge_groups"))
         self.merge_groups_btn.setEnabled(False)  # Enabled only when 2+ groups selected
         self.merge_groups_btn.clicked.connect(self._merge_selected_groups)
         bg_info = get_semantic_colors()["info"]
@@ -4900,7 +4982,7 @@ class ModernMainWindow(QMainWindow):
         self.compare_btn.hide()
         layout.addWidget(self.compare_btn)
 
-        self.split_group_btn = QPushButton("✂ " + t("split_group"))
+        self.split_group_btn = QPushButton(t("split_group"))
         self.split_group_btn.setEnabled(False)
         info_color = get_semantic_colors()["info"]
         self.split_group_btn.setStyleSheet(f"""
@@ -4937,12 +5019,12 @@ class ModernMainWindow(QMainWindow):
         self.keep_btn.clicked.connect(lambda: self._apply_status_to_selection(FileStatus.KEEP))
         layout.addWidget(self.keep_btn)
         
-        self.del_btn = QPushButton(t("delete_confirm"))
+        self.del_btn = QPushButton(t("delete"))
         self.del_btn.setStyleSheet(f"background-color: {status_colors['DELETE']}; color: white; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 6px;")
-        self.del_btn.clicked.connect(self._confirm_delete_marked)
+        self.del_btn.clicked.connect(lambda: self._apply_status_to_selection(FileStatus.DELETE))
         layout.addWidget(self.del_btn)
         
-        self.unsure_btn = QPushButton(t("unsure_button"))
+        self.unsure_btn = QPushButton(t("unsure"))
         self.unsure_btn.setStyleSheet(f"background-color: {status_colors['UNSURE']}; color: white; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 6px;")
         self.unsure_btn.clicked.connect(lambda: self._apply_status_to_selection(FileStatus.UNSURE))
         layout.addWidget(self.unsure_btn)
@@ -5317,11 +5399,9 @@ class ModernMainWindow(QMainWindow):
             
             if is_single:
                 # Special label for single images
-                label = f"📷 Einzelbild: {grp.sample_path.name}"
+                label = f"Einzelbild: {grp.sample_path.name}"
             else:
                 label = f"Group {grp.group_id} ({grp.total} images)"
-
-            label = f"{label} | Conf {grp.confidence_score}% ({grp.confidence_level})"
             
             if term and term not in label.lower() and term not in str(grp.sample_path).lower():
                 continue
@@ -5345,38 +5425,41 @@ class ModernMainWindow(QMainWindow):
             status_colors = get_status_colors()
             if grp.open_count == 0:
                 # Fully decided - green checkmark
-                status_icon = "✓"
+                status_icon = "Fertig"
                 status_color = QColor(status_colors["KEEP"])
                 bg_alpha = 60
             elif grp.open_count > 0 and grp.decided_count > 0:
                 # Partially decided - orange warning
-                status_icon = "⚠"
+                status_icon = "Teil"
                 status_color = QColor(status_colors["UNSURE"])
                 bg_alpha = 80
             else:
                 # Completely undecided - BRIGHT ORANGE for visibility
-                status_icon = "🟡" if is_single else "○"
+                status_icon = "Offen"
                 status_color = QColor(status_colors["UNDECIDED_ATTENTION"])
                 bg_alpha = 100  # More opaque for better visibility
             
-            needs_review_hint = f" | Needs Review: {grp.needs_review_count}" if grp.needs_review_count > 0 else ""
-            review_icon = " 🚩" if grp.needs_review_count > 0 else ""
-            item.setText(f"{status_icon}{review_icon} {label}")
+            needs_review_hint = (
+                t("manual_review_hint").format(count=grp.needs_review_count)
+                if grp.needs_review_count > 0
+                else ""
+            )
+            item.setText(f"{status_icon} {label}{needs_review_hint}")
             
             # Enhanced tooltip
             if is_single:
                 item.setToolTip(
-                    f"📷 EINZELBILD - ENTSCHEIDUNG BENÖTIGT\n"
+                    f"EINZELBILD - ENTSCHEIDUNG BENOETIGT\n"
                     f"Datei: {grp.sample_path.name}\n"
                     f"Status: Noch nicht entschieden{needs_review_hint}\n"
-                    f"Confidence: {grp.confidence_score}% ({grp.confidence_level})\n"
+                    f"Pruefstatus: {grp.confidence_level}\n"
                     f"{grp.diagnostics_text}"
                 )
             else:
                 item.setToolTip(
                     f"Open: {grp.open_count} | Decided: {grp.decided_count} | Delete: {grp.delete_count}\n"
-                    f"{('⚠️ AKTION ERFORDERLICH' if grp.open_count > 0 else '✅ Vollständig entschieden')}{needs_review_hint}\n"
-                    f"Confidence: {grp.confidence_score}% ({grp.confidence_level})\n"
+                    f"{('AKTION ERFORDERLICH' if grp.open_count > 0 else 'Vollstaendig entschieden')}{needs_review_hint}\n"
+                    f"Pruefstatus: {grp.confidence_level}\n"
                     f"{grp.diagnostics_text}"
                 )
             
@@ -5394,7 +5477,9 @@ class ModernMainWindow(QMainWindow):
                 if self.group_lookup.get(str(self.group_list.item(i).data(Qt.UserRole)))
                 and self.group_lookup[str(self.group_list.item(i).data(Qt.UserRole))].needs_review_count > 0
             )
-            self.needs_review_counter_label.setText(f"Needs Review: {visible_needs_review} / {total_needs_review}")
+            self.needs_review_counter_label.setText(
+                t("needs_review_counter").format(visible=visible_needs_review, total=total_needs_review)
+            )
         
         # FIX (Feb 23, 2026): Clear old thumbnail requests to prevent race condition
         # Without this, callbacks for old indices would cause "invalid index" warnings
@@ -5474,16 +5559,23 @@ class ModernMainWindow(QMainWindow):
         progress = self._post_indexing_progress_dialog
         if progress and progress.isVisible():
             progress.setMinimum(0)
-            progress.setMaximum(total)
+            progress.setMaximum(100)
+            mapped = 95 if total <= 0 else min(100, 95 + int(round((done / total) * 5)))
+            elapsed = max(0.0, time.monotonic() - self._pipeline_start_ts)
+            eta = self._format_eta(elapsed, done, total)
+            label = f"Schritt 3/3: Vorschau wird aufgebaut ({done}/{total})"
+            if eta:
+                label += f"\n{eta}"
             self._update_progress_dialog(
                 progress,
-                value=min(done, total),
-                label=f"Bilder werden geladen... {done}/{total}",
+                value=mapped,
+                label=label,
                 force=True,
             )
             if done >= total:
                 progress.close()
                 self._post_indexing_progress_dialog = None
+                self._indexing_progress_dialog = None
                 self._thumb_loading_active = False
                 if self._pending_rating_summary:
                     summary = self._pending_rating_summary
@@ -5499,10 +5591,10 @@ class ModernMainWindow(QMainWindow):
             num_selected = len(items)
             if num_selected >= 2:
                 self.merge_groups_btn.setEnabled(True)
-                self.merge_groups_btn.setText(f"🔗 {t('merge_groups')} ({num_selected})")
+                self.merge_groups_btn.setText(f"{t('merge_groups')} ({num_selected})")
             else:
                 self.merge_groups_btn.setEnabled(False)
-                self.merge_groups_btn.setText("🔗 " + t("merge_groups"))
+                self.merge_groups_btn.setText(t("merge_groups"))
         
         if not items:
             return
@@ -5674,7 +5766,7 @@ class ModernMainWindow(QMainWindow):
         if grp and grp.group_id:
             self.grid_title.setText(
                 f"<h3>{t('group_title').format(id=grp.group_id, count=len(self.files_in_group))}</h3>"
-                f"<small>Confidence: {grp.confidence_score}% ({grp.confidence_level}) | {grp.diagnostics_text}</small>"
+                f"<small>Pruefstatus: {grp.confidence_level} | {grp.diagnostics_text}</small>"
             )
         else:
             # Fallback: Group nicht in lookup - Log und zeige generischen Title
@@ -6033,7 +6125,7 @@ class ModernMainWindow(QMainWindow):
     def _split_selected_from_group(self):
         """Split selected files from current group into a new group with undo persistence."""
         if not self.current_group or str(self.current_group).startswith("SINGLE_"):
-            QMessageBox.warning(self, t("split_failed"), "Einzelbilder koennen nicht weiter abgespalten werden.")
+            QMessageBox.warning(self, t("split_failed"), t("split_single_not_allowed"))
             return
 
         selected_indices, _ = self._get_group_selection_state(self.current_group)
@@ -6041,13 +6133,13 @@ class ModernMainWindow(QMainWindow):
             QMessageBox.warning(self, t("split_failed"), t("no_images_selected_error"))
             return
         if len(selected_indices) >= len(self.files_in_group):
-            QMessageBox.warning(self, t("split_failed"), "Bitte nicht alle Bilder aus der Gruppe abspalten.")
+            QMessageBox.warning(self, t("split_failed"), t("split_not_all"))
             return
 
         reply = QMessageBox.question(
             self,
             t("split_group"),
-            f"{len(selected_indices)} Bild(er) in eine neue Gruppe verschieben?",
+            t("split_confirm").format(count=len(selected_indices)),
             QMessageBox.Yes | QMessageBox.No,
         )
         if reply != QMessageBox.Yes:
@@ -6109,7 +6201,7 @@ class ModernMainWindow(QMainWindow):
             except Exception:
                 pass
             logger.error(f"Error splitting group {self.current_group}: {e}", exc_info=True)
-            QMessageBox.critical(self, t("split_failed"), f"Fehler beim Abspalten: {e}")
+            QMessageBox.critical(self, t("split_failed"), t("split_error").format(error=e))
     
     def _set_recommended(self, path: Path):
         """Set image as recommended."""
@@ -6306,6 +6398,13 @@ class ModernMainWindow(QMainWindow):
             )
             progress.setWindowTitle(t("analysis_running"))
             progress.setMinimumDuration(0)
+            progress.setMinimumWidth(460)
+            progress.setMinimumHeight(140)
+            progress.setStyleSheet(
+                "QLabel { padding: 6px 8px; }"
+                "QProgressBar { min-height: 18px; text-align: center; }"
+            )
+            self._center_progress_dialog_text(progress)
             progress.setValue(5)
             QApplication.processEvents()
             
@@ -6477,6 +6576,20 @@ class ModernMainWindow(QMainWindow):
 
             progress.close()
 
+            delete_summary = ""
+            if not cancelled:
+                delete_paths = self.files.list_by_status([FileStatus.DELETE])
+                if delete_paths:
+                    delete_result = self.actions.ui_batch_delete(delete_paths)
+                    if delete_result.get("ok"):
+                        deleted_ids = delete_result.get("deleted_ids", [])
+                        skipped_locked = delete_result.get("skipped_locked", [])
+                        delete_summary = f"\nLoeschen angewendet: {len(deleted_ids)} Datei(en)."
+                        if skipped_locked:
+                            delete_summary += f" Uebersprungen (gesperrt): {len(skipped_locked)}."
+                    else:
+                        delete_summary = f"\nLoeschen fehlgeschlagen: {delete_result.get('message', 'Unbekannter Fehler')}"
+
             result_message = self._export_delete_workflow.build_export_result_message(
                 success_count,
                 failure_count,
@@ -6484,13 +6597,21 @@ class ModernMainWindow(QMainWindow):
                 archive_path,
                 cancelled,
             )
+            if delete_summary:
+                result_message = type(result_message)(
+                    level=result_message.level,
+                    title=result_message.title,
+                    message=result_message.message + delete_summary,
+                )
             if result_message.level == "warning":
                 QMessageBox.warning(self, result_message.title, result_message.message)
             else:
                 QMessageBox.information(self, result_message.title, result_message.message)
+            self.refresh_groups()
+            self._update_progress()
         except (OSError, IOError, ValueError) as e:
             logger.error(f"Export failed: {e}", exc_info=True)
-            QMessageBox.critical(self, "Export Fehlgeschlagen", f"Fehler: {e}")
+            QMessageBox.critical(self, t("export_failed_title"), t("export_failed_message").format(error=e))
 
     def _confirm_delete_marked(self):
         """Bestätige und lösche alle als DELETE markierten Dateien (DB-Markierung)."""
@@ -6659,7 +6780,7 @@ class ModernMainWindow(QMainWindow):
     def _session_undo(self) -> None:
         """Undo last action (Ctrl+Z)."""
         if not self.session_manager.can_undo():
-            QMessageBox.information(self, "Undo", "Nothing to undo")
+            QMessageBox.information(self, t("undo_title"), t("nothing_to_undo"))
             return
         
         previous_session = self.session_manager.undo()
@@ -6670,7 +6791,7 @@ class ModernMainWindow(QMainWindow):
     def _session_redo(self) -> None:
         """Redo last undone action (Ctrl+Y)."""
         if not self.session_manager.can_redo():
-            QMessageBox.information(self, "Redo", "Nothing to redo")
+            QMessageBox.information(self, t("redo_title"), t("nothing_to_redo"))
             return
         
         next_session = self.session_manager.redo()
@@ -6750,7 +6871,7 @@ def run_modern_ui(
         
         # Show error dialog
         error_msg = f"PhotoCleaner konnte nicht starten:\n\n{str(e)}"
-        QMessageBox.critical(None, "Startup Error", error_msg)
+        QMessageBox.critical(None, t("startup_error_title"), error_msg)
         
         if splash:
             try:
