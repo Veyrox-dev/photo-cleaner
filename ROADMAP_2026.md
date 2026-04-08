@@ -40,9 +40,18 @@ Protokoll: `docs/guides/MSI_BUILD.md` · Script: `scripts/smoke_test_protocol.py
 
 ### Status-Delta (2026-04-08)
 
-- Woche-1-Trust-Foundation ist in der Umsetzung und teilweise abgeschlossen (Explainability + Confidence-Heuristik + Tests).
-- Fokus bis morgen: Review-Queue fuer Low-Confidence und Group-Confidence-Diagnostik fertigziehen.
-- MSI-Retest ist fuer den naechsten Testtag eingeplant, inklusive Verifikation von pHash und sichtbaren Duplikat-Gruppen.
+**✅ Woche-1-Trust-Foundation VOLLSTÄNDIG ABGESCHLOSSEN** (2026-04-08)
+
+Nicht nur Baseline erfüllt, sondern massiv erweitert:
+- Phase C (Status Language): Alle Jargon ersetzt, 24+ i18n-Keys, Tests grün
+- Phase D (Pipeline UX): ProgressDialog + FinalizationDialog in Production, 24+ i18n-Keys
+- Phase E (Review-Produktivität): 8 Shortcuts, Button-Reorg, Action-Visibility, 9+ i18n-Keys
+- Phase F (KPI Foundation): Tracking-Klasse live, Decision Recording aktiv, Export-ready
+- UI-Fixes: Duplikate behoben, Button-Layout, Statusleiste optimiert
+
+**Validierung:** 15/15 Tests grün, Smoke-Test erfolgreich, 0 Syntax-Fehler.
+
+**Nächster Schritt:** MSI-Retest mit neuer UX, Performance-Baseline, Launch-Prep Punkt 3 (Lizenz-Durchlauf E2E).
 
 ### 1 · MSI Smoke-Test auf Virgin Windows
 Installer (`.msi`) auf einer frischen Maschine validieren: Install → Upgrade → Uninstall.

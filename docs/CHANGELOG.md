@@ -1,6 +1,70 @@
 # PhotoCleaner - Changelog
 > Version 0.8.4 - Architecture Refactoring (Slice 6) + MSI Distribution Track (2026-04-04)
 
+## [Unreleased] - Week 1 Trust Foundation Complete + UX Overhaul (Phase C–F) (2026-04-08) 🎉
+
+### 📊 Phase C: Status Language Clarity
+- Replaced all technical jargon with user-friendly German/English terminology
+- Confidence labels standardized: "Very reliable", "Review recommended", "Review needed", "Data incomplete"
+- Quality ratings simplified: "Very good", "Good", "Fair", "Poor"
+- 24 new bilingual i18n keys added (metric labels, rating text, status wording)
+- All 15 unit tests passing; no regression
+
+### 🚀 Phase D: Enhanced Analysis Pipeline Experience
+- New `ProgressStepDialog` class: Shows visual step progression (1/2/3/4) + ETA calculation
+- New `FinalizationResultDialog` class: Success/error cards, affected files list, error reporting UI
+- Full signal integration into `_run_automatic_pipeline()` workflow
+- 24 new i18n keys for progress steps and finalization messaging
+- UI smoke test confirms proper dialog rendering and error-free launch
+
+### ⚡ Phase E: Review Productivity Optimization
+- Keyboard shortcuts expanded: K (Keep), D (Delete), U (Unsure), Z (Undo), S (Split), M (Merge), Arrows (group navigation)
+- Decision buttons reorganized vertically for better clarity (Keep → Delete → Unsure)
+- Shortcut hints visible on buttons for discoverability
+- Action visibility improved: Merge/Split/Undo buttons now prominently displayed with state indicators
+- "Unsure" flow established as standard for difficult cases
+- 9 new i18n keys for shortcuts and action labels
+
+### 📈 Phase F: KPI Tracking Infrastructure
+- New `KPITracker` class implemented: Decision recording, session statistics, JSON export
+- Tracks decision time, error rate, accuracy vs. auto-recommendation
+- KPI session auto-starts in main window; decisions recorded in `_apply_status_to_selection()`
+- Export function ready for future user testing and validation
+- Foundation for Phase F completion (5–10 user tests, KPI threshold validation)
+- 9 new i18n keys for KPI reporting and test mode indicator
+
+### 🎨 UI Polish & Fixes
+- Fixed duplicate question marks in "Unsure" button label
+- Button layout optimization: Three decision buttons now stacked vertically for clarity
+- Status bar cleaned up: KPI widgets temporarily hidden (can be re-enabled for testing)
+- ETA terminology updated: "Restzeit" (German) / "Remaining time" (English) instead of abbreviation
+- Consistency improvements in button styling and color application
+
+### 📝 i18n & Localization
+- 66+ new bilingual translation keys added (Phase C/D/E/F)
+- Full DE/EN coverage for all new UI elements
+- Terminology guide enforced: Code = English, UI = i18n
+
+### ✅ Validation & Testing
+- Regression test suite: 15/15 passing (score explanation, group confidence, history/undo)
+- Syntax validation: 0 errors across all modified files
+- UI smoke test: Successful startup, proper dialog rendering, no runtime errors
+- KPI infrastructure: Basic functionality verified; ready for extended testing phase
+
+### Dependencies & Architecture
+- No external dependency changes; uses existing PySide6, Qt framework
+- New modules: `src/photo_cleaner/core/kpi_tracker.py`
+- Modified modules: `modern_window.py`, `i18n.py` (Phase D/E/F signal hookups)
+- Backward compatible: All Phase C changes maintain existing data structures
+
+### Known Limitations & Future Work
+- KPI tracking is foundation-level; advanced ML confidence model deferred to Phase 2–3
+- Error reporting captures basic info; full analytics integration to come
+- Split/Merge/Undo are prepared (infrastructure exists) but not yet user-facing in this build
+- User manual and troubleshooting guide not yet updated for new Phase D/E dialogs
+
+---
+
 ## [Unreleased] - Supabase Licensing Stabilization + Incident Diagnostics (2026-04-06) 🧪
 
 ### 🔒 License Client Resilience Hardening

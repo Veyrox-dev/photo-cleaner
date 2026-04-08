@@ -112,6 +112,7 @@ from photo_cleaner.ui.thumbnail_lazy import ThumbnailLoader, SmartThumbnailCache
 # Lazy load heavy analysis modules
 _QualityAnalyzer = None
 _GroupScorer = None
+from photo_cleaner.core.kpi_tracker import get_kpi_tracker  # Phase F: KPI tracking
 
 def _get_quality_analyzer():
     """Lazy load QualityAnalyzer to avoid numpy initialization."""
@@ -3050,6 +3051,11 @@ class ModernMainWindow(QMainWindow):
         self._auto_save_timer = None
         self._auto_save_interval = 5000  # 5 seconds
         
+        # Phase F: KPI tracking for user tests
+        self._kpi_test_mode = True
+        self._kpi_tracker = get_kpi_tracker(test_mode=self._kpi_test_mode)
+        self._kpi_tracker.start_session()
+        
         # Feature: License badge & duplicate count (for statusbar)
         self.license_badge_label = None
         self.duplicate_count_label = None
@@ -3602,13 +3608,20 @@ class ModernMainWindow(QMainWindow):
         QApplication.processEvents()
         
         start_time = time.time()
+        self._pipeline_start_ts = time.monotonic()
+        cancelled = False
+        
+        def on_cancel():
+            nonlocal cancelled
+            cancelled = True
+        
+        progress.cancelled.connect(on_cancel)
         
         try:
             from photo_cleaner.io.file_scanner import FileScanner
             from photo_cleaner.license import get_license_manager
 
-            progress.setLabelText("Lizenz wird geprueft...")
-            progress.setValue(5)
+            progress.set_progress(5, t("progress_step_1_scanning"))
             QApplication.processEvents()
 
             total_files = FileScanner(self.input_folder).count_files()
@@ -3623,11 +3636,11 @@ class ModernMainWindow(QMainWindow):
                 )
                 return
 
-            progress.setLabelText(f"Bilder werden gescannt...\nOrdner: {self.input_folder.name}")
-            progress.setValue(10)
+            progress.set_step(1)
+            progress.set_progress(10, t("progress_step_1_scanning"))
             QApplication.processEvents()
             
-            if progress.wasCanceled():
+            if cancelled:
                 return
             
             # BUG #3 FIX: Create separate DB instance for indexer (thread-safe)
@@ -3635,55 +3648,41 @@ class ModernMainWindow(QMainWindow):
             indexer_db = Database(self.db_path)
             indexer_db.connect()  # Initialize connection
             indexer = PhotoIndexer(indexer_db, max_workers=None)
-            progress.setLabelText("Bilder werden analysiert...\nBitte warten, dies kann einige Minuten dauern.")
-            progress.setValue(20)
+            
+            progress.set_progress(20, t("progress_step_1_scanning"))
             QApplication.processEvents()
             
             index_start = time.time()
             index_stats = indexer.index_folder(self.input_folder, skip_existing=False)
             index_duration = time.time() - index_start
             
-            progress.setValue(60)
+            progress.set_progress(60, t("progress_step_1_scanning"))
             QApplication.processEvents()
             
-            if progress.wasCanceled():
+            if cancelled:
                 return
             
-            progress.setLabelText(t("searching_duplicates"))
-            progress.setValue(65)
+            progress.set_step(2)
+            progress.set_progress(65, t("progress_step_2_grouping"))
             QApplication.processEvents()
             finder = DuplicateFinder(self.db, phash_threshold=10)
             duplicate_groups = finder.build_groups()
             
-            progress.setValue(80)
+            progress.set_progress(75, t("progress_step_3_rating"))
             QApplication.processEvents()
             
-            if progress.wasCanceled():
+            if cancelled:
                 return
             
-            # Geschätzte Restzeit für Bewertung
-            processed = index_stats.get("processed", 0)
-            if processed > 0:
-                avg_time_per_image = index_duration / processed
-                estimated_rating_time = int(avg_time_per_image * processed * 0.3)  # Rating ist schneller
-                if estimated_rating_time > 5:
-                    progress.setLabelText(f"Bilder werden bewertet...\nVerbleibende Zeit: ca. {estimated_rating_time} Sekunden")
-                else:
-                    progress.setLabelText("Bilder werden bewertet...")
-            else:
-                progress.setLabelText("Bilder werden bewertet...")
-            
-            progress.setValue(85)
-            
             # BUG #1 FIX: Run rating in background thread to prevent UI freeze
+            progress.set_step(3)
             rating_thread = RatingWorkerThread(self.db_path, self.top_n, self.mtcnn_status)
             rating_completed = False
             rating_info = {"rated": False, "warn": False}
             
             def on_rating_progress(pct: int, status: str):
-                if not progress.wasCanceled():
-                    progress.setValue(pct)
-                    progress.setLabelText(status)
+                if not cancelled:
+                    progress.set_progress(pct, status)
             
             def on_rating_finished(info: dict):
                 nonlocal rating_completed, rating_info
@@ -3700,56 +3699,45 @@ class ModernMainWindow(QMainWindow):
             rating_thread.finished.connect(on_rating_finished)
             rating_thread.error.connect(on_rating_error)
             
-            # Cancel check connection
-            def check_cancel():
-                if progress.wasCanceled():
-                    rating_thread.cancel()
-            
             rating_thread.start()
             
             # Wait for thread completion with event processing
             from PySide6.QtCore import QTimer
             cancel_timer = QTimer()
-            cancel_timer.timeout.connect(check_cancel)
+            cancel_timer.timeout.connect(lambda: rating_thread.cancel() if cancelled else None)
             cancel_timer.start(100)  # Check every 100ms
             
             rating_thread.wait()  # Block until thread completes
             cancel_timer.stop()
             
-            if progress.wasCanceled():
+            if cancelled:
                 return
             
-            progress.setLabelText("Analyse wird abgeschlossen...")
-            progress.setValue(95)
+            progress.set_step(4)
+            progress.set_progress(95, t("progress_step_4_finalization"))
+            QApplication.processEvents()
             
             self.refresh_groups()
             
-            progress.setValue(100)
+            progress.set_progress(100, t("progress_step_4_finalization"))
             QApplication.processEvents()
             
-            total_duration = int(time.time() - start_time)
+            # Store analysis results for finalization dialog
+            self._analysis_duration = time.time() - start_time
+            processed = index_stats.get("processed", 0)
             skipped = index_stats.get("skipped", 0)
             failed = index_stats.get("failed", 0)
-            num_groups = len(duplicate_groups)
+            self._indexing_results = {
+                "total_files": processed + skipped,
+                "new_files": processed,
+                "hashed_files": processed,
+                "cached_files": skipped,
+            }
+            self._post_indexing_group_count = len(duplicate_groups)
             
-            result_msg = f"✓ Analyse abgeschlossen!\n\n"
-            result_msg += f"Verarbeitete Bilder: {processed}\n"
-            if skipped > 0:
-                result_msg += f"Bereits bekannte Bilder: {skipped}\n"
-            if failed > 0:
-                result_msg += f"Nicht verarbeitbar: {failed}\n"
-            result_msg += f"\nGefundene Gruppen ähnlicher Bilder: {num_groups}"
-            result_msg += f"\nGesamtdauer: {total_duration} Sekunden"
-            if rating_info.get("rated"):
-                result_msg += "\n\n✓ Bewertung abgeschlossen: Bilder wurden automatisch eingeschätzt."
-            if rating_info.get("warn"):
-                result_msg += "\n⚠ Hinweis: Einige Bilder konnten nicht bewertet werden."
-            
-            QMessageBox.information(
-                self,
-                "Analyse erfolgreich",
-                result_msg
-            )
+            # Close progress and show finalization dialog
+            progress.close()
+            self._show_analysis_summary(rating_info)
             
         except (OSError, IOError, ValueError, PermissionError, sqlite3.DatabaseError, sqlite3.OperationalError) as e:
             logger.error(f"Analysis pipeline failed: {e}", exc_info=True)
@@ -5444,6 +5432,7 @@ class ModernMainWindow(QMainWindow):
         self.merge_groups_btn = QPushButton(t("merge_groups"))
         self.merge_groups_btn.setEnabled(False)  # Enabled only when 2+ groups selected
         self.merge_groups_btn.clicked.connect(self._merge_selected_groups)
+        self.merge_groups_btn.setText(f"{t('merge_groups')} (M)")
         self.merge_groups_btn.setStyleSheet(
             _build_button_style(
                 get_semantic_colors()["info"],
@@ -5579,44 +5568,73 @@ class ModernMainWindow(QMainWindow):
         
         layout.addSpacing(10)
         
-        # Aktions-Buttons
-        actions_label = QLabel(t("actions_on_selection"))
+        # PHASE E: Enhanced visibility of Merge/Split/Compare + action buttons
+        action_header = QLabel(t("phase_e_action_visibility"))
+        action_header.setStyleSheet(f"font-weight: bold; color: {get_theme_colors()['text']}; font-size: 11px;")
+        layout.addWidget(action_header)
+        
+        # Row 1: Compare & Merge (collaborative actions)
+        row1_layout = QHBoxLayout()
+        row1_layout.setSpacing(8)
+        
+        self.compare_btn = QPushButton(t("compare_two"))
+        self.compare_btn.setEnabled(False)
+        self.compare_btn.setStyleSheet(
+            _build_button_style(get_semantic_colors()["warning"], padding="10px 12px", font_size=11)
+        )
+        self.compare_btn.clicked.connect(self._open_comparison)
+        row1_layout.addWidget(self.compare_btn)
+        
+        self.split_group_btn = QPushButton(f"{t('split_group')} (S)")
+        self.split_group_btn.setEnabled(False)
+        self.split_group_btn.setStyleSheet(
+            _build_button_style(get_semantic_colors()["info"], padding="10px 12px", font_size=11)
+        )
+        self.split_group_btn.clicked.connect(self._split_selected_from_group)
+        row1_layout.addWidget(self.split_group_btn)
+        
+        layout.addLayout(row1_layout)
+        
+        # Undo button (always visible but grayed out if no history)
+        self.undo_btn = QPushButton(t("undo_button"))
+        self.undo_btn.setStyleSheet(
+            _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'], font_size=11)
+        )
+        self.undo_btn.clicked.connect(self._undo)
+        layout.addWidget(self.undo_btn)
+        
+        layout.addSpacing(8)
+        
+        # Decision buttons (requested: vertical stack)
+        actions_label = QLabel(t("phase_e_decisions_quick"))
+        actions_label.setStyleSheet(f"font-weight: bold; color: {get_theme_colors()['text']}; font-size: 11px;")
         layout.addWidget(actions_label)
         
         status_colors = get_status_colors()
         
-        self.keep_btn = QPushButton(t("keep"))
-        self.keep_btn.setStyleSheet(_build_button_style(status_colors['KEEP'], padding="12px 14px", font_size=14))
+        self.keep_btn = QPushButton(f"✓ {t('keep')} (K)")
+        self.keep_btn.setStyleSheet(_build_button_style(status_colors['KEEP'], padding="12px 12px", font_size=12))
         self.keep_btn.clicked.connect(lambda: self._apply_status_to_selection(FileStatus.KEEP))
         layout.addWidget(self.keep_btn)
         
-        self.del_btn = QPushButton(t("delete"))
-        self.del_btn.setStyleSheet(_build_button_style(status_colors['DELETE'], padding="12px 14px", font_size=14))
+        self.del_btn = QPushButton(f"✕ {t('delete')} (D)")
+        self.del_btn.setStyleSheet(_build_button_style(status_colors['DELETE'], padding="12px 12px", font_size=12))
         self.del_btn.clicked.connect(lambda: self._apply_status_to_selection(FileStatus.DELETE))
         layout.addWidget(self.del_btn)
         
-        self.unsure_btn = QPushButton(t("unsure"))
-        self.unsure_btn.setStyleSheet(_build_button_style(status_colors['UNSURE'], padding="12px 14px", font_size=14))
+        self.unsure_btn = QPushButton(t('unsure'))
+        self.unsure_btn.setStyleSheet(_build_button_style(status_colors['UNSURE'], padding="12px 12px", font_size=12))
         self.unsure_btn.clicked.connect(lambda: self._apply_status_to_selection(FileStatus.UNSURE))
         layout.addWidget(self.unsure_btn)
         
-        layout.addSpacing(20)
+        layout.addSpacing(12)
         
         self.lock_btn = QPushButton(t("lock_unlock_button"))
         self.lock_btn.setStyleSheet(
-            _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'])
+            _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'], font_size=11)
         )
         self.lock_btn.clicked.connect(self._toggle_lock_selection)
-        self.lock_btn.hide()
         layout.addWidget(self.lock_btn)
-        
-        self.undo_btn = QPushButton(t("undo_button"))
-        self.undo_btn.setStyleSheet(
-            _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'])
-        )
-        self.undo_btn.clicked.connect(self._undo)
-        self.undo_btn.hide()
-        layout.addWidget(self.undo_btn)
         
         layout.addStretch()
         return panel
@@ -5654,6 +5672,10 @@ class ModernMainWindow(QMainWindow):
         self.status_label.setStyleSheet("padding: 2px 6px; font-size: 11px;")
         self.status_label.setMaximumWidth(260)
         layout.addWidget(self.status_label)
+        
+        # KPI controls intentionally hidden from status bar for now (can be re-enabled later)
+        self.kpi_label = None
+        self.kpi_export_btn = None
         
         # Finalize button (kompakt)
         self.finalize_btn = QPushButton(t("finalize_export"))
@@ -6152,10 +6174,10 @@ class ModernMainWindow(QMainWindow):
             num_selected = len(items)
             if num_selected >= 2:
                 self.merge_groups_btn.setEnabled(True)
-                self.merge_groups_btn.setText(f"{t('merge_groups')} ({num_selected})")
+                self.merge_groups_btn.setText(f"{t('merge_groups')} (M, {num_selected})")
             else:
                 self.merge_groups_btn.setEnabled(False)
-                self.merge_groups_btn.setText(t("merge_groups"))
+                self.merge_groups_btn.setText(f"{t('merge_groups')} (M)")
         
         if not items:
             return
@@ -6622,6 +6644,14 @@ class ModernMainWindow(QMainWindow):
         if res.get("ok"):
             success_count = res.get("updated", len(paths_to_update))
             
+            # Phase F: KPI tracking for decisions
+            for file_path in paths_to_update:
+                self._kpi_tracker.record_decision(
+                    file_path=str(file_path),
+                    decision=status.value,
+                    auto_recommendation=None,
+                )
+            
             # Setze empfohlenes Bild (nur bei KEEP)
             if status == FileStatus.KEEP and paths_to_update:
                 self._set_recommended(paths_to_update[0])
@@ -6661,6 +6691,20 @@ class ModernMainWindow(QMainWindow):
         res = self.actions.ui_undo()
         self._show_status_message(res.get("message", "Rückgängig erfolgreich"))
         self._reload_after_action()
+    
+    def _shortcut_split_group(self):
+        """Keyboard shortcut wrapper for split (S)."""
+        if self.split_group_btn.isEnabled():
+            self._split_selected_from_group()
+        else:
+            self._show_status_message(t("split_not_all"), error=True)
+    
+    def _shortcut_merge_selected_groups(self):
+        """Keyboard shortcut wrapper for merge (M)."""
+        if hasattr(self, 'merge_groups_btn') and self.merge_groups_btn.isEnabled():
+            self._merge_selected_groups()
+        else:
+            self._show_status_message(t("merge_failed"), error=True)
     
     def _reload_after_action(self):
         """Reload current group after action, preserving selection."""
@@ -6842,7 +6886,44 @@ class ModernMainWindow(QMainWindow):
             logger.warning("Status message suppressed: %s", message)
         else:
             logger.info("Status message suppressed: %s", message)
+        self._refresh_kpi_label()
         self._update_progress()
+    
+    def _refresh_kpi_label(self):
+        """Phase F: Refresh compact KPI status label."""
+        if not hasattr(self, "kpi_label") or self.kpi_label is None:
+            return
+        
+        stats = self._kpi_tracker.get_current_statistics()
+        if not stats:
+            self.kpi_label.setText("KPI: 0")
+            return
+        
+        total = stats.get("total_decisions", 0)
+        avg_ms = stats.get("average_decision_time_ms", 0)
+        avg_s = avg_ms / 1000 if avg_ms else 0
+        self.kpi_label.setText(f"KPI: {total} | {avg_s:.1f}s")
+    
+    def _export_kpi_report(self):
+        """Phase F: Export KPI user test report to JSON file."""
+        try:
+            stats = self._kpi_tracker.end_session()
+            if stats is None:
+                self._show_status_message(t("phase_f_export_failed").format(error="No active KPI session"), error=True)
+                return
+            
+            report_dir = AppConfig.get_user_data_dir() / "kpi_reports"
+            report_path = report_dir / f"kpi_report_{int(time.time())}.json"
+            exported = self._kpi_tracker.export_to_json(report_path)
+            
+            # Start fresh session after export
+            self._kpi_tracker.start_session()
+            self._refresh_kpi_label()
+            
+            self._show_status_message(t("phase_f_export_success").format(path=exported))
+        except (OSError, IOError, ValueError, RuntimeError) as e:
+            logger.error("KPI export failed: %s", e, exc_info=True)
+            self._show_status_message(t("phase_f_export_failed").format(error=e), error=True)
     
     def _apply_group_filter(self):
         """Apply search filter to groups."""
@@ -7222,6 +7303,15 @@ class ModernMainWindow(QMainWindow):
         # Session management shortcuts
         QShortcut(QKeySequence("Ctrl+Z"), self, activated=self._session_undo)
         QShortcut(QKeySequence("Ctrl+Y"), self, activated=self._session_redo)
+        
+        # PHASE E: Action shortcuts for Undo, Split, Merge
+        QShortcut(QKeySequence("Z"), self, activated=self._undo)
+        QShortcut(QKeySequence("S"), self, activated=self._shortcut_split_group)
+        QShortcut(QKeySequence("M"), self, activated=self._shortcut_merge_selected_groups)
+        
+        # PHASE E: Navigation shortcuts
+        QShortcut(QKeySequence("Right"), self, activated=self._group_next)
+        QShortcut(QKeySequence("Left"), self, activated=self._group_prev)
     
     def _group_next(self):
         """Select next group."""

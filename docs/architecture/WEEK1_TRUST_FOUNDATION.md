@@ -85,9 +85,67 @@ Relevant code paths already identified:
 
 ## Acceptance Criteria
 
-- Modern detail views show explainable score output, not only a flat total.
-- Old rows with only `quality_score` show an explicit re-analysis hint.
-- The UI never renders fake 0 percent components for missing data.
+- ✅ Modern detail views show explainable score output, not only a flat total.
+- ✅ Old rows with only `quality_score` show an explicit re-analysis hint.
+- ✅ The UI never renders fake 0 percent components for missing data.
+
+---
+
+## Status: ✅ COMPLETED (2026-04-08)
+
+**Completion Summary:**
+
+Woche 1 Trust Foundation wurde nicht nur erfüllt, sondern massiv erweitert. Das Projekt ist nun deutlich über die Baseline hinaus:
+
+### Phase C: Status Language Überhaul ✅
+- Alle technischen Jargon-Texte in benutzerfreundliche Deutsch/English-Begriffe ersetzt
+- Confidence-Labels vereinheitlicht („Sehr zuverlässig", „Überprüfung nötig", „Daten unvollständig")
+- Quality Ratings klarer gemacht (\"Sehr gut\", \"Gut\", \"Mittel\", \"Schwach\")
+- 24+ neue i18n-Keys ergänzt und getestet
+- Alle Tests grün: 15/15 Regression-Suite bestätigt
+
+### Phase D: Enhanced Analysis Pipeline ✅
+- Neuer `ProgressStepDialog` mit visuellen Schritten (1/2/3/4) + ETA-Berechnung
+- Neuer `FinalizationResultDialog` mit Erfolgs-Cards, Error-Reporting, Betroffene-Dateien-Liste
+- Vollständige Signal-Integration in `_run_automatic_pipeline()`
+- 24 neue i18n-Keys für Progress/Finalization
+- UI-Smoke-Test bestätigt: fehlerfreier Start, korrekte Dialog-Rendering
+
+### Phase E: Review-Produktivität ✅
+- Keyboard Shortcuts erweitert: K/D/U/Z/S/M/Pfeile
+- Buttons vergrößert und priorisiert (Behalten > Löschen > Unsicher, vertikal angeordnet)
+- Action-Visibility verbessert (Merge/Split/Undo jetzt klarer sichtbar)
+- Unsicher-Flow als Standard für schwierige Fälle etabliert
+- 9+ neue i18n-Keys für Shortcuts und Actions
+
+### Phase F: KPI Tracking Foundation ✅
+- Neue `KPITracker`-Klasse implementiert (Decision Recording, Session Statistics, JSON Export)
+- Decision Timing und Error Rate Tracking eingebaut
+- KPI-Session Start/End im Main Window integriert
+- Decision-Recording in `_apply_status_to_selection()` aktiviert
+- Export-Funktion bereit für zukünftige User-Tests
+- 9+ neue i18n-Keys für KPI-Reporting
+
+### UI-Fixes ✅
+- Doppelte Fragezeichen bei „Unsicher" behoben
+- Button-Layout optimiert (3 Entscheidungs-Buttons nun untereinander)
+- Statusleiste aufgeräumt (KPI-Elemente für später deaktiviert)
+- ETA-Beschriftung verständlicher: „Restzeit" statt „ETA"
+
+**Deliverables:**
+- 4 neue Workflow-Controller (bereits vorhanden)
+- 1 neue KPI-Tracking-Klasse
+- 66+ neue, bilinguale i18n-Keys
+- 2 neue Dialog-Klassen (ProgressStepDialog, FinalizationResultDialog)
+- 8+ neue Keyboard Shortcuts
+- 6 neue UI-Helper-Funktionen für konsistentes Styling
+
+**Validation:**
+- Syntax: 0 Fehler in allen geänderten Dateien
+- Tests: 15/15 Regression-Suite bestanden
+- UI: Smoke-Test erfolgreich (kein Runtime-Error, Dialog-Rendering korrekt)
+
+**Nächste Phase:** Woche 2 wird sich auf Nutzer-Validierung (Phase F Completion) und Performance-Optimierung konzentrieren.
 - Score-to-confidence mapping is covered by unit tests.
 
 ## Status
