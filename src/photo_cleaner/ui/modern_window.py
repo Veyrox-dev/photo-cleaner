@@ -4899,6 +4899,30 @@ class ModernMainWindow(QMainWindow):
         self.compare_btn.clicked.connect(self._open_comparison)
         self.compare_btn.hide()
         layout.addWidget(self.compare_btn)
+
+        self.split_group_btn = QPushButton("✂ " + t("split_group"))
+        self.split_group_btn.setEnabled(False)
+        info_color = get_semantic_colors()["info"]
+        self.split_group_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {info_color};
+                color: white;
+                padding: 10px;
+                font-size: 12px;
+                font-weight: bold;
+                border-radius: 6px;
+            }}
+            QPushButton:disabled {{
+                background-color: {neutral_color};
+                color: {hint_color};
+            }}
+            QPushButton:hover:enabled {{
+                opacity: 0.85;
+            }}
+        """)
+        self.split_group_btn.clicked.connect(self._split_selected_from_group)
+        self.split_group_btn.hide()
+        layout.addWidget(self.split_group_btn)
         
         layout.addSpacing(10)
         
@@ -5860,6 +5884,18 @@ class ModernMainWindow(QMainWindow):
         else:
             self.compare_btn.hide()
 
+        can_split = (
+            self.current_group is not None
+            and not str(self.current_group).startswith("SINGLE_")
+            and len(selected_indices) >= 1
+            and len(selected_indices) < len(self.files_in_group)
+        )
+        self.split_group_btn.setEnabled(can_split)
+        if state.action_buttons_visible:
+            self.split_group_btn.show()
+        else:
+            self.split_group_btn.hide()
+
         if state.action_buttons_visible:
             self.keep_btn.show()
             self.del_btn.show()
@@ -5993,6 +6029,87 @@ class ModernMainWindow(QMainWindow):
             self._update_selection_ui()
         
         self._update_progress()
+
+    def _split_selected_from_group(self):
+        """Split selected files from current group into a new group with undo persistence."""
+        if not self.current_group or str(self.current_group).startswith("SINGLE_"):
+            QMessageBox.warning(self, t("split_failed"), "Einzelbilder koennen nicht weiter abgespalten werden.")
+            return
+
+        selected_indices, _ = self._get_group_selection_state(self.current_group)
+        if not selected_indices:
+            QMessageBox.warning(self, t("split_failed"), t("no_images_selected_error"))
+            return
+        if len(selected_indices) >= len(self.files_in_group):
+            QMessageBox.warning(self, t("split_failed"), "Bitte nicht alle Bilder aus der Gruppe abspalten.")
+            return
+
+        reply = QMessageBox.question(
+            self,
+            t("split_group"),
+            f"{len(selected_indices)} Bild(er) in eine neue Gruppe verschieben?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            selected_paths = []
+            for idx in sorted(selected_indices):
+                if 0 <= idx < len(self.files_in_group):
+                    selected_paths.append(str(self.files_in_group[idx].path))
+
+            if not selected_paths:
+                QMessageBox.warning(self, t("split_failed"), t("no_valid_images_to_update"))
+                return
+
+            placeholders = ",".join("?" for _ in selected_paths)
+            rows = self.conn.execute(
+                f"SELECT file_id FROM files WHERE path IN ({placeholders})",
+                selected_paths,
+            ).fetchall()
+            file_ids = [int(row[0]) for row in rows]
+            if len(file_ids) != len(selected_paths):
+                raise ValueError("Nicht alle gewaehlten Dateien konnten in der Datenbank gefunden werden.")
+
+            import time
+
+            split_group_id = f"SPLIT_{int(time.time())}"
+            split_action_id = f"GROUP_SPLIT_{int(time.time() * 1000)}"
+            old_group_id = str(self.current_group)
+
+            for file_id in file_ids:
+                self.history.record_group_reassignment(
+                    action_id=split_action_id,
+                    file_id=file_id,
+                    old_group_id=old_group_id,
+                    new_group_id=split_group_id,
+                    reason="source=split",
+                )
+
+            file_placeholders = ",".join("?" for _ in file_ids)
+            self.conn.execute(
+                f"UPDATE duplicates SET group_id = ? WHERE group_id = ? AND file_id IN ({file_placeholders})",
+                [split_group_id, old_group_id, *file_ids],
+            )
+            self.conn.commit()
+
+            self._show_status_message(t("split_success"))
+            self.refresh_groups()
+            for i in range(self.group_list.count()):
+                item = self.group_list.item(i)
+                if item.data(Qt.UserRole) == split_group_id:
+                    self.group_list.setCurrentItem(item)
+                    break
+            self._save_session(f"Split {len(file_ids)} image(s) from group {old_group_id}")
+
+        except (ValueError, sqlite3.DatabaseError, sqlite3.OperationalError) as e:
+            try:
+                self.conn.rollback()
+            except Exception:
+                pass
+            logger.error(f"Error splitting group {self.current_group}: {e}", exc_info=True)
+            QMessageBox.critical(self, t("split_failed"), f"Fehler beim Abspalten: {e}")
     
     def _set_recommended(self, path: Path):
         """Set image as recommended."""
@@ -6118,8 +6235,26 @@ class ModernMainWindow(QMainWindow):
             # Generate new merged group ID
             import time
             new_group_id = f"MERGED_{int(time.time())}"
+            merge_action_id = f"GROUP_MERGE_{int(time.time() * 1000)}"
             
             logger.info(f"Merging groups {group_ids} into {new_group_id}")
+
+            # Snapshot original group assignments for undo persistence.
+            reassignments: list[tuple[int, str | None]] = []
+
+            for old_group_id in group_ids:
+                rows = self.conn.execute(
+                    "SELECT file_id FROM duplicates WHERE group_id = ?",
+                    (old_group_id,),
+                ).fetchall()
+                reassignments.extend((int(row[0]), old_group_id) for row in rows)
+
+            for file_id in single_file_ids:
+                existing_group = self.conn.execute(
+                    "SELECT group_id FROM duplicates WHERE file_id = ? LIMIT 1",
+                    (file_id,),
+                ).fetchone()
+                reassignments.append((int(file_id), str(existing_group[0]) if existing_group else None))
             
             # Update database: Move all files to new group
             for old_group_id in group_ids:
@@ -6144,6 +6279,20 @@ class ModernMainWindow(QMainWindow):
                         "INSERT INTO duplicates (group_id, file_id, similarity_score, is_keeper) VALUES (?, ?, ?, 0)",
                         (new_group_id, file_id, 1.0),
                     )
+
+            # Persist reassignment history for DB-level undo.
+            seen_file_ids: set[int] = set()
+            for file_id, old_group in reassignments:
+                if file_id in seen_file_ids:
+                    continue
+                seen_file_ids.add(file_id)
+                self.history.record_group_reassignment(
+                    action_id=merge_action_id,
+                    file_id=file_id,
+                    old_group_id=old_group,
+                    new_group_id=new_group_id,
+                    reason="source=merge",
+                )
             
             self.conn.commit()
             

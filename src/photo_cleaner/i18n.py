@@ -489,6 +489,9 @@ Status: Offline-Nutzung aktiv
         "merge_groups": "Gruppen zusammenführen",
         "merge_success": "Gruppen erfolgreich zusammengeführt",
         "merge_failed": "Zusammenführen fehlgeschlagen",
+        "split_group": "Auswahl abspalten",
+        "split_success": "Auswahl erfolgreich abgespalten",
+        "split_failed": "Abspalten fehlgeschlagen",
         
         # Selection and comparison
         "selection_none_bold": "<b>Keine Auswahl</b>",
@@ -951,6 +954,9 @@ Status: Offline usage active
         "merge_groups": "Merge Groups",
         "merge_success": "Groups merged successfully",
         "merge_failed": "Merge failed",
+        "split_group": "Split Selection",
+        "split_success": "Selection split successfully",
+        "split_failed": "Split failed",
         
         # Selection and comparison
         "selection_none_bold": "<b>No selection</b>",
