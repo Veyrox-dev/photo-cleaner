@@ -206,6 +206,14 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "groups_count": "{count} Gruppen",
         "select_group": "Wählen Sie eine Gruppe aus",
         "group_title": "Gruppe {id} ({count} Bilder)",
+        "group_list_single": "Einzelbild",
+        "group_list_many": "Gruppe {id} • {count} Bilder",
+        "group_status_open": "Noch offen",
+        "group_status_partial": "Teilweise entschieden",
+        "group_status_done": "Fertig entschieden",
+        "group_counts_summary": "Offen: {open_count} | Entschieden: {decided_count} | Löschen: {delete_count}",
+        "group_action_needed": "Entscheidung nötig",
+        "group_action_done": "Alles entschieden",
         "preview_from_input": "Vorschau aus Input-Ordner",
         "no_images_imported": "Keine Bilder importiert",
         "images_loaded": "{count} Bilder geladen",
@@ -559,7 +567,16 @@ Status: Offline-Nutzung aktiv
         "select_input_folder_label": "<b>1. Foto-Ordner auswählen</b>",
         "select_output_folder_label": "<b>2. Zielordner für ausgewählte Fotos</b>",
         "select_topn_label": "<b>3. Top-N pro Gruppe</b>",
+        "import_dialog_title": "Fotos auswählen",
+        "import_dialog_subtitle": "Wähle die Bilder und den Zielordner. Danach startet die Analyse automatisch und zeigt jeden Schritt klar an.",
+        "import_input_card_hint": "Hier liegen die Fotos, die du prüfen möchtest.",
+        "import_output_card_hint": "Dorthin werden die ausgewählten Bilder später kopiert oder verschoben.",
+        "import_topn_card_hint": "So viele Bilder pro ähnlicher Gruppe werden automatisch vorgeschlagen.",
         "output_folder_required": "<span style='color: #F44336;'>*Erforderlich</span>",
+        "not_selected": "Noch nicht ausgewählt",
+        "validation_select_output": "Bitte wähle zuerst einen Zielordner aus.",
+        "validation_optional_input": "Du kannst mit vorhandenen Daten starten oder zusätzlich einen Foto-Ordner wählen.",
+        "validation_ready": "Alles bereit. Die Analyse kann starten.",
         "help_dialog_content": "PhotoCleaner - Intelligente Fotoverwaltung\n\nWorkflow:\n1. 📁 Import: Wähle einen Ordner mit Bildern\n2. ▶ Analyse: Findet doppelte Bilder automatisch\n3. ⚙ Einstellungen: Passe Qualitäts-Parameter an\n4. Entscheide für jedes Bild: Behalten oder Löschen\n\nTastaturkürzel:\n? = Diese Hilfe\nDelete = Markiere zum Löschen\nK = Behalte Bild\nSpace = Nächstes Bild",
         "closed_eyes_detection": "Geschlossene Augen erkennen",
         "redeye_detection": "Rote-Augen Effekt erkennen",
@@ -627,6 +644,25 @@ Status: Offline-Nutzung aktiv
         "splash_preparing_ui": "Bereite Benutzeroberfläche vor",
         "splash_starting": "Starte Anwendung",
         "splash_version": "Version",
+        
+        # Phase C: Confidence & Quality Labels (verständliche Begriffe)
+        "confidence_very_reliable": "Sehr zuverlässig",
+        "confidence_review_recommended": "Überprüfung empfohlen",
+        "confidence_review_needed": "Überprüfung nötig",
+        "confidence_data_incomplete": "Daten unvollständig",
+        "confidence_no_data": "Keine Daten",
+        
+        # Quality Ratings (Bewertungen statt Score)
+        "quality_rating_very_good": "Sehr gut",
+        "quality_rating_good": "Gut",
+        "quality_rating_fair": "Befriedigend",
+        "quality_rating_poor": "Schlecht",
+        
+        # Metric Labels (Unit tested & clear)
+        "metric_sharpness": "Schärfe",
+        "metric_lighting": "Belichtung",
+        "metric_resolution": "Auflösung",
+        "metric_face_quality": "Gesichtsqualität",
     },
     "en": {
         # Menu (no icons; icons are added in code)
@@ -695,6 +731,14 @@ Status: Offline-Nutzung aktiv
         "groups_count": "{count} Groups",
         "select_group": "Select a group",
         "group_title": "Group {id} ({count} images)",
+        "group_list_single": "Single image",
+        "group_list_many": "Group {id} • {count} images",
+        "group_status_open": "Needs decision",
+        "group_status_partial": "Partly decided",
+        "group_status_done": "Fully decided",
+        "group_counts_summary": "Open: {open_count} | Decided: {decided_count} | Delete: {delete_count}",
+        "group_action_needed": "Decision needed",
+        "group_action_done": "All decided",
         "preview_from_input": "Preview from input folder",
         "no_images_imported": "No images imported",
         "images_loaded": "{count} images loaded",
@@ -1050,7 +1094,16 @@ Status: Offline usage active
         "select_input_folder_label": "<b>1. Select photo folder</b>",
         "select_output_folder_label": "<b>2. Select target folder for photos</b>",
         "select_topn_label": "<b>3. Top-N per group</b>",
+        "import_dialog_title": "Choose photos",
+        "import_dialog_subtitle": "Select the photo folder and target folder. The analysis starts automatically and shows each step clearly.",
+        "import_input_card_hint": "This is where the photos you want to review are located.",
+        "import_output_card_hint": "Selected photos will later be copied or moved there.",
+        "import_topn_card_hint": "This many images per similar group will be suggested automatically.",
         "output_folder_required": "<span style='color: #F44336;'>*Required</span>",
+        "not_selected": "Not selected yet",
+        "validation_select_output": "Please choose a target folder first.",
+        "validation_optional_input": "You can start with existing data or choose an additional photo folder.",
+        "validation_ready": "Everything is ready. The analysis can start.",
         "help_dialog_content": "PhotoCleaner - Intelligent Photo Management\n\nWorkflow:\n1. 📁 Import: Choose a folder with photos\n2. ▶ Analysis: Find duplicate photos automatically\n3. ⚙ Settings: Adjust quality parameters\n4. Decide for each photo: Keep or Delete\n\nKeyboard Shortcuts:\n? = This help\nDelete = Mark for deletion\nK = Keep photo\nSpace = Next photo",
         "closed_eyes_detection": "Detect closed eyes",
         "redeye_detection": "Detect red-eye effect",
@@ -1117,6 +1170,25 @@ Status: Offline usage active
         "splash_preparing_ui": "Preparing user interface",
         "splash_starting": "Starting application",
         "splash_version": "Version",
+        
+        # Phase C: Confidence & Quality Labels (clear language)
+        "confidence_very_reliable": "Very reliable",
+        "confidence_review_recommended": "Review recommended",
+        "confidence_review_needed": "Review needed",
+        "confidence_data_incomplete": "Data incomplete",
+        "confidence_no_data": "No data",
+        
+        # Quality Ratings (Ratings instead of Score)
+        "quality_rating_very_good": "Very good",
+        "quality_rating_good": "Good",
+        "quality_rating_fair": "Fair",
+        "quality_rating_poor": "Poor",
+        
+        # Metric Labels (unit tested & clear)
+        "metric_sharpness": "Sharpness",
+        "metric_lighting": "Lighting",
+        "metric_resolution": "Resolution",
+        "metric_face_quality": "Face quality",
     }
 }
 

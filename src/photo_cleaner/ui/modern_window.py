@@ -466,6 +466,8 @@ class FolderSelectionDialog(QDialog):
         self.input_folder: Optional[Path] = None
         self.output_folder: Optional[Path] = None
         self.top_n: int = 3
+
+        self.setStyleSheet(f"QDialog {{ background-color: {get_theme_colors()['window']}; }}")
         
         self._build_ui()
     
@@ -476,19 +478,16 @@ class FolderSelectionDialog(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
         
         # Titel
-        title = QLabel("<h2>Bilder importieren</h2>")
+        title = QLabel(f"<h2>{t('import_dialog_title')}</h2>")
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("padding: 16px 20px 8px 20px;")
+        title.setStyleSheet("padding: 18px 20px 6px 20px;")
         layout.addWidget(title)
         
-        desc = QLabel(
-            "Waehle Eingabe- und Ausgabeordner aus. "
-            "Danach startet die Analyse und zeigt den Fortschritt Schritt fuer Schritt."
-        )
+        desc = QLabel(t("import_dialog_subtitle"))
         desc.setWordWrap(True)
         desc.setAlignment(Qt.AlignCenter)
         desc_color = get_text_hint_color()
-        desc.setStyleSheet(f"color: {desc_color}; padding: 0 20px 20px 20px;")
+        desc.setStyleSheet(f"color: {desc_color}; padding: 0 28px 24px 28px; font-size: 13px;")
         layout.addWidget(desc)
         
         # Ordnerauswahl
@@ -498,7 +497,9 @@ class FolderSelectionDialog(QDialog):
         
         # Validierungsmeldung
         self.validation_label = QLabel("")
-        self.validation_label.setStyleSheet(f"color: {get_semantic_colors()['error']}; font-weight: bold;")
+        self.validation_label.setStyleSheet(
+            f"color: {get_semantic_colors()['error']}; font-weight: bold; padding: 6px 12px;"
+        )
         self.validation_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.validation_label)
 
@@ -507,29 +508,17 @@ class FolderSelectionDialog(QDialog):
         
         self.start_btn = QPushButton(t("start_analysis"))
         self.start_btn.setEnabled(False)
-        colors = get_theme_colors()
         success_color = get_semantic_colors()['success']
-        self.start_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {success_color};
-                color: white;
-                font-weight: bold;
-                padding: 12px 30px;
-                border-radius: 6px;
-                font-size: 14px;
-            }}
-            QPushButton:disabled {{
-                background-color: {colors['disabled_bg']};
-                color: {colors['disabled_text']};
-            }}
-            QPushButton:hover:enabled {{
-                opacity: 0.9;
-            }}
-        """)
+        self.start_btn.setStyleSheet(
+            _build_button_style(success_color, padding="12px 28px", font_size=14, radius=10)
+        )
         self.start_btn.clicked.connect(self.accept)
         button_box.addButton(self.start_btn, QDialogButtonBox.AcceptRole)
         
         cancel_btn = QPushButton(t("cancel"))
+        cancel_btn.setStyleSheet(
+            _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'])
+        )
         cancel_btn.clicked.connect(self.reject)
         button_box.addButton(cancel_btn, QDialogButtonBox.RejectRole)
         
@@ -549,28 +538,27 @@ class FolderSelectionDialog(QDialog):
         
         # Eingabeordner
         input_group = QWidget()
+        input_group.setStyleSheet(_build_surface_style())
         input_layout = QVBoxLayout(input_group)
         input_layout.setSpacing(8)
+        input_layout.setContentsMargins(16, 16, 16, 16)
         
         input_label = QLabel(t("select_input_folder_label"))
         input_layout.addWidget(input_label)
         
-        input_hint = QLabel(f"<i>{t('input_hint')}</i>")
+        input_hint = QLabel(f"<i>{t('import_input_card_hint')}</i>")
         hint_color = get_text_hint_color()
         input_hint.setStyleSheet(f"color: {hint_color}; font-size: 11px;")
         input_layout.addWidget(input_hint)
         
         input_row = QHBoxLayout()
         self.input_path_label = QLabel(t("not_selected"))
-        bg = get_label_background_color()
-        fg = get_label_foreground_color()
-        self.input_path_label.setStyleSheet(
-            f"padding: 8px; background-color: {bg}; border-radius: 4px; color: {fg};"
-        )
+        self.input_path_label.setStyleSheet(_build_path_label_style(is_empty=True))
         input_row.addWidget(self.input_path_label, stretch=1)
         
         input_btn = QPushButton(t("browse"))
         input_btn.setFixedWidth(120)
+        input_btn.setStyleSheet(_build_button_style(get_semantic_colors()["info"], padding="10px 14px"))
         input_btn.clicked.connect(self._select_input_folder)
         input_row.addWidget(input_btn)
         
@@ -579,28 +567,27 @@ class FolderSelectionDialog(QDialog):
         
         # Ausgabeordner
         output_group = QWidget()
+        output_group.setStyleSheet(_build_surface_style())
         output_layout = QVBoxLayout(output_group)
         output_layout.setSpacing(8)
+        output_layout.setContentsMargins(16, 16, 16, 16)
         
         output_label = QLabel(f"{t('select_output_folder_label')} {t('output_folder_required')}")
         output_layout.addWidget(output_label)
         
-        output_hint = QLabel(f"<i>{t('output_hint')}</i>")
+        output_hint = QLabel(f"<i>{t('import_output_card_hint')}</i>")
         hint_color = get_text_hint_color()
         output_hint.setStyleSheet(f"color: {hint_color}; font-size: 11px;")
         output_layout.addWidget(output_hint)
         
         output_row = QHBoxLayout()
         self.output_path_label = QLabel(t("not_selected"))
-        bg = get_label_background_color()
-        fg = get_label_foreground_color()
-        self.output_path_label.setStyleSheet(
-            f"padding: 8px; background-color: {bg}; border-radius: 4px; color: {fg};"
-        )
+        self.output_path_label.setStyleSheet(_build_path_label_style(is_empty=True))
         output_row.addWidget(self.output_path_label, stretch=1)
         
         output_btn = QPushButton(t("browse"))
         output_btn.setFixedWidth(120)
+        output_btn.setStyleSheet(_build_button_style(get_semantic_colors()["info"], padding="10px 14px"))
         output_btn.clicked.connect(self._select_output_folder)
         output_row.addWidget(output_btn)
         
@@ -609,13 +596,15 @@ class FolderSelectionDialog(QDialog):
 
         # Top-N Auswahl
         topn_group = QWidget()
+        topn_group.setStyleSheet(_build_surface_style())
         topn_layout = QVBoxLayout(topn_group)
         topn_layout.setSpacing(8)
+        topn_layout.setContentsMargins(16, 16, 16, 16)
 
         topn_label = QLabel(t("select_topn_label"))
         topn_layout.addWidget(topn_label)
 
-        topn_hint = QLabel(f"<i>{t('topn_hint')}</i>")
+        topn_hint = QLabel(f"<i>{t('import_topn_card_hint')}</i>")
         hint_color = get_text_hint_color()
         topn_hint.setStyleSheet(f"color: {hint_color}; font-size: 11px;")
         topn_layout.addWidget(topn_hint)
@@ -625,6 +614,7 @@ class FolderSelectionDialog(QDialog):
         self.topn_spin.setRange(1, 10)
         self.topn_spin.setValue(self.top_n)
         self.topn_spin.setFixedWidth(80)
+        self.topn_spin.setStyleSheet(_build_input_style())
         self.topn_spin.valueChanged.connect(self._on_topn_changed)
         topn_row.addWidget(self.topn_spin)
         topn_row.addStretch()
@@ -946,20 +936,12 @@ class FolderSelectionDialog(QDialog):
     def _update_input_label(self) -> None:
         if self.input_folder:
             self.input_path_label.setText(str(self.input_folder))
-            bg = get_label_background_color()
-            fg = "white" if get_theme() == "dark" else "black"
-            self.input_path_label.setStyleSheet(
-                f"padding: 8px; background-color: {bg}; border-radius: 4px; color: {fg};"
-            )
+            self.input_path_label.setStyleSheet(_build_path_label_style(is_empty=False))
 
     def _update_output_label(self) -> None:
         if self.output_folder:
             self.output_path_label.setText(str(self.output_folder))
-            bg = get_label_background_color()
-            fg = "white" if get_theme() == "dark" else "black"
-            self.output_path_label.setStyleSheet(
-                f"padding: 8px; background-color: {bg}; border-radius: 4px; color: {fg};"
-            )
+            self.output_path_label.setStyleSheet(_build_path_label_style(is_empty=False))
 
     def _load_recent_folders(self) -> None:
         try:
@@ -1070,6 +1052,19 @@ def _get_confidence_style(level: Optional[str]) -> tuple[str, str]:
     return colors["alternate_base"], colors["text"]
 
 
+def _get_confidence_i18n_label(level: Optional[str]) -> str:
+    """Map confidence level (internal: high/medium/low/incomplete/none) to i18n label."""
+    if level == "high":
+        return t("confidence_very_reliable")
+    if level == "medium":
+        return t("confidence_review_recommended")
+    if level == "low":
+        return t("confidence_review_needed")
+    if level == "incomplete":
+        return t("confidence_data_incomplete")
+    return t("confidence_no_data")
+
+
 def _get_component_bar_color(score: float) -> str:
     quality_colors = get_quality_colors()
     if score >= 75.0:
@@ -1077,6 +1072,85 @@ def _get_component_bar_color(score: float) -> str:
     if score >= 45.0:
         return quality_colors["medium"]
     return quality_colors["low"]
+
+
+def _build_button_style(
+    background_color: str,
+    *,
+    text_color: str = "white",
+    hover_color: Optional[str] = None,
+    disabled_bg: Optional[str] = None,
+    disabled_text: Optional[str] = None,
+    padding: str = "10px 14px",
+    font_size: int = 13,
+    radius: int = 8,
+) -> str:
+    colors = get_theme_colors()
+    semantic_colors = get_semantic_colors()
+    hover = hover_color or background_color
+    disabled_background = disabled_bg or colors["disabled_bg"]
+    disabled_foreground = disabled_text or colors["disabled_text"]
+    focus_color = semantic_colors["info"]
+    return f"""
+        QPushButton {{
+            background-color: {background_color};
+            color: {text_color};
+            padding: {padding};
+            font-size: {font_size}px;
+            font-weight: bold;
+            border-radius: {radius}px;
+            border: 1px solid transparent;
+        }}
+        QPushButton:hover:enabled {{
+            background-color: {hover};
+        }}
+        QPushButton:focus:enabled {{
+            border: 2px solid {focus_color};
+        }}
+        QPushButton:disabled {{
+            background-color: {disabled_background};
+            color: {disabled_foreground};
+            border: 1px solid {disabled_background};
+        }}
+    """
+
+
+def _build_surface_style() -> str:
+    colors = get_theme_colors()
+    return (
+        f"background-color: {colors['window']}; "
+        f"border: 1px solid {colors['border']}; "
+        "border-radius: 12px;"
+    )
+
+
+def _build_input_style() -> str:
+    colors = get_theme_colors()
+    semantic_colors = get_semantic_colors()
+    return f"""
+        QLineEdit, QSpinBox {{
+            background-color: {colors['input_bg']};
+            color: {colors['text']};
+            border: 1px solid {colors['input_border']};
+            border-radius: 8px;
+            padding: 8px 10px;
+            min-height: 20px;
+        }}
+        QLineEdit:focus, QSpinBox:focus {{
+            border: 2px solid {semantic_colors['info']};
+        }}
+    """
+
+
+def _build_path_label_style(is_empty: bool = False) -> str:
+    colors = get_theme_colors()
+    label_bg = get_label_background_color()
+    label_fg = get_label_foreground_color() if is_empty else colors["text"]
+    border = colors["input_border"]
+    return (
+        f"padding: 10px 12px; background-color: {label_bg}; color: {label_fg}; "
+        f"border-radius: 8px; border: 1px solid {border};"
+    )
 
 
 def _resolve_default_db_path(db_path: Optional[Path]) -> Path:
@@ -1684,8 +1758,15 @@ class ThumbnailCard(QWidget):
             else:
                 score_color = quality_colors['low']  # Light Blue (low quality)
                 score_icon = "✗"
-            
-            score_text = f"{score_icon} Score: {score:.1f}%"
+
+            if score >= 70:
+                rating_text = t("quality_rating_very_good")
+            elif score >= 40:
+                rating_text = t("quality_rating_good")
+            else:
+                rating_text = t("quality_rating_poor")
+
+            score_text = f"{score_icon} {rating_text}"
             score_label = QLabel(score_text)
             score_label.setAlignment(Qt.AlignCenter)
             score_label.setStyleSheet(f"""
@@ -3882,13 +3963,37 @@ class ModernMainWindow(QMainWindow):
             # Refresh action buttons
             if hasattr(self, 'keep_btn'):
                 status_colors = get_status_colors()
-                self.keep_btn.setStyleSheet(f"background-color: {status_colors['KEEP']}; color: white; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 6px;")
+                self.keep_btn.setStyleSheet(_build_button_style(status_colors['KEEP'], padding="12px 14px", font_size=14))
             if hasattr(self, 'del_btn'):
                 status_colors = get_status_colors()
-                self.del_btn.setStyleSheet(f"background-color: {status_colors['DELETE']}; color: white; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 6px;")
+                self.del_btn.setStyleSheet(_build_button_style(status_colors['DELETE'], padding="12px 14px", font_size=14))
             if hasattr(self, 'unsure_btn'):
                 status_colors = get_status_colors()
-                self.unsure_btn.setStyleSheet(f"background-color: {status_colors['UNSURE']}; color: white; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 6px;")
+                self.unsure_btn.setStyleSheet(_build_button_style(status_colors['UNSURE'], padding="12px 14px", font_size=14))
+            if hasattr(self, 'merge_groups_btn'):
+                self.merge_groups_btn.setStyleSheet(
+                    _build_button_style(
+                        get_semantic_colors()["info"],
+                        hover_color=get_quality_colors()["high"],
+                        padding="9px 12px",
+                    )
+                )
+            if hasattr(self, 'compare_btn'):
+                self.compare_btn.setStyleSheet(_build_button_style(get_semantic_colors()["warning"], padding="12px 14px"))
+            if hasattr(self, 'split_group_btn'):
+                self.split_group_btn.setStyleSheet(_build_button_style(get_semantic_colors()["info"], padding="10px 12px", font_size=12))
+            if hasattr(self, 'lock_btn'):
+                self.lock_btn.setStyleSheet(
+                    _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'])
+                )
+            if hasattr(self, 'undo_btn'):
+                self.undo_btn.setStyleSheet(
+                    _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'])
+                )
+            if hasattr(self, 'finalize_btn'):
+                self.finalize_btn.setStyleSheet(
+                    _build_button_style(get_semantic_colors()['success'], padding="4px 12px", font_size=11, radius=6)
+                )
             
             # Refresh status label (progress indicator)
             if hasattr(self, 'status_label'):
@@ -4787,8 +4892,10 @@ class ModernMainWindow(QMainWindow):
         """Erstelle Gruppenauswahlpanel."""
         panel = QWidget()
         panel.setMaximumWidth(350)
+        panel.setStyleSheet(_build_surface_style())
         layout = QVBoxLayout(panel)
-        layout.setSpacing(8)
+        layout.setSpacing(10)
+        layout.setContentsMargins(12, 12, 12, 12)
         
         title = QLabel(f"<h3>{t('duplicate_groups')}</h3>")
         layout.addWidget(title)
@@ -4796,6 +4903,7 @@ class ModernMainWindow(QMainWindow):
         # Search box
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText(t("search_placeholder"))
+        self.search_box.setStyleSheet(_build_input_style())
         self.search_box.textChanged.connect(self._apply_group_filter)
         layout.addWidget(self.search_box)
 
@@ -4805,7 +4913,9 @@ class ModernMainWindow(QMainWindow):
         layout.addWidget(self.needs_review_only_cb)
 
         self.needs_review_counter_label = QLabel(t("needs_review_counter").format(visible=0, total=0))
-        self.needs_review_counter_label.setStyleSheet("padding: 2px 4px; font-size: 11px;")
+        self.needs_review_counter_label.setStyleSheet(
+            f"padding: 6px 8px; font-size: 11px; background-color: {get_theme_colors()['alternate_base']}; border-radius: 8px;"
+        )
         layout.addWidget(self.needs_review_counter_label)
         
         self.group_list = QListWidget()
@@ -4823,9 +4933,22 @@ class ModernMainWindow(QMainWindow):
         self._group_thumb_loader.start()
         logger.info("[UI] ThumbnailLoader started for group list (paused, will resume after rating)")
         # Use palette-driven colors to avoid dark boxes on light themes
-        self.group_list.setStyleSheet("""
-            QListWidget { border: 1px solid palette(mid); border-radius: 6px; }
-            QListWidget::item { padding: 10px; }
+        colors = get_theme_colors()
+        self.group_list.setStyleSheet(f"""
+            QListWidget {{
+                border: 1px solid {colors['border']};
+                border-radius: 10px;
+                background-color: {colors['base']};
+                padding: 4px;
+            }}
+            QListWidget::item {{
+                padding: 10px;
+                margin: 3px 0;
+                border-radius: 8px;
+            }}
+            QListWidget::item:selected {{
+                border: 2px solid {get_semantic_colors()['info']};
+            }}
         """)
         layout.addWidget(self.group_list)
         
@@ -4834,24 +4957,13 @@ class ModernMainWindow(QMainWindow):
         self.merge_groups_btn = QPushButton(t("merge_groups"))
         self.merge_groups_btn.setEnabled(False)  # Enabled only when 2+ groups selected
         self.merge_groups_btn.clicked.connect(self._merge_selected_groups)
-        bg_info = get_semantic_colors()["info"]
-        quality_high = get_quality_colors()["high"]
-        neutral_color = get_semantic_colors()["neutral"]
-        self.merge_groups_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {bg_info};
-                color: white;
-                padding: 8px;
-                border-radius: 6px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{
-                background-color: {quality_high};
-            }}
-            QPushButton:disabled {{
-                background-color: {neutral_color};
-            }}
-        """)
+        self.merge_groups_btn.setStyleSheet(
+            _build_button_style(
+                get_semantic_colors()["info"],
+                hover_color=get_quality_colors()["high"],
+                padding="9px 12px",
+            )
+        )
         merge_btn_layout.addWidget(self.merge_groups_btn)
         layout.addLayout(merge_btn_layout)
         
@@ -4942,13 +5054,17 @@ class ModernMainWindow(QMainWindow):
         layout.addWidget(batch_group)
         
         select_all_btn = QPushButton(t('select_all'))
-        select_all_btn.setStyleSheet("padding: 8px; font-size: 12px; border-radius: 4px;")
+        select_all_btn.setStyleSheet(
+            _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'], padding="8px 10px", font_size=12)
+        )
         select_all_btn.clicked.connect(self._select_all)
         select_all_btn.hide()
         layout.addWidget(select_all_btn)
         
         clear_selection_btn = QPushButton(t("clear_selection"))
-        clear_selection_btn.setStyleSheet("padding: 8px; font-size: 12px; border-radius: 4px;")
+        clear_selection_btn.setStyleSheet(
+            _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'], padding="8px 10px", font_size=12)
+        )
         clear_selection_btn.clicked.connect(self._clear_selection)
         clear_selection_btn.hide()
         layout.addWidget(clear_selection_btn)
@@ -4958,50 +5074,18 @@ class ModernMainWindow(QMainWindow):
         # Vergleichs-Button (aktiviert wenn 2 ausgewählt)
         self.compare_btn = QPushButton(t("compare_two"))
         self.compare_btn.setEnabled(False)
-        warning_color = get_semantic_colors()["warning"]
-        neutral_color = get_semantic_colors()["neutral"]
-        hint_color = get_text_hint_color()
-        self.compare_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {warning_color};
-                color: white;
-                padding: 12px;
-                font-size: 13px;
-                font-weight: bold;
-                border-radius: 6px;
-            }}
-            QPushButton:disabled {{
-                background-color: {neutral_color};
-                color: {hint_color};
-            }}
-            QPushButton:hover:enabled {{
-                opacity: 0.8;
-            }}
-        """)
+        self.compare_btn.setStyleSheet(
+            _build_button_style(get_semantic_colors()["warning"], padding="12px 14px")
+        )
         self.compare_btn.clicked.connect(self._open_comparison)
         self.compare_btn.hide()
         layout.addWidget(self.compare_btn)
 
         self.split_group_btn = QPushButton(t("split_group"))
         self.split_group_btn.setEnabled(False)
-        info_color = get_semantic_colors()["info"]
-        self.split_group_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {info_color};
-                color: white;
-                padding: 10px;
-                font-size: 12px;
-                font-weight: bold;
-                border-radius: 6px;
-            }}
-            QPushButton:disabled {{
-                background-color: {neutral_color};
-                color: {hint_color};
-            }}
-            QPushButton:hover:enabled {{
-                opacity: 0.85;
-            }}
-        """)
+        self.split_group_btn.setStyleSheet(
+            _build_button_style(get_semantic_colors()["info"], padding="10px 12px", font_size=12)
+        )
         self.split_group_btn.clicked.connect(self._split_selected_from_group)
         self.split_group_btn.hide()
         layout.addWidget(self.split_group_btn)
@@ -5015,30 +5099,34 @@ class ModernMainWindow(QMainWindow):
         status_colors = get_status_colors()
         
         self.keep_btn = QPushButton(t("keep"))
-        self.keep_btn.setStyleSheet(f"background-color: {status_colors['KEEP']}; color: white; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 6px;")
+        self.keep_btn.setStyleSheet(_build_button_style(status_colors['KEEP'], padding="12px 14px", font_size=14))
         self.keep_btn.clicked.connect(lambda: self._apply_status_to_selection(FileStatus.KEEP))
         layout.addWidget(self.keep_btn)
         
         self.del_btn = QPushButton(t("delete"))
-        self.del_btn.setStyleSheet(f"background-color: {status_colors['DELETE']}; color: white; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 6px;")
+        self.del_btn.setStyleSheet(_build_button_style(status_colors['DELETE'], padding="12px 14px", font_size=14))
         self.del_btn.clicked.connect(lambda: self._apply_status_to_selection(FileStatus.DELETE))
         layout.addWidget(self.del_btn)
         
         self.unsure_btn = QPushButton(t("unsure"))
-        self.unsure_btn.setStyleSheet(f"background-color: {status_colors['UNSURE']}; color: white; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 6px;")
+        self.unsure_btn.setStyleSheet(_build_button_style(status_colors['UNSURE'], padding="12px 14px", font_size=14))
         self.unsure_btn.clicked.connect(lambda: self._apply_status_to_selection(FileStatus.UNSURE))
         layout.addWidget(self.unsure_btn)
         
         layout.addSpacing(20)
         
         self.lock_btn = QPushButton(t("lock_unlock_button"))
-        self.lock_btn.setStyleSheet("padding: 10px; font-size: 13px; border-radius: 6px;")
+        self.lock_btn.setStyleSheet(
+            _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'])
+        )
         self.lock_btn.clicked.connect(self._toggle_lock_selection)
         self.lock_btn.hide()
         layout.addWidget(self.lock_btn)
         
         self.undo_btn = QPushButton(t("undo_button"))
-        self.undo_btn.setStyleSheet("padding: 10px; font-size: 13px; border-radius: 6px;")
+        self.undo_btn.setStyleSheet(
+            _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'])
+        )
         self.undo_btn.clicked.connect(self._undo)
         self.undo_btn.hide()
         layout.addWidget(self.undo_btn)
@@ -5084,19 +5172,9 @@ class ModernMainWindow(QMainWindow):
         self.finalize_btn = QPushButton(t("finalize_export"))
         self.finalize_btn.setMaximumHeight(28)
         success_color = get_semantic_colors()["success"]
-        self.finalize_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {success_color};
-                color: white;
-                font-weight: bold;
-                padding: 4px 12px;
-                border-radius: 4px;
-                font-size: 11px;
-            }}
-            QPushButton:hover {{
-                opacity: 0.9;
-            }}
-        """)
+        self.finalize_btn.setStyleSheet(
+            _build_button_style(success_color, padding="4px 12px", font_size=11, radius=6)
+        )
         self.finalize_btn.clicked.connect(self._finalize_and_export)
         layout.addWidget(self.finalize_btn)
         
@@ -5398,10 +5476,9 @@ class ModernMainWindow(QMainWindow):
             is_single = grp.group_id.startswith("SINGLE_")
             
             if is_single:
-                # Special label for single images
-                label = f"Einzelbild: {grp.sample_path.name}"
+                label = f"{t('group_list_single')} • {grp.sample_path.name}"
             else:
-                label = f"Group {grp.group_id} ({grp.total} images)"
+                label = t("group_list_many").format(id=grp.group_id, count=grp.total)
             
             if term and term not in label.lower() and term not in str(grp.sample_path).lower():
                 continue
@@ -5424,18 +5501,15 @@ class ModernMainWindow(QMainWindow):
             # Status indicator with CLEAR visual distinction for undecided
             status_colors = get_status_colors()
             if grp.open_count == 0:
-                # Fully decided - green checkmark
-                status_icon = "Fertig"
+                status_icon = t("group_status_done")
                 status_color = QColor(status_colors["KEEP"])
                 bg_alpha = 60
             elif grp.open_count > 0 and grp.decided_count > 0:
-                # Partially decided - orange warning
-                status_icon = "Teil"
+                status_icon = t("group_status_partial")
                 status_color = QColor(status_colors["UNSURE"])
                 bg_alpha = 80
             else:
-                # Completely undecided - BRIGHT ORANGE for visibility
-                status_icon = "Offen"
+                status_icon = t("group_status_open")
                 status_color = QColor(status_colors["UNDECIDED_ATTENTION"])
                 bg_alpha = 100  # More opaque for better visibility
             
@@ -5452,14 +5526,14 @@ class ModernMainWindow(QMainWindow):
                     f"EINZELBILD - ENTSCHEIDUNG BENOETIGT\n"
                     f"Datei: {grp.sample_path.name}\n"
                     f"Status: Noch nicht entschieden{needs_review_hint}\n"
-                    f"Pruefstatus: {grp.confidence_level}\n"
+                    f"Pruefstatus: {_get_confidence_i18n_label(grp.confidence_level)}\n"
                     f"{grp.diagnostics_text}"
                 )
             else:
                 item.setToolTip(
-                    f"Open: {grp.open_count} | Decided: {grp.decided_count} | Delete: {grp.delete_count}\n"
-                    f"{('AKTION ERFORDERLICH' if grp.open_count > 0 else 'Vollstaendig entschieden')}{needs_review_hint}\n"
-                    f"Pruefstatus: {grp.confidence_level}\n"
+                    f"{t('group_counts_summary').format(open_count=grp.open_count, decided_count=grp.decided_count, delete_count=grp.delete_count)}\n"
+                    f"{(t('group_action_needed') if grp.open_count > 0 else t('group_action_done'))}{needs_review_hint}\n"
+                    f"Pruefstatus: {_get_confidence_i18n_label(grp.confidence_level)}\n"
                     f"{grp.diagnostics_text}"
                 )
             
@@ -5766,7 +5840,7 @@ class ModernMainWindow(QMainWindow):
         if grp and grp.group_id:
             self.grid_title.setText(
                 f"<h3>{t('group_title').format(id=grp.group_id, count=len(self.files_in_group))}</h3>"
-                f"<small>Pruefstatus: {grp.confidence_level} | {grp.diagnostics_text}</small>"
+                f"<small>Pruefstatus: {_get_confidence_i18n_label(grp.confidence_level)} | {grp.diagnostics_text}</small>"
             )
         else:
             # Fallback: Group nicht in lookup - Log und zeige generischen Title

@@ -11,11 +11,11 @@ def test_build_score_explanation_marks_high_confidence() -> None:
     )
 
     assert explanation.has_any_data is True
-    assert explanation.confidence_label == "Sicher"
+    assert explanation.confidence_label == "Sehr zuverlässig"
     assert explanation.confidence_level == "high"
-    assert explanation.strengths_text == "Gut: Schaerfe, Belichtung, Aufloesung, Augen"
+    assert explanation.strengths_text == "Gut: Schärfe, Belichtung, Auflösung, Gesichtsqualität"
     assert explanation.concerns_text is None
-    assert explanation.component_summary_text == "Treiber: Schaerfe 88% | Schwaechste Stelle: Belichtung 77%"
+    assert explanation.component_summary_text == "Treiber: Schärfe 88% | Schwaechste Stelle: Belichtung 77%"
 
 
 def test_build_score_explanation_marks_low_confidence_with_concerns() -> None:
@@ -27,9 +27,9 @@ def test_build_score_explanation_marks_low_confidence_with_concerns() -> None:
         face_quality_score=24.0,
     )
 
-    assert explanation.confidence_label == "Unsicher"
+    assert explanation.confidence_label == "Überprüfung nötig"
     assert explanation.confidence_level == "low"
-    assert explanation.concerns_text == "Schwaecher: Belichtung, Augen"
+    assert explanation.concerns_text == "Schwaecher: Belichtung, Gesichtsqualität"
     assert "Mindestens ein wichtiges Bildmerkmal" in explanation.tooltip_text
 
 
@@ -44,6 +44,6 @@ def test_build_score_explanation_requests_reanalysis_for_legacy_score() -> None:
 
     assert explanation.has_any_data is True
     assert explanation.needs_reanalysis is True
-    assert explanation.confidence_label == "Neu analysieren"
+    assert explanation.confidence_label == "Daten unvollständig"
     assert explanation.component_details == ()
     assert "Details fehlen" in explanation.tooltip_text

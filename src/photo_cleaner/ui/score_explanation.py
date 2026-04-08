@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+from photo_cleaner.i18n import t
+
 
 @dataclass(frozen=True)
 class ExplainedMetric:
@@ -57,9 +59,8 @@ def build_score_explanation(
             tooltip_text="Keine Qualitaetsdaten verfuegbar",
         )
 
-    overall_text = f"Gesamtscore: {quality_score:.1f}%" if quality_score is not None else None
+    overall_text = f"Gesamtbewertung: {quality_score:.0f}%" if quality_score is not None else None
     needs_reanalysis = quality_score is not None and not metrics
-
     strengths = [metric.label for metric in metrics if metric.value >= 75.0]
     concerns = [metric.label for metric in metrics if metric.value < 45.0]
 
@@ -105,10 +106,10 @@ def _collect_metrics(
     face_quality_score: Optional[float],
 ) -> list[ExplainedMetric]:
     ordered_metrics = [
-        ("sharpness", "Schaerfe", sharpness_score),
-        ("lighting", "Belichtung", lighting_score),
-        ("resolution", "Aufloesung", resolution_score),
-        ("eyes", "Augen", face_quality_score),
+        ("sharpness", t("metric_sharpness"), sharpness_score),
+        ("lighting", t("metric_lighting"), lighting_score),
+        ("resolution", t("metric_resolution"), resolution_score),
+        ("eyes", t("metric_face_quality"), face_quality_score),
     ]
     return [
         ExplainedMetric(key=key, label=label, value=float(value))
@@ -143,8 +144,8 @@ def _classify_confidence(
 ) -> tuple[Optional[str], Optional[str], Optional[str]]:
     if needs_reanalysis:
         return (
-            "Neu analysieren",
-            "Es fehlen Detailwerte fuer diese Datei.",
+            t("confidence_data_incomplete"),
+            t("confidence_data_incomplete") + ": " + "Es fehlen Detailwerte fuer diese Datei.",
             "incomplete",
         )
 
@@ -156,27 +157,27 @@ def _classify_confidence(
 
     if quality_score is not None and quality_score >= 75.0 and min_value >= 60.0 and not concerns:
         return (
-            "Sicher",
+            t("confidence_very_reliable"),
             "Die wichtigen Bildmerkmale wirken stabil gut.",
             "high",
         )
 
     if len(concerns) >= 2 or min_value < 30.0 or (quality_score is not None and quality_score < 45.0):
         return (
-            "Unsicher",
+            t("confidence_review_needed"),
             "Mindestens ein wichtiges Bildmerkmal ist deutlich schwach.",
             "low",
         )
 
     if avg_value >= 60.0:
         return (
-            "Manuell pruefen",
+            t("confidence_review_recommended"),
             "Das Ergebnis ist brauchbar, aber nicht durchgaengig klar.",
             "medium",
         )
 
     return (
-        "Unsicher",
+        t("confidence_review_needed"),
         "Die Bildmerkmale sind gemischt und sollten manuell geprueft werden.",
         "low",
     )
