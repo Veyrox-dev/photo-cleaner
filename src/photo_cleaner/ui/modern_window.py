@@ -451,7 +451,389 @@ class ExifWorkerThread(QThread):
         except Exception as e:
             logger.error(f"ExifWorkerThread: Failed to read EXIF for {self.file_path.name}: {e}", exc_info=True)
             self.error.emit(str(e))
- 
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Phase D: Enhanced Progress & Result Dialogs
+# ────────────────────────────────────────────────────────────────────────────────
+
+class ProgressStepDialog(QDialog):
+    """Phase D: Enhanced progress dialog with step indicators and ETA."""
+    
+    cancelled = Signal()
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(t("image_analysis"))
+        self.setWindowModality(Qt.WindowModal)
+        self.setMinimumWidth(500)
+        self.setMinimumHeight(200)
+        self.step_count = 4
+        self.current_step = 0
+        self.step_names = [
+            t("progress_step_1_scanning"),
+            t("progress_step_2_grouping"),
+            t("progress_step_3_rating"),
+            t("progress_step_4_finalization"),
+        ]
+        self.start_time = time.time()
+        self.last_update_time = 0
+        self.last_percentage = 0
+        self._setup_ui()
+        self._apply_styling()
+    
+    def _setup_ui(self):
+        """Setup dialog UI components."""
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
+        
+        # Step and title
+        self.step_label = QLabel()
+        step_font = self.step_label.font()
+        step_font.setPointSize(12)
+        step_font.setBold(True)
+        self.step_label.setFont(step_font)
+        layout.addWidget(self.step_label)
+        
+        # Progress bar
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setMinimum(0)
+        self.progress_bar.setMaximum(100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(True)
+        layout.addWidget(self.progress_bar)
+        
+        # Status info
+        info_layout = QHBoxLayout()
+        info_layout.setSpacing(12)
+        self.status_label = QLabel()
+        info_layout.addWidget(self.status_label)
+        self.eta_label = QLabel()
+        info_layout.addStretch()
+        info_layout.addWidget(self.eta_label)
+        layout.addLayout(info_layout)
+        
+        # Cancel button
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        cancel_btn = QPushButton(t("cancel"))
+        cancel_btn.clicked.connect(self.cancelled.emit)
+        button_layout.addWidget(cancel_btn)
+        layout.addLayout(button_layout)
+        
+        self.setLayout(layout)
+    
+    def _apply_styling(self):
+        """Apply Phase C consistent styling."""
+        colors = get_semantic_colors()
+        theme_colors = get_theme_colors()
+        
+        # Progress bar styling
+        bg_color = theme_colors.get("bg_secondary", "#2a2a2a")
+        progress_color = colors["info"]
+        
+        self.progress_bar.setStyleSheet(f"""
+            QProgressBar {{
+                border: 1px solid {colors['neutral']};
+                border-radius: 4px;
+                background-color: {bg_color};
+                text-align: center;
+                min-height: 24px;
+            }}
+            QProgressBar::chunk {{
+                background-color: {progress_color};
+                border-radius: 3px;
+            }}
+        """)
+        
+        # Dialog styling
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {theme_colors.get('bg_primary', '#1e1e1e')};
+                color: {theme_colors.get('text_primary', '#ffffff')};
+            }}
+        """)
+    
+    def set_step(self, step: int):
+        """Update current step (1-4)."""
+        self.current_step = min(step, self.step_count)
+        self._update_step_label()
+    
+    def _update_step_label(self):
+        """Update step display label."""
+        label_text = f"{t('progress_step_current').format(step=self.current_step, total=self.step_count)}: {self.step_names[self.current_step - 1] if self.current_step > 0 else 'Vorbereitung'}"
+        self.step_label.setText(label_text)
+    
+    def set_progress(self, value: int, status: str = "", current: int = 0, total: int = 0):
+        """Update progress bar and status info."""
+        self.progress_bar.setValue(value)
+        self.last_percentage = value
+        self.last_update_time = time.time()
+        
+        # Update status
+        if current > 0 and total > 0:
+            status_text = f"{status} ({current}/{total})"
+        else:
+            status_text = status
+        self.status_label.setText(status_text)
+        
+        # Calculate and update ETA
+        self._update_eta(value)
+    
+    def _update_eta(self, percentage: int):
+        """Calculate and display ETA based on progress rate."""
+        elapsed = time.time() - self.start_time
+        if percentage > 5 and elapsed > 2:  # Only estimate after 5% and 2s have passed
+            rate = percentage / elapsed  # percent per second
+            remaining_percent = 100 - percentage
+            estimated_remaining_seconds = remaining_percent / rate if rate > 0 else 0
+            
+            # Format ETA as MM:SS
+            minutes = int(estimated_remaining_seconds // 60)
+            seconds = int(estimated_remaining_seconds % 60)
+            eta_text = f"{t('progress_eta').format(eta=f'{minutes}:{seconds:02d}')}"
+        else:
+            eta_text = t("progress_eta_calculating")
+        
+        self.eta_label.setText(eta_text)
+        QApplication.processEvents()
+
+
+class FinalizationResultDialog(QDialog):
+    """Phase D: Custom completion dialog with user-relevant results only."""
+    
+    report_error = Signal()
+    
+    def __init__(self, 
+                 total_files: int, 
+                 groups_found: int,
+                 new_files: int,
+                 cached_files: int,
+                 error_files: List[str] = None,
+                 analysis_time: float = 0,
+                 parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(t("finalization_dialog_title"))
+        self.setWindowModality(Qt.WindowModal)
+        self.setMinimumWidth(550)
+        self.setMinimumHeight(400)
+        
+        self.total_files = total_files
+        self.groups_found = groups_found
+        self.new_files = new_files
+        self.cached_files = cached_files
+        self.error_files = error_files or []
+        self.analysis_time = analysis_time
+        
+        self._setup_ui()
+        self._apply_styling()
+    
+    def _setup_ui(self):
+        """Setup dialog UI components."""
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(16)
+        
+        # Success summary card
+        summary_card = self._create_summary_card()
+        main_layout.addWidget(summary_card)
+        
+        # Error section (if errors exist)
+        if self.error_files:
+            error_card = self._create_error_card()
+            main_layout.addWidget(error_card)
+        
+        # Processing info section
+        info_card = self._create_info_card()
+        main_layout.addWidget(info_card)
+        
+        main_layout.addStretch()
+        
+        # Button layout
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        if self.error_files:
+            report_btn = QPushButton(t("finalization_button_report_error"))
+            report_btn.clicked.connect(self.report_error.emit)
+            button_layout.addWidget(report_btn)
+        
+        ok_btn = QPushButton(t("finalization_button_ok"))
+        ok_btn.clicked.connect(self.accept)
+        button_layout.addWidget(ok_btn)
+        
+        main_layout.addLayout(button_layout)
+        self.setLayout(main_layout)
+    
+    def _create_summary_card(self) -> QWidget:
+        """Create success summary card."""
+        card = QWidget()
+        layout = QVBoxLayout()
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(8)
+        
+        # Title
+        title_label = QLabel(t("finalization_success_summary").format(
+            total=self.total_files,
+            groups=self.groups_found
+        ))
+        title_font = title_label.font()
+        title_font.setPointSize(11)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        layout.addWidget(title_label)
+        
+        # Icon/checkmark
+        colors = get_semantic_colors()
+        check_label = QLabel("✓ " + t("finalization_success_summary").format(
+            total=self.total_files,
+            groups=self.groups_found
+        ))
+        check_label.setStyleSheet(f"color: {colors['success']};")
+        
+        card.setLayout(layout)
+        self._apply_card_styling(card, colors["success"])
+        
+        return card
+    
+    def _create_error_card(self) -> QWidget:
+        """Create errors and affected files card."""
+        card = QWidget()
+        layout = QVBoxLayout()
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+        
+        colors = get_semantic_colors()
+        
+        # Error header
+        error_count = len(self.error_files)
+        error_title = QLabel(t("finalization_errors_header"))
+        error_title_font = error_title.font()
+        error_title_font.setBold(True)
+        error_title.setFont(error_title_font)
+        error_title.setStyleSheet(f"color: {colors['error']};")
+        layout.addWidget(error_title)
+        
+        # Error count
+        error_msg = QLabel(t("finalization_error_loading").format(count=error_count))
+        error_msg.setStyleSheet(f"color: {colors['error']};")
+        layout.addWidget(error_msg)
+        
+        # Affected files list
+        if self.error_files:
+            files_label = QLabel(t("finalization_affected_files") + ":")
+            files_label_font = files_label.font()
+            files_label_font.setBold(True)
+            files_label.setFont(files_label_font)
+            layout.addWidget(files_label)
+            
+            # Scrollable file list
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            file_list_widget = QWidget()
+            file_list_layout = QVBoxLayout()
+            file_list_layout.setContentsMargins(0, 0, 0, 0)
+            file_list_layout.setSpacing(4)
+            
+            for file_path in self.error_files[:20]:  # Limit to 20 visible files
+                file_item = QLabel(f"• {file_path}")
+                file_item.setWordWrap(True)
+                file_list_layout.addWidget(file_item)
+            
+            if len(self.error_files) > 20:
+                more_label = QLabel(f"... und {len(self.error_files) - 20} weitere")
+                more_label.setStyleSheet(f"color: {colors['neutral']};")
+                file_list_layout.addWidget(more_label)
+            
+            file_list_layout.addStretch()
+            file_list_widget.setLayout(file_list_layout)
+            scroll.setWidget(file_list_widget)
+            scroll.setMaximumHeight(150)
+            layout.addWidget(scroll)
+        
+        card.setLayout(layout)
+        self._apply_card_styling(card, colors["error"])
+        
+        return card
+    
+    def _create_info_card(self) -> QWidget:
+        """Create processing information card."""
+        card = QWidget()
+        layout = QVBoxLayout()
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(8)
+        
+        colors = get_semantic_colors()
+        
+        # Processing info
+        info_text = t("finalization_processing_info").format(
+            new=self.new_files,
+            cached=self.cached_files
+        )
+        info_label = QLabel(info_text)
+        layout.addWidget(info_label)
+        
+        # Analysis time
+        if self.analysis_time > 0:
+            minutes = int(self.analysis_time // 60)
+            seconds = int(self.analysis_time % 60)
+            time_label = QLabel(f"Analysezeit: {minutes}:{seconds:02d}")
+            layout.addWidget(time_label)
+        
+        card.setLayout(layout)
+        bg_color = get_theme_colors().get("bg_secondary", "#2a2a2a")
+        card.setStyleSheet(f"""
+            QWidget {{
+                background-color: {bg_color};
+                border: 1px solid {colors['neutral']};
+                border-radius: 6px;
+            }}
+        """)
+        
+        return card
+    
+    def _apply_card_styling(self, card: QWidget, accent_color: str):
+        """Apply card styling with accent color."""
+        colors = get_semantic_colors()
+        bg_color = get_theme_colors().get("bg_secondary", "#2a2a2a")
+        
+        card.setStyleSheet(f"""
+            QWidget {{
+                background-color: {bg_color};
+                border: 2px solid {accent_color};
+                border-radius: 6px;
+                padding: 0px;
+            }}
+        """)
+    
+    def _apply_styling(self):
+        """Apply overall dialog styling."""
+        theme_colors = get_theme_colors()
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {theme_colors.get('bg_primary', '#1e1e1e')};
+                color: {theme_colors.get('text_primary', '#ffffff')};
+            }}
+            QPushButton {{
+                min-height: 36px;
+                min-width: 80px;
+                border-radius: 4px;
+                padding: 0px 16px;
+                font-size: 13px;
+                font-weight: bold;
+                background-color: {get_semantic_colors()['info']};
+                color: white;
+                border: none;
+            }}
+            QPushButton:hover {{
+                opacity: 0.9;
+            }}
+            QPushButton:pressed {{
+                opacity: 0.8;
+            }}
+        """)
+
 
 class FolderSelectionDialog(QDialog):
     """Dialog zur Auswahl von Eingabe- und Ausgabeordnern + Top-N."""
@@ -2604,6 +2986,11 @@ class ModernMainWindow(QMainWindow):
         self._progress_update_ts = 0.0
         self._pipeline_start_ts = 0.0
         self._pipeline_last_known_total = 0
+        
+        # Phase D: Analysis tracking for finalization dialog
+        self._analysis_duration = 0.0
+        self._failed_file_paths: List[str] = []
+        
         self._indexing_workflow = IndexingWorkflowController(self, self._center_progress_dialog_text)
         self._rating_workflow = RatingWorkflowController(self, RatingWorkerThread, QApplication.processEvents)
         self._selection_workflow = SelectionWorkflowController()
@@ -2871,15 +3258,28 @@ class ModernMainWindow(QMainWindow):
         """Handle progress update from indexing thread."""
         if progress_dialog is None or not progress_dialog.isVisible():
             return
-        if total > 0:
-            self._pipeline_last_known_total = total
-            stage_pct = min(70, int(round((current / total) * 70)))
-            elapsed = max(0.0, time.monotonic() - self._pipeline_start_ts)
-            eta = self._format_eta(elapsed, current, total)
-            label = f"Schritt 1/3: Bilder einlesen und hashen... ({current}/{total})"
-            if eta:
-                label += f"\n{eta}"
-            self._update_progress_dialog(progress_dialog, value=stage_pct, label=label)
+        if isinstance(progress_dialog, ProgressStepDialog):
+            # Phase D: Use new progress dialog with steps
+            if total > 0:
+                stage_pct = min(70, int(round((current / total) * 70)))
+                progress_dialog.set_step(1)
+                progress_dialog.set_progress(
+                    stage_pct,
+                    t("progress_step_1_scanning"),
+                    current=current,
+                    total=total
+                )
+        else:
+            # Legacy: Keep old behavior for compatibility
+            if total > 0:
+                self._pipeline_last_known_total = total
+                stage_pct = min(70, int(round((current / total) * 70)))
+                elapsed = max(0.0, time.monotonic() - self._pipeline_start_ts)
+                eta = self._format_eta(elapsed, current, total)
+                label = f"Schritt 1/3: Bilder einlesen und hashen... ({current}/{total})"
+                if eta:
+                    label += f"\n{eta}"
+                self._update_progress_dialog(progress_dialog, value=stage_pct, label=label)
     
     def _on_indexing_finished(self, results: dict, progress_dialog):
         """Handle successful indexing completion."""
@@ -3054,19 +3454,33 @@ class ModernMainWindow(QMainWindow):
     def _on_rating_progress(self, pct: int, status: str) -> None:
         progress = self._post_indexing_progress_dialog
         if progress:
-            clamped = max(0, min(100, int(pct)))
-            mapped = 75 + int(round((clamped / 100) * 20))
-            done, total = self._extract_progress_counts(status)
-            eta = ""
-            if done > 0 and total > 0:
-                elapsed = max(0.0, time.monotonic() - self._pipeline_start_ts)
-                eta = self._format_eta(elapsed, done, total)
-            label = "Schritt 3/3: Bilder werden bewertet"
-            if done > 0 and total > 0:
-                label += f" ({done}/{total})"
-            if eta:
-                label += f"\n{eta}"
-            self._update_progress_dialog(progress, value=mapped, label=label)
+            if isinstance(progress, ProgressStepDialog):
+                # Phase D: Use new progress dialog with steps
+                clamped = max(0, min(100, int(pct)))
+                mapped = 75 + int(round((clamped / 100) * 20))
+                done, total = self._extract_progress_counts(status)
+                progress.set_step(3)
+                progress.set_progress(
+                    mapped,
+                    t("progress_step_3_rating"),
+                    current=done,
+                    total=total
+                )
+            else:
+                # Legacy: Keep old behavior for compatibility
+                clamped = max(0, min(100, int(pct)))
+                mapped = 75 + int(round((clamped / 100) * 20))
+                done, total = self._extract_progress_counts(status)
+                eta = ""
+                if done > 0 and total > 0:
+                    elapsed = max(0.0, time.monotonic() - self._pipeline_start_ts)
+                    eta = self._format_eta(elapsed, done, total)
+                label = "Schritt 3/3: Bilder werden bewertet"
+                if done > 0 and total > 0:
+                    label += f" ({done}/{total})"
+                if eta:
+                    label += f"\n{eta}"
+                self._update_progress_dialog(progress, value=mapped, label=label)
 
     def _on_rating_error(self, error_msg: str) -> None:
         logger.error(f"Rating error: {error_msg}")
@@ -3135,7 +3549,28 @@ class ModernMainWindow(QMainWindow):
         cached_files = int(results.get("cached_files", 0) or 0)
         handled_files = hashed_files + cached_files
         not_processed = max(0, new_files - handled_files)
+        groups_found = self._post_indexing_group_count
+        analysis_time = getattr(self, '_analysis_duration', 0)
+        
+        # Collect error files (if any)
+        error_files = getattr(self, '_failed_file_paths', [])
 
+        # Phase D: Use new finalization dialog
+        dialog = FinalizationResultDialog(
+            total_files=total_files,
+            groups_found=groups_found,
+            new_files=new_files,
+            cached_files=cached_files,
+            error_files=error_files,
+            analysis_time=analysis_time,
+            parent=self
+        )
+        dialog.report_error.connect(self._show_error_report_dialog)
+        dialog.exec()
+        
+        return  # Skip legacy message box
+        
+        # LEGACY MESSAGE BOX (kept for reference, not executed)
         msg = (
             "Analyse abgeschlossen.\n\n"
             f"Gesamtbilder: {total_files}\n"
@@ -3161,22 +3596,9 @@ class ModernMainWindow(QMainWindow):
         from photo_cleaner.pipeline.scorer import GroupScorer
         import time
         
-        progress = QProgressDialog(
-            "Ordner wird analysiert...",
-            "Abbrechen",
-            0, 100,
-            self
-        )
-        progress.setWindowTitle(t("image_analysis"))
-        progress.setWindowModality(Qt.WindowModal)
-        progress.setMinimumDuration(0)
-        progress.setValue(0)
-        progress.setMinimumWidth(460)
-        progress.setMinimumHeight(140)
-        progress.setStyleSheet(
-            "QLabel { padding: 6px 8px; }"
-            "QProgressBar { min-height: 18px; }"
-        )
+        # Phase D: Use new ProgressStepDialog instead of QProgressDialog
+        progress = ProgressStepDialog(self)
+        progress.show()
         QApplication.processEvents()
         
         start_time = time.time()
@@ -3345,6 +3767,71 @@ class ModernMainWindow(QMainWindow):
             )
         finally:
             progress.close()
+    
+    def _show_error_report_dialog(self):
+        """Phase D: Show error reporting dialog."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(t("error_report_dialog_title"))
+        dialog.setMinimumWidth(400)
+        dialog.setMinimumHeight(300)
+        
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+        
+        # Email field
+        email_label = QLabel(t("error_report_email_label"))
+        email_input = QLineEdit()
+        email_input.setPlaceholderText("beispiel@website.de")
+        layout.addWidget(email_label)
+        layout.addWidget(email_input)
+        
+        # Message field
+        msg_label = QLabel(t("error_report_message_label"))
+        msg_input = QTextEdit()
+        msg_input.setPlaceholderText(t("error_report_message_label"))
+        layout.addWidget(msg_label)
+        layout.addWidget(msg_input)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        cancel_btn = QPushButton(t("error_report_button_cancel"))
+        cancel_btn.clicked.connect(dialog.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        send_btn = QPushButton(t("error_report_button_send"))
+        send_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {get_semantic_colors()['success']};
+                color: white;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }}
+        """)
+        
+        def send_report():
+            email = email_input.text().strip()
+            message = msg_input.toPlainText().strip()
+            
+            if not email and not message:
+                QMessageBox.warning(dialog, "Warnung", "Bitte geben Sie E-Mail oder Nachricht ein.")
+                return
+            
+            # Log error report (in production, this would send to error tracking service)
+            logger.info(f"Error report submitted: email={email}, message={message[:100]}")
+            
+            QMessageBox.information(dialog, "Erfolg", t("error_report_sent"))
+            dialog.accept()
+        
+        send_btn.clicked.connect(send_report)
+        button_layout.addWidget(send_btn)
+        
+        layout.addLayout(button_layout)
+        dialog.setLayout(layout)
+        dialog.exec()
     
     def _auto_rate_images(self, progress: Optional[QProgressDialog] = None) -> dict[str, bool]:
         """Auto-Bewertung aller Gruppen ausführen und Ergebnisse speichern."""

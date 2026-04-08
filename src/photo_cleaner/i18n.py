@@ -663,6 +663,31 @@ Status: Offline-Nutzung aktiv
         "metric_lighting": "Belichtung",
         "metric_resolution": "Auflösung",
         "metric_face_quality": "Gesichtsqualität",
+        
+        # Phase D: Progress & Finalization
+        "progress_step_1_scanning": "Bilder scannen...",
+        "progress_step_2_grouping": "Gruppen bilden...",
+        "progress_step_3_rating": "Bilder bewerten...",
+        "progress_step_4_finalization": "Fertigstellung...",
+        "progress_step_current": "Schritt {step}/{total}",
+        "progress_eta": "ETA: {eta}",
+        "progress_eta_calculating": "ETA wird berechnet...",
+        
+        "finalization_dialog_title": "Analyse abgeschlossen",
+        "finalization_success_summary": "{total} Bilder verarbeitet, {groups} Gruppen gefunden",
+        "finalization_processing_info": "Davon: {new} neu, {cached} aus Cache",
+        "finalization_errors_header": "Fehler und Warnungen",
+        "finalization_error_loading": "{count} Dateien konnten nicht geladen werden",
+        "finalization_affected_files": "Betroffene Dateien",
+        "finalization_button_report_error": "Fehler melden",
+        "finalization_button_ok": "OK",
+        "error_report_dialog_title": "Fehler berichten",
+        "error_report_email_label": "E-Mail (optional):",
+        "error_report_message_label": "Nachricht (optional):",
+        "error_report_button_send": "Senden",
+        "error_report_button_cancel": "Abbrechen",
+        "error_report_sent": "Fehler berichten erfolgreich gesendet.",
+        "error_report_failed": "Fehler berichten fehlgeschlagen: {error}",
     },
     "en": {
         # Menu (no icons; icons are added in code)
@@ -1189,6 +1214,31 @@ Status: Offline usage active
         "metric_lighting": "Lighting",
         "metric_resolution": "Resolution",
         "metric_face_quality": "Face quality",
+        
+        # Phase D: Progress & Finalization
+        "progress_step_1_scanning": "Scanning images...",
+        "progress_step_2_grouping": "Creating groups...",
+        "progress_step_3_rating": "Rating images...",
+        "progress_step_4_finalization": "Finishing up...",
+        "progress_step_current": "Step {step}/{total}",
+        "progress_eta": "ETA: {eta}",
+        "progress_eta_calculating": "Calculating ETA...",
+        
+        "finalization_dialog_title": "Analysis complete",
+        "finalization_success_summary": "{total} images processed, {groups} groups found",
+        "finalization_processing_info": "Of which: {new} new, {cached} from cache",
+        "finalization_errors_header": "Errors and warnings",
+        "finalization_error_loading": "{count} files could not be loaded",
+        "finalization_affected_files": "Affected files",
+        "finalization_button_report_error": "Report error",
+        "finalization_button_ok": "OK",
+        "error_report_dialog_title": "Report error",
+        "error_report_email_label": "Email (optional):",
+        "error_report_message_label": "Message (optional):",
+        "error_report_button_send": "Send",
+        "error_report_button_cancel": "Cancel",
+        "error_report_sent": "Error report sent successfully.",
+        "error_report_failed": "Error report failed: {error}",
     }
 }
 
