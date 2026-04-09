@@ -1,6 +1,6 @@
 # PhotoCleaner Documentation Index
 
-Stand: 07. April 2026
+Stand: 09. April 2026
 
 Diese Seite ist der Einstiegspunkt für die aktuelle Dokumentation. Historische Phasen-, Audit- und Sprint-Unterlagen liegen in [archive/INDEX.md](archive/INDEX.md).
 

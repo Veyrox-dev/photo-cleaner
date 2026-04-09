@@ -106,6 +106,111 @@ def get_theme_colors(theme: ThemeType | None = None) -> Dict[str, str]:
     return THEMES.get(t, THEMES["dark"])
 
 
+def build_panel_style(theme: ThemeType | None = None, *, radius: int = 8) -> str:
+    """Build a consistent panel/container style from the active theme."""
+    colors = get_theme_colors(theme)
+    return (
+        f"background-color: {colors['window']}; "
+        f"border: 1px solid {colors['border']}; "
+        f"border-radius: {radius}px;"
+    )
+
+
+def build_progress_bar_style(theme: ThemeType | None = None, *, chunk_color: str | None = None) -> str:
+    """Build a consistent progress bar style from the active theme."""
+    colors = get_theme_colors(theme)
+    chunk = chunk_color or colors["success"]
+    return f"""
+        QProgressBar {{
+            border: 1px solid {colors['border']};
+            border-radius: 3px;
+            background-color: {colors['base']};
+            text-align: center;
+            padding: 0px;
+            font-size: 11px;
+            font-weight: bold;
+            color: {colors['text']};
+            qproperty-textVisible: true;
+            qproperty-alignment: AlignCenter;
+        }}
+        QProgressBar::chunk {{
+            background-color: {chunk};
+            border-radius: 2px;
+        }}
+    """
+
+
+def build_checkbox_style(
+    theme: ThemeType | None = None,
+    *,
+    indicator_size: int = 16,
+    background_color: str | None = None,
+) -> str:
+    """Build a checkbox style with explicit indicator contrast for both themes."""
+    colors = get_theme_colors(theme)
+    bg = background_color or colors["window"]
+    return f"""
+        QCheckBox {{
+            color: {colors['text']};
+            background: {bg};
+            border-radius: 3px;
+            padding: 1px;
+        }}
+        QCheckBox::indicator {{
+            width: {indicator_size}px;
+            height: {indicator_size}px;
+            border: 1px solid {colors['input_border']};
+            border-radius: 3px;
+            background: {colors['base']};
+        }}
+        QCheckBox::indicator:checked {{
+            background: {colors['highlight']};
+            border: 1px solid {colors['highlight']};
+        }}
+        QCheckBox::indicator:hover {{
+            border: 1px solid {colors['highlight']};
+        }}
+    """
+
+
+def build_list_widget_style(theme: ThemeType | None = None) -> str:
+    """Build a consistent group list style including visible check indicators."""
+    colors = get_theme_colors(theme)
+    return f"""
+        QListWidget {{
+            border: 1px solid {colors['border']};
+            border-radius: 10px;
+            background-color: {colors['base']};
+            color: {colors['text']};
+            padding: 4px;
+        }}
+        QListWidget::item {{
+            padding: 10px;
+            margin: 3px 0;
+            border-radius: 8px;
+        }}
+        QListWidget::item:selected {{
+            border: 2px solid {colors['highlight']};
+            background-color: {colors['alternate_base']};
+            color: {colors['text']};
+        }}
+        QListWidget::indicator {{
+            width: 16px;
+            height: 16px;
+            border: 1px solid {colors['input_border']};
+            border-radius: 3px;
+            background: {colors['base']};
+        }}
+        QListWidget::indicator:checked {{
+            background: {colors['highlight']};
+            border: 1px solid {colors['highlight']};
+        }}
+        QListWidget::indicator:hover {{
+            border: 1px solid {colors['highlight']};
+        }}
+    """
+
+
 def apply_theme_to_palette(theme: ThemeType | None = None) -> QPalette:
     """Create and return a QPalette for the theme."""
     colors = get_theme_colors(theme)
@@ -331,6 +436,25 @@ def generate_stylesheet(theme: ThemeType | None = None) -> str:
     QCheckBox, QRadioButton {{
         color: {colors['window_text']};
         spacing: 5px;
+    }}
+
+    QCheckBox::indicator, QRadioButton::indicator, QListView::indicator, QListWidget::indicator {{
+        width: 16px;
+        height: 16px;
+        border: 1px solid {colors['input_border']};
+        background: {colors['base']};
+    }}
+
+    QCheckBox::indicator {{ border-radius: 3px; }}
+    QRadioButton::indicator {{ border-radius: 8px; }}
+
+    QCheckBox::indicator:checked, QRadioButton::indicator:checked, QListView::indicator:checked, QListWidget::indicator:checked {{
+        background: {colors['highlight']};
+        border: 1px solid {colors['highlight']};
+    }}
+
+    QCheckBox::indicator:hover, QRadioButton::indicator:hover, QListView::indicator:hover, QListWidget::indicator:hover {{
+        border: 1px solid {colors['highlight']};
     }}
     
     /* SpinBox */

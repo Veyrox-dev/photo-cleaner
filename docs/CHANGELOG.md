@@ -1,6 +1,46 @@
 # PhotoCleaner - Changelog
 > Version 0.8.5 - MSI Reliability + Review UX Hotfixes (2026-04-09)
 
+## [Unreleased] - Merge Progress UX + Theme Unification + Stability Fixes (2026-04-09) ✅
+
+### 🔁 Merge Workflow UX (mehrstufig, nicht blockierend)
+- Merge-Neubewertung auf asynchronen Worker mit detailliertem Progress-Eventmodell umgestellt
+- Merge-Dialog zeigt jetzt sichtbare Phasen + Prozent + Detailstatus + Sub-Progress
+- Neue Phasenlogik: Vorbereitung -> Modelle -> Vergleich -> Scoring -> Finalisierung
+- Cancel-Verhalten verbessert (kein UI-Freeze, sauberes Worker-Cancel)
+
+### ✅ Selection UX Verbesserungen
+- Thumbnail-Checkboxen eingeführt (explizite Auswahl statt implizitem Klick-Verhalten)
+- Gruppenliste für Merge mit checkbaren Einträgen versehen
+- Merge-Button-Enablement an echte Checkbox-Selektion gekoppelt
+- Visuelles Feedback für gruppenweise Check-Auswahl verstärkt
+
+### 🧭 Detailansicht
+- Top-Right-Status-Badge ergänzt (klarer KEEP/DELETE/UNSURE-Status inkl. Recommended/Locked)
+- Kontrastberechnung für Badge- und Status-Texte vereinheitlicht
+
+### 🌍 i18n-Abdeckung erweitert
+- Wichtige Merge-/Progress-/Detail-/Start-/Cache-Texte auf DE/EN über i18n umgestellt
+- Harte UI-Texte in zentralen Dialogen reduziert
+- Neue i18n-Keys für Merge-Phasen, Detailstatus, Fehler- und Fortschrittstexte ergänzt
+
+### 🎨 Theme-System (Light/Dark) konsolidiert
+- Zentrale Theme-Style-Builder ergänzt: Panel, ProgressBar, Checkbox, ListWidget
+- Doppelte/konkurrierende Theme-Handler in der Main-UI bereinigt (Single Source für Theme-Refresh)
+- Sidebars (Gruppenpanel + Schnellaktionen) auf zentrale Theme-Stile umgestellt
+- Gruppenlisten-Textfarbe im Light Mode korrigiert (kein erzwungenes Weiß mehr)
+- Suchleiste + Filter-Combo explizit auf widget-spezifische Theme-Stile umgestellt
+- Theme-Wechsel verbessert: aktives Re-Polish für Such-/Filter-Widgets nach Umschalten
+
+### 🧱 Stabilität / Crash-Fixes
+- Race-Condition bei asynchronen Thumbnail-Callbacks gefixt
+- Schutz vor Zugriff auf bereits gelöschte Qt-Objekte (`QLabel already deleted`) ergänzt
+- Defensive Session-Restore-Validierung für unvollständige/inkonsistente Snapshot-Daten ergänzt
+
+### ✅ Verifikation
+- Syntax-/Problemprüfung für geänderte Kernmodule ohne Fehler
+- Regressionsrisiko reduziert durch zentrale Theme-Anwendung und Entkopplung von Legacy-Handlern
+
 ## [Unreleased] - Settings Refactor + Milestone Progress + Week-5 Benchmark (2026-04-09) 🚀
 
 ### ⚙️ Settings UX Refactor

@@ -60,10 +60,27 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 - ✅ MSI-Permissions-Fix: Thumbnail-Cache in benutzerschreibbarem Cache-Ordner statt `Program Files`
 - ✅ MSI-Cloud-Config ohne manuellen Endnutzer-Schritt: Build injiziert `SUPABASE_PROJECT_URL` + `SUPABASE_ANON_KEY` automatisch in den Installer-Payload
 - ✅ Build/Release-Doku aktualisiert: Cloud-Config-Handling in `docs/guides/MSI_BUILD.md` dokumentiert
+- ✅ Merge-Flow modernisiert: Mehrphasen-Progress (inkl. Sub-Progress) + asynchrone Neubewertung ohne UI-Freeze
+- ✅ Selektions-UX verbessert: Checkbox-basierte Thumbnail- und Gruppen-Selektion für Merge
+- ✅ Detailansicht verbessert: sofort sichtbares Status-Badge (inkl. Recommended/Locked)
+- ✅ Race-Condition-Fix: asynchrone Thumbnail-Callbacks gegen bereits zerstörte Qt-Objekte abgesichert
+- ✅ Theme-Stabilisierung Light/Dark: konkurrierende Theme-Handler bereinigt, Sidebars/Progress/Search zentral nachgestylt
+- ✅ Suchleiste-Fix nach Theme-Wechsel: explizites Re-Polish verhindert "bleibt schwarz"-Zustand nach Dark->Light
 - ▶ Neu eingeplant: Code-Signing (Publisher-Vertrauen) vorbereiten, damit Installer nicht mehr als "Unbekannter Herausgeber" erscheint
 - ▶ Verbleibend (nicht-blockierend): TensorFlow-Importdauer/GPU-Enumeration beobachten
 - ▶ Verbleibend (nicht-blockierend): TensorFlow Retracing-Warnungen im Analysepfad reduzieren
 - ▶ Verbleibend (optional): MediaPipe-Thread-Import robuster/fallback-schneller machen
+
+### Status-Delta (2026-04-09, nachts)
+
+- ✅ Theme-Konsistenz in kritischen UI-Flows wiederhergestellt (Gruppenpanel, Schnellaktionen, Such-/Filterbereich, Statusbar)
+- ✅ Zentrale Theme-Style-Bausteine eingeführt (Panel/Progress/Checkbox/ListWidget)
+- ✅ Merge-Feedback auf Analyse-ähnlichen Detaillierungsgrad angehoben (Phasen + Prozent + Detailfortschritt)
+- ✅ Keine offenen Syntax-/Problems-Fehler in den geänderten Kernmodulen
+
+**Nächster Fokus (direkt anschlussfähig):**
+- ▶ Theme-Audit-Restlauf: verbleibende lokale `setStyleSheet`-Inseln systematisch auf zentrale Builder migrieren
+- ▶ UI-Snapshot-Smoke für Dark->Light->Dark Umschaltpfad in allen Hauptdialogen
 
 ### Status-Delta (2026-04-09, abends)
 
@@ -216,6 +233,7 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 - MTCNN-Einsatz staffeln (Top-K/Kandidaten statt Vollanalyse auf allen Bildern)
 - Thread-/Progress-Overhead reduzieren (Callback-Intervall, Logging, Synchronisationsdruck)
 - Cache-Pfad und Qualitätsdrift validieren
+- Theme-Audit-Restlauf abschließen (letzte lokale Styles auf zentrale Theme-Builder heben)
 
 ### Woche 7
 - Stabilisierung + Regressionstests auf optimiertem Analysepfad

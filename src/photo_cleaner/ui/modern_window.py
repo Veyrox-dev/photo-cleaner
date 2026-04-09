@@ -139,7 +139,18 @@ def _get_group_scorer():
         _GroupScorer = GroupScorer
     return _GroupScorer
 from photo_cleaner.i18n import t, set_language, load_language_from_settings, save_language_to_settings, get_available_languages
-from photo_cleaner.theme import set_theme, load_theme_from_settings, save_theme_to_settings, apply_theme_to_palette, get_theme, get_theme_colors
+from photo_cleaner.theme import (
+    set_theme,
+    load_theme_from_settings,
+    save_theme_to_settings,
+    apply_theme_to_palette,
+    get_theme,
+    get_theme_colors,
+    build_panel_style,
+    build_progress_bar_style,
+    build_checkbox_style,
+    build_list_widget_style,
+)
 from photo_cleaner.ui.color_constants import (
     get_status_colors,
     get_quality_colors,
@@ -1892,19 +1903,14 @@ def _build_button_style(
 
 
 def _build_surface_style() -> str:
-    colors = get_theme_colors()
-    return (
-        f"background-color: {colors['window']}; "
-        f"border: 1px solid {colors['border']}; "
-        "border-radius: 12px;"
-    )
+    return build_panel_style(radius=12)
 
 
 def _build_input_style() -> str:
     colors = get_theme_colors()
     semantic_colors = get_semantic_colors()
     return f"""
-        QLineEdit, QSpinBox {{
+        QLineEdit, QSpinBox, QComboBox {{
             background-color: {colors['input_bg']};
             color: {colors['text']};
             border: 1px solid {colors['input_border']};
@@ -1912,8 +1918,66 @@ def _build_input_style() -> str:
             padding: 8px 10px;
             min-height: 20px;
         }}
-        QLineEdit:focus, QSpinBox:focus {{
+        QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{
             border: 2px solid {semantic_colors['info']};
+        }}
+        QComboBox::drop-down {{
+            border: none;
+        }}
+        QComboBox QAbstractItemView {{
+            background-color: {colors['input_bg']};
+            color: {colors['text']};
+            border: 1px solid {colors['input_border']};
+            selection-background-color: {colors['highlight']};
+            selection-color: {colors['highlighted_text']};
+        }}
+    """
+
+
+def _build_line_edit_widget_style() -> str:
+    """Build direct style for standalone QLineEdit widgets."""
+    colors = get_theme_colors()
+    semantic_colors = get_semantic_colors()
+    return (
+        f"background-color: {colors['input_bg']}; "
+        f"color: {colors['text']}; "
+        f"border: 1px solid {colors['input_border']}; "
+        "border-radius: 8px; "
+        "padding: 8px 10px; "
+        "min-height: 20px;"
+        f" selection-background-color: {colors['highlight']};"
+        f" selection-color: {colors['highlighted_text']};"
+    )
+
+
+def _build_combo_widget_style() -> str:
+    """Build direct style for standalone QComboBox widgets."""
+    colors = get_theme_colors()
+    semantic_colors = get_semantic_colors()
+    return f"""
+        QComboBox {{
+            background-color: {colors['input_bg']};
+            color: {colors['text']};
+            border: 1px solid {colors['input_border']};
+            border-radius: 8px;
+            padding: 8px 10px;
+            min-height: 20px;
+            selection-background-color: {colors['highlight']};
+            selection-color: {colors['highlighted_text']};
+        }}
+        QComboBox:focus {{
+            border: 2px solid {semantic_colors['info']};
+        }}
+        QComboBox::drop-down {{
+            border: none;
+            width: 22px;
+        }}
+        QComboBox QAbstractItemView {{
+            background-color: {colors['input_bg']};
+            color: {colors['text']};
+            border: 1px solid {colors['input_border']};
+            selection-background-color: {colors['highlight']};
+            selection-color: {colors['highlighted_text']};
         }}
     """
 
@@ -2226,16 +2290,12 @@ class ImageDetailDialog(QDialog):
         info_panel = QWidget()
         info_layout = QVBoxLayout(info_panel)
         info_panel.setMaximumWidth(400)
-        
-        # File info
-        info_layout.addWidget(QLabel(f"<h3>{self.file_row.path.name}</h3>"))
-        
-        status_label = QLabel(f"Status: <b>{self.file_row.status.value}</b>")
+        info_panel.setStyleSheet(build_panel_style(radius=0))
         status_colors = get_status_colors()
+        status_label = QLabel(f"Status: <b>{self.file_row.status.value}</b>")
         status_color = status_colors.get(self.file_row.status.value, status_colors['UNDECIDED'])
         status_label.setStyleSheet(f"color: {status_color}; padding: 8px; font-size: 14px;")
         info_layout.addWidget(status_label)
-        
         if self.file_row.locked:
             lock_label = QLabel("<b>LOCKED</b>")
             lock_label.setStyleSheet(f"color: {get_semantic_colors()['warning']}; padding: 4px;")
@@ -2481,11 +2541,7 @@ class ThumbnailCard(QWidget):
         self.select_checkbox.move(6, 6)
         self.select_checkbox.setCursor(Qt.PointingHandCursor)
         self.select_checkbox.setToolTip(t("thumbnail_checkbox_tooltip"))
-        self.select_checkbox.setStyleSheet(
-            f"QCheckBox {{ background: {to_rgba(get_theme_colors()['base'], 0.85)}; border-radius: 3px; padding: 1px; }}"
-            f"QCheckBox::indicator {{ width: 14px; height: 14px; border: 1px solid {get_theme_colors()['border']}; border-radius: 3px; background: {get_theme_colors()['base']}; }}"
-            f"QCheckBox::indicator:checked {{ background: {get_semantic_colors()['info']}; border: 1px solid {get_semantic_colors()['info']}; }}"
-        )
+        self._apply_checkbox_theme()
         self.select_checkbox.stateChanged.connect(self._on_checkbox_state_changed)
 
         # Placeholder - real thumbnail is loaded asynchronously by worker
@@ -2672,6 +2728,12 @@ class ThumbnailCard(QWidget):
                 font-size: 11px;
             }}
         """)
+
+    def _apply_checkbox_theme(self) -> None:
+        """Apply central checkbox style with strong contrast."""
+        self.select_checkbox.setStyleSheet(
+            build_checkbox_style(indicator_size=14, background_color=to_rgba(get_theme_colors()["base"], 0.85))
+        )
     
     def cleanup(self):
         """Explicitly cleanup resources before deletion (prevents memory leak)."""
@@ -3578,6 +3640,8 @@ class ModernMainWindow(QMainWindow):
         # Subscribe to theme changes for live updates
         theme_manager = ThemeManager.instance()
         theme_manager.theme_changed.connect(self._on_theme_changed)
+        # Force an explicit first pass so all locally styled widgets match loaded theme.
+        self._on_theme_changed(get_theme())
         
         # Load previous session if it exists
         self._load_session()
@@ -4783,13 +4847,9 @@ class ModernMainWindow(QMainWindow):
     def _update_ui_language(self):
         """Update all UI text elements after language change."""
         try:
-            # Update group panel title
-            if hasattr(self, 'group_list') and self.group_list.parentWidget():
-                group_panel_layout = self.group_list.parentWidget().layout()
-                if group_panel_layout and group_panel_layout.count() > 0:
-                    title_widget = group_panel_layout.itemAt(0).widget()
-                    if isinstance(title_widget, QLabel):
-                        title_widget.setText(f"<h3>{t('duplicate_groups')}</h3>")
+            # Update group panel labels
+            if hasattr(self, 'group_panel_title_label'):
+                self.group_panel_title_label.setText(t('duplicate_groups'))
             
             # Update search placeholder
             if hasattr(self, 'search_box'):
@@ -4799,36 +4859,27 @@ class ModernMainWindow(QMainWindow):
             if hasattr(self, 'grid_title'):
                 self.grid_title.setText(t("select_group_message"))
             
-            # Update actions panel title
-            if hasattr(self, 'keep_btn') and self.keep_btn.parentWidget():
-                actions_panel = self.keep_btn.parentWidget()
-                actions_layout = actions_panel.layout()
-                if actions_layout and actions_layout.count() > 0:
-                    # First item is the title
-                    title_widget = actions_layout.itemAt(0).widget()
-                    if isinstance(title_widget, QLabel):
-                        title_widget.setText(f"<h3>{t('quick_actions')}</h3>")
-                    # Second item is selection count label
-                    if actions_layout.count() > 1:
-                        selection_widget = actions_layout.itemAt(1).widget()
-                        if isinstance(selection_widget, QLabel) and hasattr(self, 'selection_count_label'):
-                            if self.selection_count_label == selection_widget:
-                                self.selection_count_label.setText(f"<b>{t('no_selection')}</b>")
-                    # Third item is "Multi-select" label
-                    if actions_layout.count() > 2:
-                        batch_widget = actions_layout.itemAt(2).widget()
-                        if isinstance(batch_widget, QLabel):
-                            batch_widget.setText(f"<b>{t('select_multiple')}</b>")
+            # Update actions panel labels
+            if hasattr(self, 'quick_actions_title_label'):
+                self.quick_actions_title_label.setText(t('quick_actions'))
+            if hasattr(self, 'batch_group_label'):
+                self.batch_group_label.setText(t('select_multiple'))
+            if hasattr(self, 'action_header_label'):
+                self.action_header_label.setText(t('phase_e_action_visibility'))
+            if hasattr(self, 'recent_actions_title_label'):
+                self.recent_actions_title_label.setText(t('recent_actions'))
+            if hasattr(self, 'actions_label'):
+                self.actions_label.setText(t('phase_e_decisions_quick'))
             
             # Update button texts in actions panel
             if hasattr(self, 'keep_btn'):
-                self.keep_btn.setText(t("keep"))
+                self.keep_btn.setText(f"{t('keep')} (K)")
             if hasattr(self, 'del_btn'):
-                self.del_btn.setText(t("delete"))
+                self.del_btn.setText(f"{t('delete')} (D)")
             if hasattr(self, 'unsure_btn'):
                 self.unsure_btn.setText(t("unsure"))
             if hasattr(self, 'group_filter_label'):
-                self.group_filter_label.setText(f"<b>{t('group_filters_title')}</b>")
+                self.group_filter_label.setText(t('group_filters_title'))
             if hasattr(self, 'group_filter_combo'):
                 self._refresh_group_filter_combo_labels()
             if hasattr(self, 'lock_btn'):
@@ -4836,23 +4887,14 @@ class ModernMainWindow(QMainWindow):
             if hasattr(self, 'compare_btn'):
                 self.compare_btn.setText(t("compare_two"))
             if hasattr(self, 'split_group_btn'):
-                self.split_group_btn.setText(t("split_group"))
+                self.split_group_btn.setText(f"{t('split_group')} (S)")
             if hasattr(self, 'undo_btn'):
                 self.undo_btn.setText(t("undo_button"))
+            if hasattr(self, 'merge_groups_btn'):
+                self._update_merge_groups_button_state()
             
-            # Update actions_on_selection label
-            if hasattr(self, 'keep_btn') and self.keep_btn.parentWidget():
-                actions_panel = self.keep_btn.parentWidget()
-                actions_layout = actions_panel.layout()
-                if actions_layout:
-                    # Find "Actions on selection" label (it's before keep_btn)
-                    for i in range(actions_layout.count()):
-                        widget = actions_layout.itemAt(i).widget()
-                        if isinstance(widget, QLabel):
-                            text = widget.text()
-                            if 'Aktionen' in text or 'Actions' in text:
-                                widget.setText(t("actions_on_selection"))
-                                break
+            # Re-apply theme styles to avoid stale widget-specific styles after language refresh.
+            self._update_sidebar_theme_styles()
             
             # Update status bar elements
             if hasattr(self, 'finalize_btn'):
@@ -4920,6 +4962,7 @@ class ModernMainWindow(QMainWindow):
             # Refresh all thumbnail cards with new colors
             for card in self.thumbnail_cards:
                 card._update_selection_style()
+                card._apply_checkbox_theme()
                 # Update status label colors
                 if hasattr(card, 'status_label'):
                     status_colors = get_status_colors()
@@ -4983,11 +5026,10 @@ class ModernMainWindow(QMainWindow):
             if hasattr(self, 'progress'):
                 self._update_progress_bar_style()
 
+            self._update_sidebar_theme_styles()
+
             if hasattr(self, 'status_bar_panel'):
-                colors = get_theme_colors()
-                self.status_bar_panel.setStyleSheet(
-                    f"background-color: {colors['window']}; border: 1px solid {colors['border']};"
-                )
+                self.status_bar_panel.setStyleSheet(build_panel_style(radius=0))
 
             if hasattr(self, 'actions_panel'):
                 self._update_actions_panel_style()
@@ -5000,6 +5042,49 @@ class ModernMainWindow(QMainWindow):
             
         except (RuntimeError, AttributeError, KeyError, ValueError) as e:
             logger.error(f"Error in theme change callback: {e}", exc_info=True)
+
+    def _update_sidebar_theme_styles(self) -> None:
+        """Apply theme-aware styles to sidebar containers, titles, and labels."""
+        colors = get_theme_colors()
+
+        if hasattr(self, 'group_panel'):
+            self.group_panel.setStyleSheet(_build_surface_style())
+        if hasattr(self, 'actions_panel'):
+            self.actions_panel.setStyleSheet(build_panel_style(radius=8))
+        if hasattr(self, 'group_list'):
+            self.group_list.setStyleSheet(build_list_widget_style())
+
+        title_style = f"font-size: 18px; font-weight: 700; color: {colors['text']};"
+        section_style = f"font-weight: 700; color: {colors['text']};"
+        tiny_title_style = f"font-size: 11px; font-weight: 700; color: {colors['text']};"
+
+        if hasattr(self, 'group_panel_title_label'):
+            self.group_panel_title_label.setStyleSheet(title_style)
+        if hasattr(self, 'quick_actions_title_label'):
+            self.quick_actions_title_label.setStyleSheet(title_style)
+        if hasattr(self, 'group_filter_label'):
+            self.group_filter_label.setStyleSheet(section_style)
+        if hasattr(self, 'batch_group_label'):
+            self.batch_group_label.setStyleSheet(section_style)
+        if hasattr(self, 'action_header_label'):
+            self.action_header_label.setStyleSheet(tiny_title_style)
+        if hasattr(self, 'recent_actions_title_label'):
+            self.recent_actions_title_label.setStyleSheet(tiny_title_style)
+        if hasattr(self, 'actions_label'):
+            self.actions_label.setStyleSheet(tiny_title_style)
+
+        if hasattr(self, 'needs_review_counter_label'):
+            self.needs_review_counter_label.setStyleSheet(
+                f"padding: 6px 8px; font-size: 11px; background-color: {colors['alternate_base']}; border-radius: 8px; color: {colors['text']};"
+            )
+        if hasattr(self, 'smart_filter_counter_label'):
+            self.smart_filter_counter_label.setStyleSheet(
+                f"padding: 6px 8px; font-size: 11px; background-color: {colors['alternate_base']}; border-radius: 8px; color: {colors['text']};"
+            )
+        if hasattr(self, 'recent_actions_label'):
+            self.recent_actions_label.setStyleSheet(
+                _build_surface_style() + f" color: {colors['text']}; padding: 8px; font-size: 11px;"
+            )
     
     def _update_selection_count_style(self) -> None:
         """Update selection count label colors for current theme."""
@@ -5015,38 +5100,17 @@ class ModernMainWindow(QMainWindow):
 
     def _update_actions_panel_style(self) -> None:
         try:
-            colors = get_theme_colors()
             if hasattr(self, 'actions_panel'):
-                self.actions_panel.setStyleSheet(
-                    f"background-color: {colors['window']}; border: 1px solid {colors['border']}; border-radius: 8px;"
-                )
+                self.actions_panel.setStyleSheet(build_panel_style(radius=8))
         except (KeyError, AttributeError, RuntimeError) as e:
             logger.error(f"Error updating actions panel style: {e}", exc_info=True)
     
     def _update_progress_bar_style(self) -> None:
         """Update progress bar colors for current theme."""
         try:
-            colors = get_theme_colors()
             success_color = get_semantic_colors()['success']
             if hasattr(self, 'progress'):
-                self.progress.setStyleSheet(f"""
-                    QProgressBar {{
-                        border: 1px solid {colors['border']};
-                        border-radius: 3px;
-                        background-color: {colors['base']};
-                        text-align: center;
-                        padding: 0px;
-                        font-size: 11px;
-                        font-weight: bold;
-                        color: {colors['text']};
-                        qproperty-textVisible: true;
-                        qproperty-alignment: AlignCenter;
-                    }}
-                    QProgressBar::chunk {{
-                        background-color: {success_color};
-                        border-radius: 2px;
-                    }}
-                """)
+                self.progress.setStyleSheet(build_progress_bar_style(chunk_color=success_color))
                 logger.debug(f"Progress bar styled: chunk={success_color}")
         except (KeyError, AttributeError, RuntimeError) as e:
             logger.error(f"Error updating progress bar style: {e}", exc_info=True)
@@ -5867,27 +5931,33 @@ class ModernMainWindow(QMainWindow):
     def _build_group_panel(self) -> QWidget:
         """Erstelle Gruppenauswahlpanel."""
         panel = QWidget()
+        self.group_panel = panel
         panel.setMaximumWidth(350)
         panel.setStyleSheet(_build_surface_style())
         layout = QVBoxLayout(panel)
         layout.setSpacing(10)
         layout.setContentsMargins(12, 12, 12, 12)
         
-        title = QLabel(f"<h3>{t('duplicate_groups')}</h3>")
-        layout.addWidget(title)
+        self.group_panel_title_label = QLabel(t('duplicate_groups'))
+        self.group_panel_title_label.setStyleSheet("font-size: 18px; font-weight: 700;")
+        layout.addWidget(self.group_panel_title_label)
         
         # Search box
         self.search_box = QLineEdit()
+        self.search_box.setObjectName("groupSearchBox")
         self.search_box.setPlaceholderText(t("search_placeholder"))
-        self.search_box.setStyleSheet(_build_input_style())
+        self.search_box.setClearButtonEnabled(True)
+        self.search_box.setMinimumHeight(34)
+        self.search_box.setStyleSheet(_build_line_edit_widget_style())
         self.search_box.textChanged.connect(self._apply_group_filter)
         layout.addWidget(self.search_box)
 
-        self.group_filter_label = QLabel(f"<b>{t('group_filters_title')}</b>")
+        self.group_filter_label = QLabel(t('group_filters_title'))
+        self.group_filter_label.setStyleSheet("font-weight: 700;")
         layout.addWidget(self.group_filter_label)
 
         self.group_filter_combo = QComboBox()
-        self.group_filter_combo.setStyleSheet(_build_input_style())
+        self.group_filter_combo.setStyleSheet(_build_combo_widget_style())
         self._refresh_group_filter_combo_labels()
         self.group_filter_combo.currentIndexChanged.connect(self._apply_group_filter)
         layout.addWidget(self.group_filter_combo)
@@ -5919,24 +5989,19 @@ class ModernMainWindow(QMainWindow):
         # ✅ CRITICAL FIX: Start paused (only resume in _finish_post_indexing after rating complete)
         self._group_thumb_loader.start()
         logger.info("[UI] ThumbnailLoader started for group list (paused, will resume after rating)")
-        # Use palette-driven colors to avoid dark boxes on light themes
-        colors = get_theme_colors()
-        self.group_list.setStyleSheet(f"""
-            QListWidget {{
-                border: 1px solid {colors['border']};
-                border-radius: 10px;
-                background-color: {colors['base']};
-                padding: 4px;
-            }}
-            QListWidget::item {{
-                padding: 10px;
-                margin: 3px 0;
-                border-radius: 8px;
-            }}
-            QListWidget::item:selected {{
-                border: 2px solid {get_semantic_colors()['info']};
-            }}
-        """)
+        # Use centralized list style so indicators + backgrounds react to theme globally.
+        self.group_list.setStyleSheet(build_list_widget_style())
+        if hasattr(self, 'search_box'):
+            self.search_box.setStyleSheet(_build_line_edit_widget_style())
+            self.search_box.setVisible(True)
+            self.search_box.style().unpolish(self.search_box)
+            self.search_box.style().polish(self.search_box)
+            self.search_box.update()
+        if hasattr(self, 'group_filter_combo'):
+            self.group_filter_combo.setStyleSheet(_build_combo_widget_style())
+            self.group_filter_combo.style().unpolish(self.group_filter_combo)
+            self.group_filter_combo.style().polish(self.group_filter_combo)
+            self.group_filter_combo.update()
         layout.addWidget(self.group_list)
         
         # NEW Feature 3: Merge Groups Button
@@ -6029,8 +6094,9 @@ class ModernMainWindow(QMainWindow):
         layout.setSpacing(12)
         self._update_actions_panel_style()
         
-        title = QLabel(f"<h3>{t('quick_actions')}</h3>")
-        layout.addWidget(title)
+        self.quick_actions_title_label = QLabel(t('quick_actions'))
+        self.quick_actions_title_label.setStyleSheet("font-size: 18px; font-weight: 700;")
+        layout.addWidget(self.quick_actions_title_label)
         
         # Auswahl-Info - store for theme updates
         self.selection_count_label = QLabel(f"<b>{t('no_selection')}</b>")
@@ -6038,8 +6104,9 @@ class ModernMainWindow(QMainWindow):
         layout.addWidget(self.selection_count_label)
         
         # Batch-Auswahl-Buttons
-        batch_group = QLabel(f"<b>{t('select_multiple')}</b>")
-        layout.addWidget(batch_group)
+        self.batch_group_label = QLabel(t('select_multiple'))
+        self.batch_group_label.setStyleSheet("font-weight: 700;")
+        layout.addWidget(self.batch_group_label)
         
         select_all_btn = QPushButton(t('select_all'))
         select_all_btn.setStyleSheet(
@@ -6060,9 +6127,9 @@ class ModernMainWindow(QMainWindow):
         layout.addSpacing(10)
         
         # PHASE E: Enhanced visibility of Merge/Split/Compare + action buttons
-        action_header = QLabel(t("phase_e_action_visibility"))
-        action_header.setStyleSheet(f"font-weight: bold; color: {get_theme_colors()['text']}; font-size: 11px;")
-        layout.addWidget(action_header)
+        self.action_header_label = QLabel(t("phase_e_action_visibility"))
+        self.action_header_label.setStyleSheet("font-weight: bold; font-size: 11px;")
+        layout.addWidget(self.action_header_label)
         
         # Row 1: Compare & Merge (collaborative actions)
         row1_layout = QHBoxLayout()
@@ -6094,9 +6161,9 @@ class ModernMainWindow(QMainWindow):
         self.undo_btn.clicked.connect(self._undo)
         layout.addWidget(self.undo_btn)
 
-        recent_actions_title = QLabel(f"<b>{t('recent_actions')}</b>")
-        recent_actions_title.setStyleSheet(f"color: {get_theme_colors()['text']}; font-size: 11px;")
-        layout.addWidget(recent_actions_title)
+        self.recent_actions_title_label = QLabel(t('recent_actions'))
+        self.recent_actions_title_label.setStyleSheet("font-size: 11px; font-weight: 700;")
+        layout.addWidget(self.recent_actions_title_label)
 
         self.recent_actions_label = QLabel(t("no_recent_actions"))
         self.recent_actions_label.setWordWrap(True)
@@ -6114,9 +6181,9 @@ class ModernMainWindow(QMainWindow):
         layout.addSpacing(8)
         
         # Decision buttons (requested: vertical stack)
-        actions_label = QLabel(t("phase_e_decisions_quick"))
-        actions_label.setStyleSheet(f"font-weight: bold; color: {get_theme_colors()['text']}; font-size: 11px;")
-        layout.addWidget(actions_label)
+        self.actions_label = QLabel(t("phase_e_decisions_quick"))
+        self.actions_label.setStyleSheet("font-weight: bold; font-size: 11px;")
+        layout.addWidget(self.actions_label)
         
         status_colors = get_status_colors()
         
@@ -6153,10 +6220,7 @@ class ModernMainWindow(QMainWindow):
         panel = QWidget()
         self.status_bar_panel = panel
         panel.setMaximumHeight(40)  # Kompakte Höhe
-        colors = get_theme_colors()
-        panel.setStyleSheet(
-            f"background-color: {colors['window']}; border: 1px solid {colors['border']};"
-        )
+        panel.setStyleSheet(build_panel_style(radius=0))
         layout = QHBoxLayout(panel)
         layout.setSpacing(4)
         layout.setContentsMargins(6, 4, 6, 4)  # Minimal padding
@@ -6720,8 +6784,11 @@ class ModernMainWindow(QMainWindow):
             status_color.setAlpha(bg_alpha)
             item.setData(Qt.BackgroundRole, QBrush(status_color))
 
-            # Keep text readable against red/green status backgrounds across themes.
-            text_color = QColor("#ffffff") if status_color.lightness() < 170 else QColor("#111111")
+            # In light theme prefer theme text color to avoid white labels on bright backgrounds.
+            if get_theme() == "light":
+                text_color = QColor(get_theme_colors()["text"])
+            else:
+                text_color = QColor("#ffffff") if status_color.lightness() < 170 else QColor("#111111")
             item.setData(Qt.ForegroundRole, QBrush(text_color))
 
             if grp.group_id in self._checked_group_ids:
@@ -6930,7 +6997,10 @@ class ModernMainWindow(QMainWindow):
             bg_alpha = 85
         status_color.setAlpha(bg_alpha)
         item.setBackground(QBrush(status_color))
-        text_color = QColor("#ffffff") if status_color.lightness() < 170 else QColor("#111111")
+        if get_theme() == "light":
+            text_color = QColor(get_theme_colors()["text"])
+        else:
+            text_color = QColor("#ffffff") if status_color.lightness() < 170 else QColor("#111111")
         item.setForeground(QBrush(text_color))
 
     def _update_merge_groups_button_state(self) -> None:
@@ -7957,44 +8027,6 @@ class ModernMainWindow(QMainWindow):
         QMessageBox.critical(self, t("merge_failed"), t("merge_error_detail").format(error=error_msg))
     
     # Theme and mode
-    
-    def _apply_dark_palette(self):
-        """Apply dark theme."""
-        apply_theme_to_palette(self, "dark")
-    
-    def _apply_light_palette(self):
-        """Apply light theme."""
-        apply_theme_to_palette(self, "light")
-    
-    def _apply_high_contrast_palette(self):
-        """Apply high-contrast theme."""
-        colors = get_high_contrast_colors()
-        pal = QPalette()
-        pal.setColor(QPalette.Window, QColor(colors["window"]))
-        pal.setColor(QPalette.WindowText, QColor(colors["window_text"]))
-        pal.setColor(QPalette.Base, QColor(colors["base"]))
-        pal.setColor(QPalette.AlternateBase, QColor(colors["alternate_base"]))
-        pal.setColor(QPalette.Text, QColor(colors["text"]))
-        pal.setColor(QPalette.Button, QColor(colors["button"]))
-        pal.setColor(QPalette.ButtonText, QColor(colors["button_text"]))
-        pal.setColor(QPalette.Highlight, QColor(colors["highlight"]))
-        pal.setColor(QPalette.HighlightedText, QColor(colors["highlighted_text"]))
-        self.setPalette(pal)
-    
-    def _on_theme_changed(self, theme_name: str):
-        """Behandle Theme-Wechsel."""
-        self.current_theme = theme_name
-        
-        if theme_name == "Dunkel":
-            self._apply_dark_palette()
-        elif theme_name == "Hell":
-            self._apply_light_palette()
-        elif theme_name == "System":
-            self.setPalette(QApplication.palette())
-        elif theme_name == "Hoher Kontrast":
-            self._apply_high_contrast_palette()
-        
-        self.update()
     
     def _on_mode_changed(self, mode_name: str):
         """Handle mode change."""
