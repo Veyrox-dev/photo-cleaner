@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from pathlib import Path
 from typing import Tuple
 
 from PIL import Image
+from photo_cleaner.config import AppConfig
+
+logger = logging.getLogger(__name__)
 
 # Register HEIC support
 try:
@@ -15,9 +19,9 @@ except ImportError:
 
 
 def _cache_dir() -> Path:
-    # project root is 3 parents up from this file: ui -> photo_cleaner -> src -> project
-    root = Path(__file__).resolve().parents[3]
-    d = root / ".cache" / "thumbnails"
+    # MSI installs under Program Files are read-only for normal users.
+    # Always use per-user writable app cache location.
+    d = AppConfig.get_cache_dir() / "thumbnails"
     d.mkdir(parents=True, exist_ok=True)
     return d
 

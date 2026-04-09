@@ -154,7 +154,7 @@ a = Analysis(
         # === SETUPTOOLS/PKG_RESOURCES (optional - only if needed) ===
         # Note: jaraco modules are vendored inside pkg_resources, not standalone
         'setuptools',
-        'pkg_resources',
+        'pkg_resources',    
         'platformdirs',
         'platformdirs.api',
         'platformdirs.windows',

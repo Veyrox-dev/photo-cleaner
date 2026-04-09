@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from pathlib import Path
 
+from photo_cleaner.config import AppConfig
 from photo_cleaner.license_client import LicenseConfig as CloudLicenseConfig
 
 logger = logging.getLogger(__name__)
@@ -26,9 +28,31 @@ def _parse_dotenv_line(line: str) -> tuple[str, str] | None:
 def _get_dotenv_value(key: str) -> str | None:
     """Read a variable from common .env locations if not present in process env."""
     project_root = Path(__file__).resolve().parents[3]
-    candidates = [Path.cwd() / ".env", project_root / ".env"]
+    exe_dir = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else None
 
-    for dotenv_path in candidates:
+    candidates: list[Path] = [
+        Path.cwd() / ".env",
+        project_root / ".env",
+        AppConfig.get_user_data_dir() / ".env",
+        AppConfig.get_user_data_dir() / "cloud.env",
+    ]
+
+    if exe_dir is not None:
+        candidates.extend([
+            exe_dir / ".env",
+            exe_dir / "_internal" / ".env",
+        ])
+
+    program_data = Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData")) / "PhotoCleaner"
+    candidates.extend([
+        program_data / ".env",
+        program_data / "cloud.env",
+    ])
+
+    # Keep order stable while removing duplicates.
+    unique_candidates = list(dict.fromkeys(candidates))
+
+    for dotenv_path in unique_candidates:
         if not dotenv_path.exists():
             continue
         try:

@@ -32,6 +32,25 @@ dotnet tool update --global wix
 powershell -ExecutionPolicy Bypass -File scripts/build_msi.ps1
 ```
 
+Cloud-Lizenzparameter werden beim MSI-Build automatisch in den Installer payload geschrieben,
+wenn auf dem Build-Rechner folgende Werte vorhanden sind (Umgebungsvariablen oder Root-.env):
+
+- `SUPABASE_PROJECT_URL`
+- `SUPABASE_ANON_KEY`
+
+Beispiel (Build-Rechner):
+
+```powershell
+$env:SUPABASE_PROJECT_URL = "https://<your-project-ref>.supabase.co"
+$env:SUPABASE_ANON_KEY = "<your-anon-key>"
+powershell -ExecutionPolicy Bypass -File scripts/build_msi.ps1
+```
+
+Hinweis:
+
+- Es wird nur der `ANON_KEY` verwendet (kein Service-Role-Key).
+- Endnutzer muessen dadurch keine `cloud.env` manuell anlegen.
+
 Optional mit expliziter Version und Clean-Output:
 
 ```powershell

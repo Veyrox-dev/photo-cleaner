@@ -53,6 +53,16 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 
 **Nächster Schritt:** MSI-Retest mit neuer UX, Performance-Baseline, Launch-Prep Punkt 3 (Lizenz-Durchlauf E2E).
 
+### Kurzfristige Bugfix-Liste (2026-04-09)
+
+- ✅ Gruppenliste kompakter: "Gruppe 1 • X Bilder", ohne SG-/Null-Prefix
+- ✅ Gruppenstatus visuell klar: fertig = grün, offen = rot
+- ✅ MSI-Permissions-Fix: Thumbnail-Cache in benutzerschreibbarem Cache-Ordner statt `Program Files`
+- ✅ MSI-Cloud-Config-Fallback: Supabase-Werte zusätzlich aus `%APPDATA%\PhotoCleaner\cloud.env` und `%PROGRAMDATA%\PhotoCleaner\cloud.env`
+- ▶ Verbleibend (nicht-blockierend): TensorFlow-Importdauer/GPU-Enumeration beobachten
+- ▶ Verbleibend (nicht-blockierend): TensorFlow Retracing-Warnungen im Analysepfad reduzieren
+- ▶ Verbleibend (optional): MediaPipe-Thread-Import robuster/fallback-schneller machen
+
 ### 1 · MSI Smoke-Test auf Virgin Windows
 Installer (`.msi`) auf einer frischen Maschine validieren: Install → Upgrade → Uninstall.
 Separat und ergänzend zu den EXE-Smoke-Tests.

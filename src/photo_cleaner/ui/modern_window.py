@@ -3016,6 +3016,7 @@ class ModernMainWindow(QMainWindow):
         # Data
         self.groups: List[GroupRow] = []
         self.group_lookup: dict[str, GroupRow] = {}
+        self._group_display_index_map: dict[str, int] = {}
         self.files_in_group: List[FileRow] = []
         self.current_group: Optional[str] = None
         self.current_index: int = -1
@@ -5696,6 +5697,10 @@ class ModernMainWindow(QMainWindow):
         
         query_start = time.monotonic()
         self.groups = self._query_groups()
+        self._group_display_index_map = {
+            grp.group_id: idx
+            for idx, grp in enumerate((g for g in self.groups if not g.group_id.startswith("SINGLE_")), start=1)
+        }
         query_time = time.monotonic() - query_start
         logger.info(f"[UI] _query_groups() completed in {query_time:.3f}s, found {len(self.groups)} groups")
         
@@ -5743,6 +5748,23 @@ class ModernMainWindow(QMainWindow):
         except (RuntimeError, AttributeError, ValueError) as e:
             logger.error(f"Fehler beim Öffnen der Detailansicht für {file_row.path.name}: {e}", exc_info=True)
             self._show_status_message("Detailansicht konnte nicht geöffnet werden", error=True)
+
+    def _format_group_display_id(self, group_id: str) -> str:
+        """Return a compact, user-facing group number (1..N)."""
+        if group_id.startswith("SINGLE_"):
+            return group_id
+
+        mapped_idx = self._group_display_index_map.get(group_id)
+        if mapped_idx is not None:
+            return str(mapped_idx)
+
+        numeric_suffix = re.search(r"(\d+)$", group_id)
+        if numeric_suffix:
+            try:
+                return str(int(numeric_suffix.group(1)))
+            except ValueError:
+                pass
+        return group_id
     
     def _query_groups(self) -> List[GroupRow]:
         """Query all duplicate groups INCLUDING single-image groups.
@@ -5984,7 +6006,8 @@ class ModernMainWindow(QMainWindow):
             if is_single:
                 label = f"{t('group_list_single')} • {grp.sample_path.name}"
             else:
-                label = t("group_list_many").format(id=grp.group_id, count=grp.total)
+                display_id = self._format_group_display_id(grp.group_id)
+                label = t("group_list_many").format(id=display_id, count=grp.total)
             
             if term and term not in label.lower() and term not in str(grp.sample_path).lower():
                 continue
@@ -6005,19 +6028,19 @@ class ModernMainWindow(QMainWindow):
             render_count += 1
             
             # Status indicator with CLEAR visual distinction for undecided
-            status_colors = get_status_colors()
+            semantic_colors = get_semantic_colors()
             if grp.open_count == 0:
                 status_icon = t("group_status_done")
-                status_color = QColor(status_colors["KEEP"])
+                status_color = QColor(semantic_colors["success"])
                 bg_alpha = 60
             elif grp.open_count > 0 and grp.decided_count > 0:
                 status_icon = t("group_status_partial")
-                status_color = QColor(status_colors["UNSURE"])
-                bg_alpha = 80
+                status_color = QColor(semantic_colors["error"])
+                bg_alpha = 65
             else:
                 status_icon = t("group_status_open")
-                status_color = QColor(status_colors["UNDECIDED_ATTENTION"])
-                bg_alpha = 100  # More opaque for better visibility
+                status_color = QColor(semantic_colors["error"])
+                bg_alpha = 85
             
             needs_review_hint = (
                 t("manual_review_hint").format(count=grp.needs_review_count)
@@ -6344,8 +6367,9 @@ class ModernMainWindow(QMainWindow):
         
         grp = self.group_lookup.get(self.current_group)
         if grp and grp.group_id:
+            display_id = self._format_group_display_id(grp.group_id)
             self.grid_title.setText(
-                f"<h3>{t('group_title').format(id=grp.group_id, count=len(self.files_in_group))}</h3>"
+                f"<h3>{t('group_title').format(id=display_id, count=len(self.files_in_group))}</h3>"
                 f"<small>Pruefstatus: {_get_confidence_i18n_label(grp.confidence_level)} | {grp.diagnostics_text}</small>"
             )
         else:
