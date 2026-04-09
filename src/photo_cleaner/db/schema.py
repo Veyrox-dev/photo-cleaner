@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS files (
     phash TEXT,
     file_hash TEXT,
     file_size INTEGER,
+    capture_time REAL,
     modified_time REAL,
     created_time REAL,
     exif_json TEXT,
@@ -288,6 +289,8 @@ class Database:
                 cursor.execute("ALTER TABLE files ADD COLUMN keeper_source TEXT DEFAULT 'undecided'")
             if "quality_score" not in cols:
                 cursor.execute("ALTER TABLE files ADD COLUMN quality_score REAL")
+            if "capture_time" not in cols:
+                cursor.execute("ALTER TABLE files ADD COLUMN capture_time REAL")
             # NEW: Quality score components
             if "sharpness_component" not in cols:
                 cursor.execute("ALTER TABLE files ADD COLUMN sharpness_component REAL")

@@ -51,7 +51,7 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 
 **Validierung:** 15/15 Tests grün, Smoke-Test erfolgreich, 0 Syntax-Fehler.
 
-**Nächster Schritt:** Week-4-Kickoff (Onboarding + Smart Filter + Quota/Upgrade-Messaging) gemäß `docs/architecture/WEEK4_ONBOARDING_SMART_FILTER.md`.
+**Nächster Schritt:** Week-5-Fokus (Benchmark-Flow + Presets + sichtbare Fortschrittsmeilensteine).
 
 ### Kurzfristige Bugfix-Liste (2026-04-09)
 
@@ -174,9 +174,9 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 - ✅ Sicherheitsregressionen für Delete/Export ergänzt (Controller + Integrationsabdeckung)
 
 ### Woche 4
-- ▶ Onboarding, Smart Filter und Quota-/Upgrade-Messaging umsetzen (Onboarding + Smart-Filter + Quota-Messaging-Grundlage implementiert)
-- ▶ Safe-Review-Hinweise für Erstnutzer integrieren (Header-Hinweise implementiert)
-- ▶ First-run-Test auf sauberem Windows-Setup
+- ✅ Onboarding, Smart Filter und Quota-/Upgrade-Messaging umgesetzt
+- ✅ Safe-Review-Hinweise für Erstnutzer integriert
+- ✅ First-run-Test auf sauberem Windows-Setup
 - 📄 Umsetzungsplan: `docs/architecture/WEEK4_ONBOARDING_SMART_FILTER.md`
 
 ### Woche 5

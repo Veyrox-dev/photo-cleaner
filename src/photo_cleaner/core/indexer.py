@@ -11,8 +11,11 @@ import sqlite3
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+from PIL import Image, ExifTags
 
 from photo_cleaner.core.hasher import ImageHasher
 from photo_cleaner.db.schema import Database
@@ -122,6 +125,34 @@ class PhotoIndexer:
         return cursor.fetchone() is not None
 
     @staticmethod
+    def _extract_capture_time(path: Path) -> Optional[float]:
+        """Extract EXIF capture timestamp (DateTimeOriginal preferred)."""
+        tag_name_by_id = ExifTags.TAGS
+        exif_keys = ("DateTimeOriginal", "DateTime", "DateTimeDigitized")
+
+        try:
+            with Image.open(path) as img:
+                exif = img.getexif()
+                if not exif:
+                    return None
+
+                for wanted in exif_keys:
+                    for tag_id, value in exif.items():
+                        if tag_name_by_id.get(tag_id) != wanted:
+                            continue
+                        if not value:
+                            continue
+                        try:
+                            dt = datetime.strptime(str(value), "%Y:%m:%d %H:%M:%S")
+                        except ValueError:
+                            continue
+                        return dt.timestamp()
+        except (OSError, ValueError, TypeError):
+            return None
+
+        return None
+
+    @staticmethod
     def _process_file(path: Path) -> Optional[dict]:
         """
         Process a single file (hash computation).
@@ -158,11 +189,13 @@ class PhotoIndexer:
             # Keep the file indexed even when pHash is unavailable so the DB,
             # exact-duplicate fallback, and later re-analysis still have a record.
             stat = path.stat()
+            capture_time = PhotoIndexer._extract_capture_time(path)
 
             return {
                 "phash": hashes["phash"],
                 "file_hash": hashes["file_hash"],
                 "file_size": stat.st_size,
+                "capture_time": capture_time,
                 "modified_time": stat.st_mtime,
                 "created_time": stat.st_ctime,
             }
@@ -184,14 +217,15 @@ class PhotoIndexer:
         cursor.execute(
             """
             INSERT OR REPLACE INTO files 
-            (path, phash, file_hash, file_size, modified_time, created_time)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (path, phash, file_hash, file_size, capture_time, modified_time, created_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 str(path),
                 data["phash"],
                 data["file_hash"],
                 data["file_size"],
+                data.get("capture_time"),
                 data["modified_time"],
                 data["created_time"],
             ),
@@ -219,6 +253,7 @@ class PhotoIndexer:
                 data["phash"],
                 data["file_hash"],
                 data["file_size"],
+                data.get("capture_time"),
                 data["modified_time"],
                 data["created_time"],
             )
@@ -230,8 +265,8 @@ class PhotoIndexer:
         cursor.executemany(
             """
             INSERT OR REPLACE INTO files 
-            (path, phash, file_hash, file_size, modified_time, created_time)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (path, phash, file_hash, file_size, capture_time, modified_time, created_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             batch_data,
         )
@@ -456,6 +491,7 @@ class PhotoIndexer:
                 data["phash"],
                 data["file_hash"],
                 data["file_size"],
+                data.get("capture_time"),
                 data["modified_time"],
                 data["created_time"],
             )
@@ -466,8 +502,8 @@ class PhotoIndexer:
         cursor.executemany(
             """
             INSERT OR REPLACE INTO files 
-            (path, phash, file_hash, file_size, modified_time, created_time)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (path, phash, file_hash, file_size, capture_time, modified_time, created_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             files_batch,
         )

@@ -176,7 +176,7 @@ class RatingWorkerThread(QThread):
         super().__init__()
         self.db_path = db_path
         self.top_n = top_n
-        self.mtcnn_status = mtcnn_status or {"available": False, "error": None}
+        self.mtcnn_status = mtcnn_status or {"available": True, "error": None}
         self._should_cancel = False
     
     def run(self):
@@ -197,8 +197,11 @@ class RatingWorkerThread(QThread):
             logger.info("[WORKER] MTCNN available - will use face detection for rating")
         else:
             error_msg = self.mtcnn_status.get("error", "MTCNN not available")
-            logger.warning(f"[WORKER] MTCNN not available ({error_msg}) - will use Haar Cascade fallback")
-            logger.warning("[WORKER] Rating will continue with lower accuracy")
+            if error_msg:
+                logger.warning(f"[WORKER] MTCNN not available ({error_msg}) - will use Haar Cascade fallback")
+                logger.warning("[WORKER] Rating will continue with lower accuracy")
+            else:
+                logger.info("[WORKER] MTCNN status unknown - continuing with runtime auto-detection")
         
         db = None
         try:
@@ -875,6 +878,16 @@ class FolderSelectionDialog(QDialog):
         desc_color = get_text_hint_color()
         desc.setStyleSheet(f"color: {desc_color}; padding: 0 28px 24px 28px; font-size: 13px;")
         layout.addWidget(desc)
+
+        safe_hint = QLabel(t("import_safe_review_hint"))
+        safe_hint.setWordWrap(True)
+        safe_hint.setAlignment(Qt.AlignCenter)
+        safe_hint.setStyleSheet(
+            f"background-color: {to_rgba(get_semantic_colors()['info'], 0.16)}; "
+            f"border: 1px solid {to_rgba(get_semantic_colors()['info'], 0.55)}; "
+            "border-radius: 8px; padding: 10px 16px; margin: 0 36px 16px 36px; font-size: 12px;"
+        )
+        layout.addWidget(safe_hint)
         
         # Ordnerauswahl
         layout.addWidget(self._create_folder_tab(), stretch=1)
@@ -894,6 +907,8 @@ class FolderSelectionDialog(QDialog):
         
         self.start_btn = QPushButton(t("start_analysis"))
         self.start_btn.setEnabled(False)
+        self.start_btn.setMinimumWidth(190)
+        self.start_btn.setMinimumHeight(44)
         success_color = get_semantic_colors()['success']
         self.start_btn.setStyleSheet(
             _build_button_style(success_color, padding="12px 28px", font_size=14, radius=10)
@@ -902,8 +917,17 @@ class FolderSelectionDialog(QDialog):
         button_box.addButton(self.start_btn, QDialogButtonBox.AcceptRole)
         
         cancel_btn = QPushButton(t("cancel"))
+        cancel_btn.setMinimumWidth(190)
+        cancel_btn.setMinimumHeight(44)
         cancel_btn.setStyleSheet(
-            _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'])
+            _build_button_style(
+                get_theme_colors()['button'],
+                text_color=get_theme_colors()['button_text'],
+                hover_color=get_theme_colors()['alternate_base'],
+                padding="12px 28px",
+                font_size=14,
+                radius=10,
+            )
         )
         cancel_btn.clicked.connect(self.reject)
         button_box.addButton(cancel_btn, QDialogButtonBox.RejectRole)
@@ -2914,7 +2938,7 @@ class ModernMainWindow(QMainWindow):
         super().__init__()
         
         # Store MTCNN status for use in worker threads
-        self.mtcnn_status = mtcnn_status or {"available": False, "error": None}
+        self.mtcnn_status = mtcnn_status or {"available": True, "error": None}
         
         # Kein statischer Titel - wird dynamisch gesetzt (z.B. "Detail: xyz.jpg")
         self.setWindowTitle("PhotoCleaner")
@@ -7820,7 +7844,11 @@ def run_modern_ui(
                 pass
 
     # Show MTCNN warning to user if initialization failed
-    if mtcnn_status and not mtcnn_status.get("available", True):
+    if (
+        mtcnn_status
+        and mtcnn_status.get("available") is False
+        and bool(mtcnn_status.get("error"))
+    ):
         logger.warning("Showing MTCNN fallback warning dialog to user...")
         error_msg = mtcnn_status.get("error", "Unknown error")
         

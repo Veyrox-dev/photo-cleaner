@@ -584,6 +584,26 @@ def main():
 
         splash.show_progress(t("splash_preparing_ui"), 80)
         from photo_cleaner.ui.modern_window import run_modern_ui
+        from photo_cleaner.pipeline.analysis.runtime_dependencies import (
+            ensure_runtime_dependencies,
+            get_runtime_dependency_snapshot,
+        )
+
+        # Reconcile startup probe with shared runtime dependency state to avoid false warnings.
+        ensure_runtime_dependencies(logger)
+        runtime_snapshot = get_runtime_dependency_snapshot()
+        if runtime_snapshot.mtcnn_available:
+            if not mtcnn_status.get("available", False):
+                logger.info(
+                    "MTCNN runtime snapshot reports available; suppressing startup fallback warning"
+                )
+            mtcnn_status["available"] = True
+            mtcnn_status["error"] = None
+        else:
+            mtcnn_status["available"] = False
+            if not mtcnn_status.get("error") and runtime_snapshot.mtcnn_import_error:
+                mtcnn_status["error"] = _sanitize_mtcnn_error(runtime_snapshot.mtcnn_import_error)
+
         logger.info("UI module loaded successfully")
     except Exception as e:
         logger.error(f"Critical error loading UI modules: {e}")

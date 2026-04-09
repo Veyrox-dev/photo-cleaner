@@ -1,7 +1,13 @@
 # src/photo_cleaner/duplicates/finder.py
 
 import logging
+import os
 import sqlite3
+from datetime import datetime
+from pathlib import Path
+
+from PIL import ExifTags, Image
+
 from photo_cleaner.db.schema import Database
 from photo_cleaner.core.hasher import hamming_distance
 
@@ -14,7 +20,80 @@ class DuplicateFinder:
         # CRITICAL: Increase prefix length to 8 hex chars (32 bits) to reduce bucket degeneration
         # and prevent O(n^2) worst-case when many hashes share short prefix
         self.phash_prefix_chars = 8  # was 4 - now more selective
+
+        # Optional time-aware grouping (defaults tuned for burst photos).
+        self.time_window_seconds = self._read_float_env(
+            "PHOTOCLEANER_GROUP_TIME_WINDOW_SEC", 30.0, min_value=0.0
+        )
+        self.relaxed_similarity = self._read_float_env(
+            "PHOTOCLEANER_GROUP_RELAXED_SIMILARITY", 0.60, min_value=0.0, max_value=1.0
+        )
+        self.relaxed_hamming_threshold = int(round((1.0 - self.relaxed_similarity) * 64.0))
         logger.info(f"DuplicateFinder initialized: threshold={phash_threshold}")
+
+    @staticmethod
+    def _read_float_env(
+        name: str,
+        default: float,
+        *,
+        min_value: float | None = None,
+        max_value: float | None = None,
+    ) -> float:
+        value_raw = os.environ.get(name)
+        if value_raw in (None, ""):
+            return default
+        try:
+            value = float(value_raw)
+        except ValueError:
+            logger.warning("Invalid float env %s=%r, using default %.3f", name, value_raw, default)
+            return default
+        if min_value is not None and value < min_value:
+            logger.warning("Env %s=%.3f below min %.3f, clamping", name, value, min_value)
+            value = min_value
+        if max_value is not None and value > max_value:
+            logger.warning("Env %s=%.3f above max %.3f, clamping", name, value, max_value)
+            value = max_value
+        return value
+
+    @staticmethod
+    def _extract_capture_time(path: Path) -> float | None:
+        tag_name_by_id = ExifTags.TAGS
+        exif_keys = ("DateTimeOriginal", "DateTime", "DateTimeDigitized")
+
+        try:
+            with Image.open(path) as img:
+                exif = img.getexif()
+                if not exif:
+                    return None
+
+                for wanted in exif_keys:
+                    for tag_id, value in exif.items():
+                        if tag_name_by_id.get(tag_id) != wanted:
+                            continue
+                        if not value:
+                            continue
+                        try:
+                            dt = datetime.strptime(str(value), "%Y:%m:%d %H:%M:%S")
+                        except ValueError:
+                            continue
+                        return dt.timestamp()
+        except (OSError, ValueError, TypeError):
+            return None
+
+        return None
+
+    @staticmethod
+    def _effective_timestamp(row) -> float | None:
+        """Return capture timestamp only (derived from EXIF during indexing)."""
+        for key in ("capture_time",):
+            value = row[key]
+            if value is None:
+                continue
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                continue
+        return None
 
     def build_groups(self):
         """Baue Duplikat-Gruppen aus phash-Ähnlichkeiten und schreibe in DB."""
@@ -24,7 +103,7 @@ class DuplicateFinder:
 
         cur.execute(
             """
-            SELECT file_id, path, phash
+            SELECT file_id, path, phash, capture_time, modified_time, created_time
             FROM files
             WHERE phash IS NOT NULL
             """
@@ -106,6 +185,77 @@ class DuplicateFinder:
                         continue
                     if dist <= self.phash_threshold:
                         union(a_idx, b_idx)
+
+        # Time-aware relaxation for burst/series photos: if timestamps are close,
+        # allow a broader pHash distance (e.g. approx. 60% similarity).
+        relaxed_comparisons = 0
+        relaxed_joins = 0
+        if (
+            self.time_window_seconds > 0
+            and self.relaxed_hamming_threshold > self.phash_threshold
+        ):
+            # Backfill missing capture times for already indexed files.
+            missing_capture = [r for r in rows if self._effective_timestamp(r) is None]
+            if missing_capture:
+                updated = 0
+                for row in missing_capture:
+                    capture_ts = self._extract_capture_time(Path(row["path"]))
+                    if capture_ts is None:
+                        continue
+                    cur.execute(
+                        "UPDATE files SET capture_time = ? WHERE file_id = ?",
+                        (capture_ts, row["file_id"]),
+                    )
+                    updated += 1
+                if updated:
+                    conn.commit()
+                    logger.info("Backfilled EXIF capture_time for %d files", updated)
+
+                # Reload rows so time-aware pass sees backfilled values immediately.
+                cur.execute(
+                    """
+                    SELECT file_id, path, phash, capture_time, modified_time, created_time
+                    FROM files
+                    WHERE phash IS NOT NULL
+                    """
+                )
+                rows = cur.fetchall()
+
+            timestamped_indices = []
+            for idx, row in enumerate(rows):
+                ts = self._effective_timestamp(row)
+                if ts is not None:
+                    timestamped_indices.append((ts, idx))
+
+            timestamped_indices.sort(key=lambda item: item[0])
+            total_ts = len(timestamped_indices)
+            for i in range(total_ts):
+                ts_i, idx_i = timestamped_indices[i]
+                j = i + 1
+                while j < total_ts:
+                    ts_j, idx_j = timestamped_indices[j]
+                    if (ts_j - ts_i) > self.time_window_seconds:
+                        break
+                    if find(idx_i) != find(idx_j):
+                        try:
+                            dist = hamming_distance(rows[idx_i]["phash"], rows[idx_j]["phash"])
+                        except (TypeError, ValueError):
+                            logger.debug("Error computing hamming distance in time-aware pass", exc_info=True)
+                            j += 1
+                            continue
+                        relaxed_comparisons += 1
+                        if dist <= self.relaxed_hamming_threshold:
+                            union(idx_i, idx_j)
+                            relaxed_joins += 1
+                    j += 1
+
+            logger.info(
+                "Time-aware grouping: window=%.1fs, relaxed_similarity>=%.2f, comparisons=%d, joins=%d",
+                self.time_window_seconds,
+                self.relaxed_similarity,
+                relaxed_comparisons,
+                relaxed_joins,
+            )
 
         components: dict[int, list[int]] = {}
         for idx in range(n):
