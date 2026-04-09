@@ -4203,15 +4203,6 @@ class ModernMainWindow(QMainWindow):
         # Add separator
         menubar.addSeparator()
         
-        # Language dialog
-        self.language_action = menubar.addAction(t("language"))
-        self.language_action.triggered.connect(self._show_language_dialog)
-        
-        # Theme switcher
-        theme_menu = menubar.addMenu(t("theme"))
-        theme_menu.addAction(t("theme_dark")).triggered.connect(lambda: self._change_theme("dark"))
-        theme_menu.addAction(t("theme_light")).triggered.connect(lambda: self._change_theme("light"))
-        
         # License button
         self.license_action = menubar.addAction(t("license"))
         self.license_action.triggered.connect(self._show_license_dialog)
@@ -4244,23 +4235,6 @@ class ModernMainWindow(QMainWindow):
                 f"Lizenz-Dialog konnte nicht geöffnet werden:\n{e}"
             )
 
-    def _show_language_dialog(self) -> None:
-        """Open language selection dialog."""
-        try:
-            from photo_cleaner.ui.language_dialog import LanguageDialog
-
-            dialog = LanguageDialog(self)
-            if dialog.exec():
-                self._build_menu()
-                self._update_ui_language()
-        except (ImportError, AttributeError, RuntimeError) as e:
-            logger.error(f"Failed to open language dialog: {e}", exc_info=True)
-            QMessageBox.warning(
-                self,
-                "Fehler",
-                f"Sprach-Dialog konnte nicht geoeffnet werden:\n{e}",
-            )
-    
     def _show_about(self):
         """Zeigt Über-Dialog."""
         QMessageBox.about(

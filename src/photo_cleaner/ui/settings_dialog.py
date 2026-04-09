@@ -76,10 +76,10 @@ class SettingsDialog(QDialog):
         self.tabs.setDocumentMode(True)
         self.tabs.setUsesScrollButtons(True)
         
-        # Reduced tab layout: Analysis, Workflow, System.
+        # Reduced tab layout with system settings first.
+        self.tabs.addTab(self._build_maintenance_tab(), t("settings_tab_system"))
         self.tabs.addTab(self._build_quality_tab(), t("settings_tab_analysis"))
         self.tabs.addTab(self._build_output_tab(), t("settings_tab_workflow"))
-        self.tabs.addTab(self._build_maintenance_tab(), t("settings_tab_system"))
         
         layout.addWidget(self.tabs)
         
