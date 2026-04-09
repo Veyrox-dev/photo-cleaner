@@ -181,8 +181,22 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 
 ### Woche 5
 - Reproduzierbarer Benchmark-Flow für 1k/5k/10k
-- Presets Fast/Balanced/Best Quality definieren
+- Presets Fast/Balanced/Best Quality als Backlog-Kandidat (noch nicht umsetzen)
 - Sichtbare Fortschrittsmeilensteine im langen Run
+
+#### Week-5 Performance-Plan (Profiling-basiert, 2026-04-09)
+- Fokus auf Stage 4 (Quality-Analyse), da aktuell groesster Laufzeitblock.
+- Kein Sprachwechsel (Rust/andere Sprache) im kurzfristigen Plan: zuerst Orchestrierung und Parallelisierung optimieren.
+- A/B-Benchmark auf Realdaten etablieren: Current Thread-Batch vs. Process-Parallel vs. Fast-Mode (Haar).
+- Multiprocessing-Variante fuer Quality-Stage produktionsreif schalten (Feature-Flag, Guardrails, Fallback).
+- MTCNN-Einsatz staffeln: erst Cheap-Filter/Pre-Scoring, dann MTCNN nur fuer Kandidatenbilder (Top-K pro Gruppe).
+- Thread-Overhead reduzieren: Progress/Logging drosseln, groebere Callback-Intervalle.
+- Profiling-Report korrigieren: image_count im JSON sauber ausweisen, damit Benchmarks belastbar vergleichbar sind.
+
+#### Erwarteter Effekt (kurzfristig)
+- Deutlich weniger Wartezeit in Lock-/Thread-Synchronisation.
+- Bessere Skalierung auf Mehrkern-Systemen ohne kompletten Re-Write.
+- Saubere Entscheidungsgrundlage fuer spaetere Architektur-Schritte.
 
 ### Woche 6
 - Performance-Optimierungen für große Bildbestände

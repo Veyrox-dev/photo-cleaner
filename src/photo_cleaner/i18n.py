@@ -731,8 +731,8 @@ Status: Offline-Nutzung aktiv
         "progress_step_3_rating": "Bilder bewerten...",
         "progress_step_4_finalization": "Fertigstellung...",
         "progress_step_current": "Schritt {step}/{total}",
-        "progress_eta": "Restzeit: {eta}",
-        "progress_eta_calculating": "Restzeit wird berechnet...",
+        "progress_eta": "Verbleibende Zeit: {eta}",
+        "progress_eta_calculating": "Verbleibende Zeit wird berechnet...",
         
         "finalization_dialog_title": "Analyse abgeschlossen",
         "finalization_success_summary": "{total} Bilder verarbeitet, {groups} Gruppen gefunden",

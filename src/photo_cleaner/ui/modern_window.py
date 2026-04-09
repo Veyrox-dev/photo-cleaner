@@ -508,6 +508,32 @@ class ProgressStepDialog(QDialog):
         step_font.setBold(True)
         self.step_label.setFont(step_font)
         layout.addWidget(self.step_label)
+
+        # Milestones: pending gray, active blue (busy), done green
+        milestones_layout = QHBoxLayout()
+        milestones_layout.setSpacing(10)
+        self.step_progress_bars: list[QProgressBar] = []
+        for name in self.step_names:
+            step_column = QVBoxLayout()
+            step_column.setSpacing(4)
+
+            step_name = QLabel(name.replace("...", ""))
+            step_name.setAlignment(Qt.AlignCenter)
+            step_name.setStyleSheet("font-size: 11px;")
+
+            mini_bar = QProgressBar()
+            mini_bar.setMinimum(0)
+            mini_bar.setMaximum(100)
+            mini_bar.setValue(0)
+            mini_bar.setTextVisible(False)
+            mini_bar.setFixedHeight(8)
+
+            step_column.addWidget(step_name)
+            step_column.addWidget(mini_bar)
+            milestones_layout.addLayout(step_column)
+            self.step_progress_bars.append(mini_bar)
+
+        layout.addLayout(milestones_layout)
         
         # Progress bar
         self.progress_bar = QProgressBar()
@@ -536,6 +562,7 @@ class ProgressStepDialog(QDialog):
         layout.addLayout(button_layout)
         
         self.setLayout(layout)
+        self._update_step_visuals()
     
     def _apply_styling(self):
         """Apply Phase C consistent styling."""
@@ -570,12 +597,49 @@ class ProgressStepDialog(QDialog):
     
     def set_step(self, step: int):
         """Update current step (1-4)."""
-        self.current_step = min(step, self.step_count)
+        self.current_step = max(0, min(step, self.step_count))
         self._update_step_label()
+        self._update_step_visuals()
+
+    def _set_milestone_state(self, bar: QProgressBar, state: str) -> None:
+        if state == "done":
+            bar.setRange(0, 100)
+            bar.setValue(100)
+            bar.setStyleSheet(
+                "QProgressBar { border: 1px solid #7f8c8d; border-radius: 4px; background-color: #d9dde1; }"
+                "QProgressBar::chunk { background-color: #2e9b52; border-radius: 3px; }"
+            )
+            return
+
+        if state == "active":
+            bar.setRange(0, 0)
+            bar.setStyleSheet(
+                "QProgressBar { border: 1px solid #7f8c8d; border-radius: 4px; background-color: #d9dde1; }"
+                "QProgressBar::chunk { background-color: #2f6fde; border-radius: 3px; }"
+            )
+            return
+
+        bar.setRange(0, 100)
+        bar.setValue(0)
+        bar.setStyleSheet(
+            "QProgressBar { border: 1px solid #7f8c8d; border-radius: 4px; background-color: #d0d3d6; }"
+            "QProgressBar::chunk { background-color: #a7afb8; border-radius: 3px; }"
+        )
+
+    def _update_step_visuals(self) -> None:
+        for idx, bar in enumerate(self.step_progress_bars, start=1):
+            if idx < self.current_step:
+                self._set_milestone_state(bar, "done")
+            elif idx == self.current_step and self.current_step > 0:
+                self._set_milestone_state(bar, "active")
+            else:
+                self._set_milestone_state(bar, "pending")
     
     def _update_step_label(self):
         """Update step display label."""
-        label_text = f"{t('progress_step_current').format(step=self.current_step, total=self.step_count)}: {self.step_names[self.current_step - 1] if self.current_step > 0 else 'Vorbereitung'}"
+        shown_step = max(1, self.current_step)
+        current_name = self.step_names[self.current_step - 1] if self.current_step > 0 else t("progress_step_1_scanning")
+        label_text = f"{t('progress_step_current').format(step=shown_step, total=self.step_count)}: {current_name}"
         self.step_label.setText(label_text)
     
     def set_progress(self, value: int, status: str = "", current: int = 0, total: int = 0):
@@ -3223,14 +3287,12 @@ class ModernMainWindow(QMainWindow):
         # BUG #3 FIX remains: controller builds a separate DB-backed indexer for thread safety
         indexer = self._indexing_workflow.build_indexer(self.db_path)
 
-        progress = self._indexing_workflow.create_indexing_progress_dialog()
+        progress = ProgressStepDialog(self)
+        progress.set_step(1)
+        progress.set_progress(0, t("progress_step_1_scanning"))
+        progress.show()
+        QApplication.processEvents()
         self._indexing_progress_dialog = progress
-        self._update_progress_dialog(
-            progress,
-            value=0,
-            label="Schritt 1/3: Bilder einlesen und hashen...",
-            force=True,
-        )
 
         self.indexing_thread = self._indexing_workflow.create_indexing_thread(
             self.input_folder,
@@ -3253,10 +3315,22 @@ class ModernMainWindow(QMainWindow):
         if self.indexing_thread:
             self.indexing_thread.stop(wait=False)
         if self._indexing_progress_dialog and self._indexing_progress_dialog.isVisible():
-            self._indexing_progress_dialog.setLabelText("Abbruch wird ausgefuehrt...")
+            if isinstance(self._indexing_progress_dialog, ProgressStepDialog):
+                self._indexing_progress_dialog.set_progress(
+                    self._indexing_progress_dialog.progress_bar.value(),
+                    "Abbruch wird ausgefuehrt...",
+                )
+            else:
+                self._indexing_progress_dialog.setLabelText("Abbruch wird ausgefuehrt...")
 
     def _update_progress_dialog(self, dialog: QProgressDialog, *, value: int | None = None, label: str | None = None, force: bool = False) -> None:
         if dialog is None or not dialog.isVisible():
+            return
+        if isinstance(dialog, ProgressStepDialog):
+            dialog.set_progress(
+                value if value is not None else dialog.progress_bar.value(),
+                label if label is not None else dialog.status_label.text(),
+            )
             return
         if not force:
             now = time.monotonic()
@@ -3284,10 +3358,10 @@ class ModernMainWindow(QMainWindow):
         if remaining < 1.0:
             return ""
         if remaining < 60.0:
-            return f"ETA: {int(remaining)}s"
+            return t("progress_eta").format(eta=f"{int(remaining)}s")
         minutes = int(remaining // 60)
         seconds = int(remaining % 60)
-        return f"ETA: {minutes}m {seconds}s"
+        return t("progress_eta").format(eta=f"{minutes}m {seconds}s")
 
     def _extract_progress_counts(self, status_text: str) -> tuple[int, int]:
         match = re.search(r"(\d+)\s*/\s*(\d+)", status_text or "")
@@ -3334,12 +3408,16 @@ class ModernMainWindow(QMainWindow):
             except (RuntimeError, TypeError):
                 pass
             progress_dialog.canceled.connect(self._cancel_post_indexing)
-            self._update_progress_dialog(
-                progress_dialog,
-                value=70,
-                label="Schritt 2/3: Duplikatgruppen werden erstellt...",
-                force=True,
-            )
+            if isinstance(progress_dialog, ProgressStepDialog):
+                progress_dialog.set_step(2)
+                progress_dialog.set_progress(70, t("progress_step_2_grouping"))
+            else:
+                self._update_progress_dialog(
+                    progress_dialog,
+                    value=70,
+                    label="Schritt 2/3: Duplikatgruppen werden erstellt...",
+                    force=True,
+                )
         self._indexing_progress_dialog = progress_dialog
 
         logger.info(f"[UI] Indexing finished: {results}")
@@ -3393,17 +3471,22 @@ class ModernMainWindow(QMainWindow):
         logger.info("[UI] Reusing unified progress dialog for post-indexing...")
         progress = self._indexing_progress_dialog
         if progress is None:
-            progress = self._indexing_workflow.create_post_indexing_progress_dialog(
-                on_cancel=self._cancel_post_indexing,
-            )
+            progress = ProgressStepDialog(self)
+            progress.cancelled.connect(self._cancel_post_indexing)
+            progress.show()
+            QApplication.processEvents()
         progress.setMinimum(0)
         progress.setMaximum(100)
-        self._update_progress_dialog(
-            progress,
-            value=70,
-            label="Schritt 2/3: Duplikatgruppen werden erstellt...",
-            force=True,
-        )
+        if isinstance(progress, ProgressStepDialog):
+            progress.set_step(2)
+            progress.set_progress(70, t("progress_step_2_grouping"))
+        else:
+            self._update_progress_dialog(
+                progress,
+                value=70,
+                label="Schritt 2/3: Duplikatgruppen werden erstellt...",
+                force=True,
+            )
         self._post_indexing_progress_dialog = progress
 
         logger.info("[UI] Starting DuplicateFinderThread...")
@@ -3421,7 +3504,13 @@ class ModernMainWindow(QMainWindow):
         if self._rating_thread:
             self._rating_thread.cancel()
         if self._post_indexing_progress_dialog and self._post_indexing_progress_dialog.isVisible():
-            self._post_indexing_progress_dialog.setLabelText("Abbruch wird ausgefuehrt...")
+            if isinstance(self._post_indexing_progress_dialog, ProgressStepDialog):
+                self._post_indexing_progress_dialog.set_progress(
+                    self._post_indexing_progress_dialog.progress_bar.value(),
+                    "Abbruch wird ausgefuehrt...",
+                )
+            else:
+                self._post_indexing_progress_dialog.setLabelText("Abbruch wird ausgefuehrt...")
 
     def _on_duplicate_finder_finished(self, group_rows) -> None:
         import time
@@ -3453,12 +3542,16 @@ class ModernMainWindow(QMainWindow):
         if progress:
             progress.setMinimum(0)
             progress.setMaximum(100)
-            self._update_progress_dialog(
-                progress,
-                value=75,
-                label="Schritt 3/3: Bildbewertung startet...",
-                force=True,
-            )
+            if isinstance(progress, ProgressStepDialog):
+                progress.set_step(3)
+                progress.set_progress(75, t("progress_step_3_rating"))
+            else:
+                self._update_progress_dialog(
+                    progress,
+                    value=75,
+                    label="Schritt 3/3: Bildbewertung startet...",
+                    force=True,
+                )
 
         logger.info("[DUPFINDER] Creating RatingWorkerThread...")
         thread_create_start = time.monotonic()
@@ -3549,12 +3642,16 @@ class ModernMainWindow(QMainWindow):
             logger.info("[UI] _grid_thumb_loader resumed")
         
         if self._post_indexing_progress_dialog:
-            self._update_progress_dialog(
-                self._post_indexing_progress_dialog,
-                value=95,
-                label="Schritt 3/3: Abschluss und Anzeige wird vorbereitet...",
-                force=True,
-            )
+            if isinstance(self._post_indexing_progress_dialog, ProgressStepDialog):
+                self._post_indexing_progress_dialog.set_step(4)
+                self._post_indexing_progress_dialog.set_progress(95, t("progress_step_4_finalization"))
+            else:
+                self._update_progress_dialog(
+                    self._post_indexing_progress_dialog,
+                    value=95,
+                    label="Schritt 3/3: Abschluss und Anzeige wird vorbereitet...",
+                    force=True,
+                )
 
         logger.info("[UI] About to refresh_groups() after rating completion...")
         refresh_start = time.monotonic()
@@ -6332,16 +6429,25 @@ class ModernMainWindow(QMainWindow):
             mapped = 95 if total <= 0 else min(100, 95 + int(round((done / total) * 5)))
             elapsed = max(0.0, time.monotonic() - self._pipeline_start_ts)
             eta = self._format_eta(elapsed, done, total)
-            label = f"Schritt 3/3: Vorschau wird aufgebaut ({done}/{total})"
+            label = f"{t('progress_step_4_finalization')} ({done}/{total})"
             if eta:
                 label += f"\n{eta}"
-            self._update_progress_dialog(
-                progress,
-                value=mapped,
-                label=label,
-                force=True,
-            )
+            if isinstance(progress, ProgressStepDialog):
+                progress.set_step(4)
+                progress.set_progress(mapped, t("progress_step_4_finalization"), current=done, total=total)
+                if eta:
+                    progress.eta_label.setText(eta)
+            else:
+                self._update_progress_dialog(
+                    progress,
+                    value=mapped,
+                    label=label,
+                    force=True,
+                )
             if done >= total:
+                if isinstance(progress, ProgressStepDialog):
+                    progress.set_step(4)
+                    progress.set_progress(100, t("progress_step_4_finalization"), current=total, total=total)
                 progress.close()
                 self._post_indexing_progress_dialog = None
                 self._indexing_progress_dialog = None
