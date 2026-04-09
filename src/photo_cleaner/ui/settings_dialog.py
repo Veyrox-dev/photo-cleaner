@@ -487,6 +487,7 @@ class SettingsDialog(QDialog):
 
         result = self.actions.ui_clear_cache()
         if result.get("ok"):
+            self._refresh_parent_review_state()
             QMessageBox.information(self, t("cache_cleared_title"), t("cache_cleared_msg"))
         else:
             QMessageBox.warning(self, t("error"), result.get("message", t("cache_clear_failed")))
@@ -509,12 +510,23 @@ class SettingsDialog(QDialog):
 
         result = self.actions.ui_reset_pipeline_state()
         if result.get("ok"):
+            self._refresh_parent_review_state()
             QMessageBox.information(self, t("reset_pipeline_done_title"), t("reset_pipeline_done_msg"))
-            parent = self.parent()
-            if parent and hasattr(parent, "refresh_groups"):
-                parent.refresh_groups()
         else:
             QMessageBox.warning(self, t("error"), result.get("message", t("reset_pipeline_failed")))
+
+    def _refresh_parent_review_state(self) -> None:
+        """Refresh the main review UI after a maintenance action."""
+        parent = self.parent()
+        if not parent:
+            return
+
+        if hasattr(parent, "_reset_thumbnail_runtime_state"):
+            parent._reset_thumbnail_runtime_state()
+        if hasattr(parent, "_refresh_mini_thumbnails"):
+            parent._refresh_mini_thumbnails()
+        if hasattr(parent, "refresh_groups"):
+            parent.refresh_groups()
     
     def accept(self):
         """Save settings and close."""

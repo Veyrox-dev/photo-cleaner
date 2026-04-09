@@ -4338,18 +4338,10 @@ class ModernMainWindow(QMainWindow):
                 self.del_btn.setText(t("delete"))
             if hasattr(self, 'unsure_btn'):
                 self.unsure_btn.setText(t("unsure"))
-            if hasattr(self, 'needs_review_only_cb'):
-                self.needs_review_only_cb.setText(t("needs_review_only"))
-                self.needs_review_only_cb.setToolTip(t("needs_review_only_tooltip"))
-            if hasattr(self, 'open_only_cb'):
-                self.open_only_cb.setText(t("open_only"))
-                self.open_only_cb.setToolTip(t("open_only_tooltip"))
-            if hasattr(self, 'low_confidence_only_cb'):
-                self.low_confidence_only_cb.setText(t("low_confidence_only"))
-                self.low_confidence_only_cb.setToolTip(t("low_confidence_only_tooltip"))
-            if hasattr(self, 'high_impact_only_cb'):
-                self.high_impact_only_cb.setText(t("high_impact_only"))
-                self.high_impact_only_cb.setToolTip(t("high_impact_only_tooltip").format(count=5))
+            if hasattr(self, 'group_filter_label'):
+                self.group_filter_label.setText(f"<b>{t('group_filters_title')}</b>")
+            if hasattr(self, 'group_filter_combo'):
+                self._refresh_group_filter_combo_labels()
             if hasattr(self, 'lock_btn'):
                 self.lock_btn.setText(t("lock_unlock_button"))
             if hasattr(self, 'compare_btn'):
@@ -5401,25 +5393,14 @@ class ModernMainWindow(QMainWindow):
         self.search_box.textChanged.connect(self._apply_group_filter)
         layout.addWidget(self.search_box)
 
-        self.needs_review_only_cb = QCheckBox(t("needs_review_only"))
-        self.needs_review_only_cb.setToolTip(t("needs_review_only_tooltip"))
-        self.needs_review_only_cb.stateChanged.connect(self._apply_group_filter)
-        layout.addWidget(self.needs_review_only_cb)
+        self.group_filter_label = QLabel(f"<b>{t('group_filters_title')}</b>")
+        layout.addWidget(self.group_filter_label)
 
-        self.open_only_cb = QCheckBox(t("open_only"))
-        self.open_only_cb.setToolTip(t("open_only_tooltip"))
-        self.open_only_cb.stateChanged.connect(self._apply_group_filter)
-        layout.addWidget(self.open_only_cb)
-
-        self.low_confidence_only_cb = QCheckBox(t("low_confidence_only"))
-        self.low_confidence_only_cb.setToolTip(t("low_confidence_only_tooltip"))
-        self.low_confidence_only_cb.stateChanged.connect(self._apply_group_filter)
-        layout.addWidget(self.low_confidence_only_cb)
-
-        self.high_impact_only_cb = QCheckBox(t("high_impact_only"))
-        self.high_impact_only_cb.setToolTip(t("high_impact_only_tooltip").format(count=5))
-        self.high_impact_only_cb.stateChanged.connect(self._apply_group_filter)
-        layout.addWidget(self.high_impact_only_cb)
+        self.group_filter_combo = QComboBox()
+        self.group_filter_combo.setStyleSheet(_build_input_style())
+        self._refresh_group_filter_combo_labels()
+        self.group_filter_combo.currentIndexChanged.connect(self._apply_group_filter)
+        layout.addWidget(self.group_filter_combo)
 
         self.needs_review_counter_label = QLabel(t("needs_review_counter").format(visible=0, total=0))
         self.needs_review_counter_label.setStyleSheet(
@@ -5435,7 +5416,7 @@ class ModernMainWindow(QMainWindow):
         
         self.group_list = QListWidget()
         self.group_list.itemSelectionChanged.connect(self._on_group_selected)
-        self.group_list.setAlternatingRowColors(True)
+        self.group_list.setAlternatingRowColors(False)
         self.group_list.setIconSize(QSize(48, 48))
         # NEW Feature 3: Multi-select for group merging
         self.group_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -5766,6 +5747,38 @@ class ModernMainWindow(QMainWindow):
         total_time = time.monotonic() - start_time
         logger.info(f"[UI] refresh_groups() FINISHED in {total_time:.3f}s (query={query_time:.3f}s, render={render_time:.3f}s)")
 
+    def _reset_thumbnail_runtime_state(self) -> None:
+        """Clear in-memory thumbnail state so maintenance actions are immediately visible."""
+        if self._group_thumb_loader:
+            self._group_thumb_loader.clear_queue()
+        if self._grid_thumb_loader:
+            self._grid_thumb_loader.clear_queue()
+
+        if self._group_thumb_cache:
+            self._group_thumb_cache.cache.clear()
+            self._group_thumb_cache.current_size = 0
+            self._group_thumb_cache.access_counter = 0
+        if self._grid_thumb_cache:
+            self._grid_thumb_cache.cache.clear()
+            self._grid_thumb_cache.current_size = 0
+            self._grid_thumb_cache.access_counter = 0
+
+        self._group_thumb_total = 0
+        self._group_thumb_done = 0
+        self._grid_thumb_total = 0
+        self._grid_thumb_done = 0
+        self._thumb_loading_active = False
+
+    def _resume_thumbnail_loaders_if_idle(self) -> None:
+        """Resume thumbnail workers whenever no post-indexing workflow is active."""
+        progress = self._post_indexing_progress_dialog
+        if progress and progress.isVisible():
+            return
+        if self._group_thumb_loader:
+            self._group_thumb_loader.resume()
+        if self._grid_thumb_loader:
+            self._grid_thumb_loader.resume()
+
     def _maybe_show_first_run_onboarding(self) -> None:
         """Show onboarding once per user and once per app session."""
         if self._onboarding_prompted_this_session:
@@ -5971,81 +5984,84 @@ class ModernMainWindow(QMainWindow):
             result.append(grp)
             self.group_lookup[grp.group_id] = grp
         
-        # 2. Get single images (not in any duplicate group) that need decisions
-        # These are CRITICAL - they count toward progress but were invisible!
-        cur = self.conn.execute(
-            """
-            SELECT f.file_id,
-                   f.path,
-                                     f.file_status,
-                                     f.quality_score,
-                                     f.sharpness_component,
-                                     f.lighting_component,
-                                     f.resolution_component,
-                                     f.face_quality_component
-            FROM files f
-            LEFT JOIN duplicates d ON f.file_id = d.file_id
-            WHERE f.is_deleted = 0
-              AND d.file_id IS NULL
-              AND f.file_status IN ('UNDECIDED', 'UNSURE')
-            ORDER BY f.path
-            """
-        )
-        
-        single_rows = cur.fetchall()
-        
-        # BUG #4 FIX: TOCTOU-safe file existence check
-        # Instead of checking exists() then opening, try to access file stat directly
-        for idx, row in enumerate(single_rows):
-            file_id, path, status, quality_score, sharpness, lighting, resolution, face_quality = row
-            file_path = Path(path)
-            
-            # TOCTOU-safe: Try to stat the file - if it fails, it doesn't exist
-            try:
-                file_path.stat()  # Raises FileNotFoundError if missing
-            except (FileNotFoundError, OSError) as e:
-                # File no longer exists or inaccessible - mark as deleted and skip
-                logger.warning(f"Single-image group SINGLE_{file_id}: Datei nicht verfügbar ({file_path.name}): {e}")
-                try:
-                    self.conn.execute(
-                        "UPDATE files SET is_deleted = 1 WHERE file_id = ?",
-                        (file_id,)
-                    )
-                    self.conn.commit()
-                except (sqlite3.DatabaseError, sqlite3.OperationalError) as db_err:
-                    logger.error(f"Fehler beim Markieren als gelöscht: {db_err}", exc_info=True)
-                continue
-            
-            explanation = build_score_explanation(
-                quality_score=float(quality_score) if quality_score is not None else None,
-                sharpness_score=float(sharpness) if sharpness is not None else None,
-                lighting_score=float(lighting) if lighting is not None else None,
-                resolution_score=float(resolution) if resolution is not None else None,
-                face_quality_score=float(face_quality) if face_quality is not None else None,
-            )
-            confidence_score = compute_file_confidence_bucket(
-                quality_score=float(quality_score) if quality_score is not None else None,
-                sharpness_score=float(sharpness) if sharpness is not None else None,
-                lighting_score=float(lighting) if lighting is not None else None,
-                resolution_score=float(resolution) if resolution is not None else None,
-                face_quality_score=float(face_quality) if face_quality is not None else None,
+        single_rows = []
+        if rows:
+            # Only add synthetic single-image groups when there are real duplicate groups to review.
+            cur = self.conn.execute(
+                """
+                SELECT f.file_id,
+                       f.path,
+                                         f.file_status,
+                                         f.quality_score,
+                                         f.sharpness_component,
+                                         f.lighting_component,
+                                         f.resolution_component,
+                                         f.face_quality_component
+                FROM files f
+                LEFT JOIN duplicates d ON f.file_id = d.file_id
+                WHERE f.is_deleted = 0
+                  AND d.file_id IS NULL
+                  AND f.file_status IN ('UNDECIDED', 'UNSURE')
+                ORDER BY f.path
+                """
             )
 
-            single_grp = GroupRow(
-                group_id=f"SINGLE_{file_id}",
-                sample_path=file_path,
-                total=1,
-                open_count=1,  # Always needs decision
-                decided_count=0,
-                delete_count=0,
-                similarity=0.0,
-                needs_review_count=1 if confidence_score in (10, 25) else 0,
-                confidence_score=confidence_score,
-                confidence_level=classify_group_confidence(confidence_score),
-                diagnostics_text=explanation.component_summary_text or "Diagnose: Einzelbild",
-            )
-            result.append(single_grp)
-            self.group_lookup[single_grp.group_id] = single_grp
+            single_rows = cur.fetchall()
+
+            # BUG #4 FIX: TOCTOU-safe file existence check
+            # Instead of checking exists() then opening, try to access file stat directly
+            for idx, row in enumerate(single_rows):
+                file_id, path, status, quality_score, sharpness, lighting, resolution, face_quality = row
+                file_path = Path(path)
+
+                # TOCTOU-safe: Try to stat the file - if it fails, it doesn't exist
+                try:
+                    file_path.stat()  # Raises FileNotFoundError if missing
+                except (FileNotFoundError, OSError) as e:
+                    # File no longer exists or inaccessible - mark as deleted and skip
+                    logger.warning(f"Single-image group SINGLE_{file_id}: Datei nicht verfügbar ({file_path.name}): {e}")
+                    try:
+                        self.conn.execute(
+                            "UPDATE files SET is_deleted = 1 WHERE file_id = ?",
+                            (file_id,)
+                        )
+                        self.conn.commit()
+                    except (sqlite3.DatabaseError, sqlite3.OperationalError) as db_err:
+                        logger.error(f"Fehler beim Markieren als gelöscht: {db_err}", exc_info=True)
+                    continue
+
+                explanation = build_score_explanation(
+                    quality_score=float(quality_score) if quality_score is not None else None,
+                    sharpness_score=float(sharpness) if sharpness is not None else None,
+                    lighting_score=float(lighting) if lighting is not None else None,
+                    resolution_score=float(resolution) if resolution is not None else None,
+                    face_quality_score=float(face_quality) if face_quality is not None else None,
+                )
+                confidence_score = compute_file_confidence_bucket(
+                    quality_score=float(quality_score) if quality_score is not None else None,
+                    sharpness_score=float(sharpness) if sharpness is not None else None,
+                    lighting_score=float(lighting) if lighting is not None else None,
+                    resolution_score=float(resolution) if resolution is not None else None,
+                    face_quality_score=float(face_quality) if face_quality is not None else None,
+                )
+
+                single_grp = GroupRow(
+                    group_id=f"SINGLE_{file_id}",
+                    sample_path=file_path,
+                    total=1,
+                    open_count=1,
+                    decided_count=0,
+                    delete_count=0,
+                    similarity=0.0,
+                    needs_review_count=1 if confidence_score in (10, 25) else 0,
+                    confidence_score=confidence_score,
+                    confidence_level=classify_group_confidence(confidence_score),
+                    diagnostics_text=explanation.component_summary_text or "Diagnose: Einzelbild",
+                )
+                result.append(single_grp)
+                self.group_lookup[single_grp.group_id] = single_grp
+        else:
+            logger.info("[UI] No duplicate groups found - synthetic single-image groups suppressed")
         
         query_time = time.monotonic() - query_start
         logger.info(f"Loaded {len(result)} groups (including {len(single_rows)} single-image groups) in {query_time:.3f}s")
@@ -6053,6 +6069,42 @@ class ModernMainWindow(QMainWindow):
         
         return result
     
+    def _refresh_group_filter_combo_labels(self) -> None:
+        """Rebuild dropdown labels while preserving selected filter mode."""
+        if not hasattr(self, "group_filter_combo"):
+            return
+
+        selected_mode = self.group_filter_combo.currentData() or "all"
+        items = [
+            ("all", t("group_filter_all")),
+            ("needs_review", t("needs_review_only")),
+            ("open", t("open_only")),
+            ("low_confidence", t("low_confidence_only")),
+            ("high_impact", t("high_impact_only")),
+        ]
+
+        self.group_filter_combo.blockSignals(True)
+        self.group_filter_combo.clear()
+        for key, label in items:
+            self.group_filter_combo.addItem(label, key)
+        idx = self.group_filter_combo.findData(selected_mode)
+        self.group_filter_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self.group_filter_combo.blockSignals(False)
+
+    def _current_group_filter_mode(self) -> str:
+        if hasattr(self, "group_filter_combo") and self.group_filter_combo.currentData():
+            return str(self.group_filter_combo.currentData())
+        return "all"
+
+    def _group_filter_options_for_mode(self, mode: str) -> GroupFilterOptions:
+        return GroupFilterOptions(
+            needs_review_only=mode == "needs_review",
+            open_only=mode == "open",
+            low_confidence_only=mode == "low_confidence",
+            high_impact_only=mode == "high_impact",
+            high_impact_threshold=5,
+        )
+
     def _render_groups(self):
         """Render group list with visual emphasis on undecided items.
         
@@ -6066,13 +6118,8 @@ class ModernMainWindow(QMainWindow):
         logger.info(f"[UI] _render_groups() starting for {len(self.groups)} groups...")
         self.group_list.clear()
         term = self.search_box.text().lower().strip()
-        filter_opts = GroupFilterOptions(
-            needs_review_only=hasattr(self, "needs_review_only_cb") and self.needs_review_only_cb.isChecked(),
-            open_only=hasattr(self, "open_only_cb") and self.open_only_cb.isChecked(),
-            low_confidence_only=hasattr(self, "low_confidence_only_cb") and self.low_confidence_only_cb.isChecked(),
-            high_impact_only=hasattr(self, "high_impact_only_cb") and self.high_impact_only_cb.isChecked(),
-            high_impact_threshold=5,
-        )
+        filter_mode = self._current_group_filter_mode()
+        filter_opts = self._group_filter_options_for_mode(filter_mode)
 
         self._group_thumb_total = 0
         self._group_thumb_done = 0
@@ -6145,23 +6192,18 @@ class ModernMainWindow(QMainWindow):
                 )
             
             status_color.setAlpha(bg_alpha)
-            item.setBackground(QBrush(status_color))
+            item.setData(Qt.BackgroundRole, QBrush(status_color))
+
+            # Keep text readable against red/green status backgrounds across themes.
+            text_color = QColor("#ffffff") if status_color.lightness() < 170 else QColor("#111111")
+            item.setData(Qt.ForegroundRole, QBrush(text_color))
             
             self.group_list.addItem(item)
         
         logger.info(f"[UI] _render_groups() added {render_count} items to list (filtered from {len(self.groups)} total groups)")
 
         if hasattr(self, "smart_filter_counter_label"):
-            active_filters: list[str] = []
-            if filter_opts.needs_review_only:
-                active_filters.append(t("needs_review_only"))
-            if filter_opts.open_only:
-                active_filters.append(t("open_only"))
-            if filter_opts.low_confidence_only:
-                active_filters.append(t("low_confidence_only"))
-            if filter_opts.high_impact_only:
-                active_filters.append(t("high_impact_only"))
-            active_text = ", ".join(active_filters) if active_filters else t("smart_filter_none")
+            active_text = self.group_filter_combo.currentText() if filter_mode != "all" else t("smart_filter_none")
             self.smart_filter_counter_label.setText(
                 t("smart_filter_counter").format(visible=render_count, total=len(self.groups), active=active_text)
             )
@@ -6193,6 +6235,7 @@ class ModernMainWindow(QMainWindow):
                 self._group_thumb_loader.enqueue(i, Path(thumb_path_str))
                 self._group_thumb_total += 1
         logger.info(f"[UI] Thumbnail loading queued")
+        self._resume_thumbnail_loaders_if_idle()
         self._update_thumbnail_progress()
     
     def _on_group_thumb_loaded(self, list_index: int, qimg: QImage) -> None:
@@ -6508,6 +6551,7 @@ class ModernMainWindow(QMainWindow):
         self._update_pagination_controls(total_pages, start, end, total_items)
         self._update_selection_ui()
         logger.info(f"[UI] Queued {self._grid_thumb_total} grid thumbnails (page {self.current_page + 1}/{total_pages})")
+        self._resume_thumbnail_loaders_if_idle()
         self._update_thumbnail_progress()
 
     def _update_pagination_controls(self, total_pages: int, start: int, end: int, total_items: int) -> None:

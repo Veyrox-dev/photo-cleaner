@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import sqlite3
 from pathlib import Path
 from typing import Any, Callable, Iterable, List, Optional
 
+from photo_cleaner.config import AppConfig
 from photo_cleaner.models.mode import AppMode
 from photo_cleaner.models.status import FileStatus
 from photo_cleaner.repositories.file_repository import FileRepository
@@ -17,6 +19,23 @@ from photo_cleaner.pipeline.camera_calibrator import CameraCalibrator
 from photo_cleaner.cache.image_cache_manager import ImageCacheManager
 
 logger = logging.getLogger(__name__)
+
+
+def _clear_user_cache_dir() -> int:
+    """Remove cached files from the app cache directory and return deleted file count."""
+    cache_dir = AppConfig.get_cache_dir()
+    if not cache_dir.exists():
+        return 0
+
+    deleted_files = 0
+    for child in cache_dir.iterdir():
+        if child.is_dir():
+            deleted_files += sum(1 for nested in child.rglob("*") if nested.is_file())
+            shutil.rmtree(child, ignore_errors=False)
+        elif child.is_file():
+            child.unlink()
+            deleted_files += 1
+    return deleted_files
 
 
 # ---------- Response helpers ----------
@@ -338,6 +357,7 @@ class UIActions:
         """Clear analysis/cache tables for a clean pipeline re-run."""
         try:
             cleared_cache = 0
+            cleared_disk_cache_files = _clear_user_cache_dir()
             if self.cache_manager:
                 cleared_cache = self.cache_manager.clear_cache(older_than_days=None)
 
@@ -356,7 +376,7 @@ class UIActions:
                 pass
 
             conn.commit()
-            return ok(cleared_cache=cleared_cache)
+            return ok(cleared_cache=cleared_cache, cleared_disk_cache_files=cleared_disk_cache_files)
         except (sqlite3.DatabaseError, sqlite3.OperationalError) as e:
             logger.error(f"Database error clearing cache: {e}")
             try:
