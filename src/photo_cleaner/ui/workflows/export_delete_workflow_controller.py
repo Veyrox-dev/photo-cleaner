@@ -76,7 +76,7 @@ class ExportDeleteWorkflowController:
             return DialogMessage(
                 level="info",
                 title="Export Erfolgreich",
-                message=f"✓ {success_count} Bild(er) exportiert als ZIP:\\n{archive_path}",
+                message=f"{success_count} Bild(er) exportiert als ZIP:\\n{archive_path}",
             )
 
         error_text = "\\n".join(errors[:5])
@@ -87,8 +87,8 @@ class ExportDeleteWorkflowController:
             level="warning",
             title="Export Teilweise Fehlgeschlagen",
             message=(
-                f"✓ {success_count} erfolgreich\\n"
-                f"✗ {failure_count} Fehler\\n\\n"
+                f"{success_count} erfolgreich\\n"
+                f"{failure_count} Fehler\\n\\n"
                 f"{error_text}\\n\\nZIP: {archive_path}"
             ),
         )
@@ -122,7 +122,7 @@ class ExportDeleteWorkflowController:
         deleted_ids = result.get("deleted_ids", [])
         skipped_locked = result.get("skipped_locked", [])
 
-        message = f"✓ {len(deleted_ids)} Bild(er) gelöscht."
+        message = f"{len(deleted_ids)} Bild(er) gelöscht."
         if skipped_locked:
             message += f"\\n{len(skipped_locked)} Datei(en) wurden übersprungen (gesperrt)."
 

@@ -15,26 +15,26 @@ logger = logging.getLogger(__name__)
 TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "de": {
         "0_gruppen": "0 Gruppen",
-        "_aktion_erforderlich_if_grpopencount_0_else_vollst": "{'⚠️ AKTION ERFORDERLICH' if grp.open_count > 0 else '✅ Vollständig entschieden'}",
-        "_autoauswahl_fuer_gruppe_augengewicht_55": "⭐ Auto-Auswahl für Gruppe (Augen-Gewicht: 55%):",
+        "_aktion_erforderlich_if_grpopencount_0_else_vollst": "{'AKTION ERFORDERLICH' if grp.open_count > 0 else 'Vollständig entschieden'}",
+        "_autoauswahl_fuer_gruppe_augengewicht_55": "Auto-Auswahl für Gruppe (Augen-Gewicht: 55%):",
         "_bempfehlung_fuer_ihr_systemb_recrecommendedpackag": "💡 <b>Empfehlung für Ihr System:</b> {rec.recommended_package}<br>",
-        "_benoetigt_build_tools": "      ⚠ Benötigt Build Tools",
-        "_benoetigt_joindepnames": "⚠ Benötigt: {', '.join(dep_names)}",
-        "_build_tools_verfuegbar_if_selfsysteminfohasbuildt": "  Build Tools: {'✓ Verfügbar' if self.system_info.has_build_tools else '✗ Nicht erkannt'}",
+        "_benoetigt_build_tools": "      Benötigt Build Tools",
+        "_benoetigt_joindepnames": "Benötigt: {', '.join(dep_names)}",
+        "_build_tools_verfuegbar_if_selfsysteminfohasbuildt": "  Build Tools: {'Verfügbar' if self.system_info.has_build_tools else 'Nicht erkannt'}",
         "_ctrlj_ctrlk_gruppe_wechseln": "  Ctrl+J / Ctrl+K - Gruppe wechseln",
         "_der_ordner_gueltige_bilddateien_enthaeltn": "• Der Ordner gültige Bilddateien enthält\n",
-        "_fertigstellen_exportieren": "✓ Fertigstellen & Exportieren",
+        "_fertigstellen_exportieren": "Fertigstellen & Exportieren",
         "_geloescht_intfloatdeletedat": " (gelöscht: {int(float(deleted_at))})",
         "_genuegend_speicherplatz_vorhanden_ist": "• Genügend Speicherplatz vorhanden ist",
-        "_gpu_verfuegbar_if_selfsysteminfohasgpu_else_nicht": "  GPU: {'✓ Verfügbar' if self.system_info.has_gpu else '✗ Nicht erkannt'}",
-        "_hohe_qualitaet_if_score_07_else_mittlere_qualitae": "{'✓ Hohe Qualität' if score >= 0.7 else '~ Mittlere Qualität' if score >= 0.4 else '✗ Niedrige Qualität'}",
-        "_kein_gesicht_erkannt_regel_greift_nicht": "❌ Kein Gesicht erkannt → Regel greift nicht",
-        "_lendeletedids_bilder_geloescht": "✓ {len(deleted_ids)} Bild(er) gelöscht.",
-        "_openfiles_benoetigen_entscheidung": "⚠️ {open_files} benötigen Entscheidung",
+        "_gpu_verfuegbar_if_selfsysteminfohasgpu_else_nicht": "  GPU: {'Verfügbar' if self.system_info.has_gpu else 'Nicht erkannt'}",
+        "_hohe_qualitaet_if_score_07_else_mittlere_qualitae": "{'Hohe Qualität' if score >= 0.7 else '~ Mittlere Qualität' if score >= 0.4 else 'Niedrige Qualität'}",
+        "_kein_gesicht_erkannt_regel_greift_nicht": "Kein Gesicht erkannt -> Regel greift nicht",
+        "_lendeletedids_bilder_geloescht": "{len(deleted_ids)} Bild(er) gelöscht.",
+        "_openfiles_benoetigen_entscheidung": "{open_files} benötigen Entscheidung",
         "_sie_leserechte_fuer_den_ordner_habenn": "• Sie Leserechte für den Ordner haben\n",
-        "_speichern": "💾 Speichern",
-        "_sync_aus": "🔗 Sync: AUS",
-        "_voreinstellung_geloescht": "✓ Voreinstellung gelöscht",
+        "_speichern": "Speichern",
+        "_sync_aus": "Sync: AUS",
+        "_voreinstellung_geloescht": "Voreinstellung gelöscht",
         "_zoom_inout": "+/-: Zoom in/out",
         "alle_bilder_disqualifiziert_geschlossene_augenqual": "Alle Bilder disqualifiziert (geschlossene Augen/Qualitätsfehler) – keine Empfehlung",
         "als_behalten_markieren": "Als Behalten markieren",
@@ -107,7 +107,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "nichts_zum_wiederherstellen": "Nichts zum Wiederherstellen",
         "niedrige_qualitaet_kandidat_zum_loeschen": "Niedrige Qualität - Kandidat zum Löschen",
         "nlenskippedlocked_dateien_wurden_uebersprungen_ges": "\n{len(skipped_locked)} Datei(en) wurden übersprungen (gesperrt).",
-        "nn_bewertung_abgeschlossen_bilder_wurden_automatis": "\n\n✓ Bewertung abgeschlossen: Bilder wurden automatisch eingeschätzt.",
+        "nn_bewertung_abgeschlossen_bilder_wurden_automatis": "\n\nBewertung abgeschlossen: Bilder wurden automatisch eingeschätzt.",
         "opencv_nicht_verfuegbar_augenerkennung_deaktiviert": "OpenCV nicht verfügbar, Augenerkennung deaktiviert",
         "ordner_waehlen": "Ordner wählen",
         "outputordner": "Output-Ordner:",
@@ -121,7 +121,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "setze_konfiguration_auf_defaults_zurueck": "Setze Konfiguration auf Defaults zurück",
         "soll_die_voreinstellung_presetname_wirklich_geloes": "Soll die Voreinstellung '{preset_name}' wirklich gelöscht werden?",
         "statischer_bildmodus_empfohlen_fuer_fotos": "Statischer Bildmodus (empfohlen für Fotos)",
-        "status_nicht_geprueft": "Status: ✗ Nicht geprüft",
+        "status_nicht_geprueft": "Status: Nicht geprüft",
         "stufe_2_konfiguriert_aber_dlib_nicht_verfuegbar": "Stufe 2 konfiguriert, aber dlib nicht verfügbar",
         "stufe_3_konfiguriert_aber_mediapipe_nicht_verfuegb": "Stufe 3 konfiguriert, aber MediaPipe nicht verfügbar",
         "test_ausfuehren": "Test ausführen",
@@ -223,7 +223,24 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "onboarding_message": "Kurzstart:\n1) Wähle Behalten/Löschen/Unsicher pro Bild.\n2) Nutze Unsicher für schwere Fälle.\n3) Shortcuts: K=Behalten, D=Löschen, U=Unsicher, Z=Undo.",
         "onboarding_start_review": "Review starten",
         "onboarding_skip": "Später",
+        "onboarding_next": "Weiter",
+        "onboarding_previous": "Zurück",
+        "onboarding_finish": "Fertig",
+        "onboarding_interactive_mode": "Interaktiver Klickmodus",
+        "onboarding_interactive_hint": "Aktiv: Klicke auf den markierten Bereich, um zum nächsten Schritt zu wechseln.",
         "onboarding_dont_show_again": "Nicht erneut anzeigen",
+        "onboarding_step_welcome_title": "Willkommen im Review-Workflow",
+        "onboarding_step_welcome_body": "Diese Tour zeigt dir die wichtigsten Bereiche.\n\nDu kannst mit Weiter und Zurück durch die Schritte gehen. Der Rest wird abgedunkelt, damit du den Fokus behältst.",
+        "onboarding_step_import_title": "1) Bilder importieren",
+        "onboarding_step_import_body": "Starte hier: Wähle deinen Bildordner. Danach beginnt die Analyse und Gruppen werden automatisch erstellt.",
+        "onboarding_step_filter_title": "2) Gruppen finden",
+        "onboarding_step_filter_body": "Mit Suche und Filter-Dropdown findest du schnell die richtigen Gruppen, z. B. offene oder manuell zu prüfende Gruppen.",
+        "onboarding_step_groups_title": "3) Gruppenliste verstehen",
+        "onboarding_step_groups_body": "Jede Zeile ist eine Gruppe.\nRot = noch offen, Grün = fertig entschieden.\nWähle eine Gruppe aus, um die Bilder rechts zu prüfen.",
+        "onboarding_step_actions_title": "4) Entscheidungen treffen",
+        "onboarding_step_actions_body": "Hier setzt du den Status für ausgewählte Bilder:\n• Behalten\n• Löschen\n• Unsicher\n\nTipps: K = Behalten, D = Löschen, U = Unsicher, Z = Undo.",
+        "onboarding_step_finalize_title": "5) Export abschließen",
+        "onboarding_step_finalize_body": "Wenn deine Entscheidungen fertig sind, exportiere hier die Behalten-Bilder in den Ausgabeordner.",
         "preview_from_input": "Vorschau aus Input-Ordner",
         "no_images_imported": "Keine Bilder importiert",
         "images_loaded": "{count} Bilder geladen",
@@ -394,70 +411,70 @@ Geben Sie Ihren Lizenzschlüssel oben ein und klicken Sie auf "Aktivieren".
     .highlight { background: #FF9800; color: white; padding: 4px 8px; border-radius: 4px; }
 </style>
 
-<h2>📊 Plan-Vergleich</h2>
+<h2>Plan-Vergleich</h2>
 
 <table>
     <tr>
         <th class="feature-name">Feature / Limit</th>
         <th class="plan-free">FREE<br><span class="price">€0</span></th>
-        <th class="plan-pro">PRO ⭐<br><span class="price">ab €19/Jahr</span></th>
+        <th class="plan-pro">PRO<br><span class="price">ab €19/Jahr</span></th>
     </tr>
     
     <!-- Basis-Features -->
     <tr>
-        <td class="feature-name">🔍 Bildanalyse & Duplikatsuche</td>
-        <td class="plan-free"><span class="check">✓</span></td>
-        <td class="plan-pro"><span class="check">✓</span></td>
+        <td class="feature-name">Bildanalyse & Duplikatsuche</td>
+        <td class="plan-free">Ja</td>
+        <td class="plan-pro">Ja</td>
     </tr>
     <tr>
-        <td class="feature-name">📊 Bildlimit</td>
+        <td class="feature-name">Bildlimit</td>
         <td class="plan-free">250 Bilder gesamt</td>
         <td class="plan-pro"><span class="highlight">Unbegrenzt</span></td>
     </tr>
     <tr>
-        <td class="feature-name">💻 Geräte-Limit</td>
+        <td class="feature-name">Geräte-Limit</td>
         <td class="plan-free">1 Gerät</td>
         <td class="plan-pro">3 Geräte</td>
     </tr>
     
     <!-- PRO Features -->
     <tr>
-        <td class="feature-name">🚀 Batch-Verarbeitung (Massen-Import)</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
-        <td class="plan-pro"><span class="check">✓</span></td>
+        <td class="feature-name">Batch-Verarbeitung (Massen-Import)</td>
+        <td class="plan-free">Nein</td>
+        <td class="plan-pro">Ja</td>
     </tr>
     <tr>
-        <td class="feature-name">📷 HEIC/HEIF-Format Support</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
-        <td class="plan-pro"><span class="check">✓</span></td>
+        <td class="feature-name">HEIC/HEIF-Format Support</td>
+        <td class="plan-free">Nein</td>
+        <td class="plan-pro">Ja</td>
     </tr>
     <tr>
-        <td class="feature-name">⚡ Erweitertes Caching (2-8x schneller)</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
-        <td class="plan-pro"><span class="check">✓</span></td>
+        <td class="feature-name">Erweitertes Caching (2-8x schneller)</td>
+        <td class="plan-free">Nein</td>
+        <td class="plan-pro">Ja</td>
     </tr>
     <tr>
-        <td class="feature-name">🎯 Qualitätsanalyse (Schärfe/Belichtung/Details)</td>
+        <td class="feature-name">Qualitätsanalyse (Schärfe/Belichtung/Details)</td>
         <td class="plan-free">Basis</td>
         <td class="plan-pro"><span class="highlight">Erweitert</span></td>
     </tr>
     <tr>
-        <td class="feature-name">📦 Batch-Löschung</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
-        <td class="plan-pro"><span class="check">✓</span></td>
+        <td class="feature-name">Batch-Löschung</td>
+        <td class="plan-free">Nein</td>
+        <td class="plan-pro">Ja</td>
     </tr>
     <tr>
-        <td class="feature-name">📄 Export-Formate (CSV, JSON)</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
-        <td class="plan-pro"><span class="check">✓</span></td>
+        <td class="feature-name">Export-Formate (CSV, JSON)</td>
+        <td class="plan-free">Nein</td>
+        <td class="plan-pro">Ja</td>
     </tr>
     <tr>
-        <td class="feature-name">📧 Support</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
+        <td class="feature-name">Support</td>
+        <td class="plan-free">Nein</td>
         <td class="plan-pro">Email</td>
     </tr>
     <tr>
-        <td class="feature-name">📱 Offline Grace Period</td>
+        <td class="feature-name">Offline Grace Period</td>
         <td class="plan-free">-</td>
         <td class="plan-pro">7 Tage</td>
     </tr>
@@ -610,7 +627,7 @@ Status: Offline-Nutzung aktiv
         "validation_select_output": "Bitte wähle zuerst einen Zielordner aus.",
         "validation_optional_input": "Du kannst mit vorhandenen Daten starten oder zusätzlich einen Foto-Ordner wählen.",
         "validation_ready": "Alles bereit. Die Analyse kann starten.",
-        "help_dialog_content": "PhotoCleaner - Intelligente Fotoverwaltung\n\nWorkflow:\n1. 📁 Import: Wähle einen Ordner mit Bildern\n2. ▶ Analyse: Findet doppelte Bilder automatisch\n3. ⚙ Einstellungen: Passe Qualitäts-Parameter an\n4. Entscheide für jedes Bild: Behalten oder Löschen\n\nTastaturkürzel:\n? = Diese Hilfe\nDelete = Markiere zum Löschen\nK = Behalte Bild\nSpace = Nächstes Bild",
+        "help_dialog_content": "PhotoCleaner - Intelligente Fotoverwaltung\n\nWorkflow:\n1. Import: Wähle einen Ordner mit Bildern\n2. Analyse: Findet doppelte Bilder automatisch\n3. Einstellungen: Passe Qualitäts-Parameter an\n4. Entscheide für jedes Bild: Behalten oder Löschen\n\nTastaturkürzel:\n? = Diese Hilfe\nDelete = Markiere zum Löschen\nK = Behalte Bild\nSpace = Nächstes Bild",
         "closed_eyes_detection": "Geschlossene Augen erkennen",
         "redeye_detection": "Rote-Augen Effekt erkennen",
         "blurry_detection": "Unscharfe Fotos",
@@ -621,8 +638,8 @@ Status: Offline-Nutzung aktiv
         "image_analysis_async": "Bildanalyse läuft",
         "image_analysis": "Bildanalyse läuft",
         "min_eye_size": "Minimale Augengröße (Pixel):",
-        "delete_button": "🗑 Löschen",
-        "reset_icon": "↺ Zurücksetzen",
+        "delete_button": "Löschen",
+        "reset_icon": "Zurücksetzen",
         "not_possible": "Nicht möglich",
         "select_group_message": "<h3>Wählen Sie eine Gruppe aus</h3>",
         "actions_on_selection": "<b>Aktionen auf Auswahl:</b>",
@@ -734,7 +751,7 @@ Status: Offline-Nutzung aktiv
         "phase_e_shortcut_prev_group": "<b>←</b> Vorherige Gruppe",
         "phase_e_batch_select": "Mehrfachauswahl: Shift+Klick, Strg+A",
         "phase_e_unsure_prominent": "? Unsicher – Standard für schwierige Fälle",
-        "phase_e_unsure_recommendation": "🔍 Diese Bilder benötigen weitere Überprüfung",
+        "phase_e_unsure_recommendation": "Diese Bilder benötigen weitere Überprüfung",
         "phase_e_action_visibility": "Aktionen (Merge/Split/Undo):",
         "phase_e_merge_available": "Zusammenführen verfügbar",
         "phase_e_split_available": "Abspalten verfügbar",
@@ -748,7 +765,7 @@ Status: Offline-Nutzung aktiv
         "phase_f_kpi_accuracy": "Genauigkeit vs. Auto-Empfehlung",
         "phase_f_kpi_total_decisions": "Gesamtentscheidungen",
         "phase_f_kpi_export_title": "KPI-Daten exportieren",
-        "phase_f_kpi_export_button": "📊 KPI-Bericht exportieren",
+        "phase_f_kpi_export_button": "KPI-Bericht exportieren",
         "phase_f_user_test_mode": "Testmodus (KPI-Tracking aktiv)",
         "phase_f_mode_indicator": "🧪 Im Testmodus (Entscheidungen werden aufgezeichnet)",
         "phase_f_export_success": "KPI-Bericht erfolgreich exportiert: {path}",
@@ -838,7 +855,24 @@ Status: Offline-Nutzung aktiv
         "onboarding_message": "Quick start:\n1) Mark each image as Keep/Delete/Unsure.\n2) Use Unsure for difficult cases.\n3) Shortcuts: K=Keep, D=Delete, U=Unsure, Z=Undo.",
         "onboarding_start_review": "Start review",
         "onboarding_skip": "Later",
+        "onboarding_next": "Next",
+        "onboarding_previous": "Back",
+        "onboarding_finish": "Finish",
+        "onboarding_interactive_mode": "Interactive click mode",
+        "onboarding_interactive_hint": "Enabled: click the highlighted area to move to the next step.",
         "onboarding_dont_show_again": "Do not show again",
+        "onboarding_step_welcome_title": "Welcome to the review workflow",
+        "onboarding_step_welcome_body": "This tour shows the key areas.\n\nUse Next and Back to move through the steps. The rest of the UI is dimmed so you can focus.",
+        "onboarding_step_import_title": "1) Import images",
+        "onboarding_step_import_body": "Start here: choose your image folder. Analysis starts afterward and groups are built automatically.",
+        "onboarding_step_filter_title": "2) Find groups quickly",
+        "onboarding_step_filter_body": "Use search and the filter dropdown to focus on the right groups, for example open groups or groups needing manual review.",
+        "onboarding_step_groups_title": "3) Understand the group list",
+        "onboarding_step_groups_body": "Each row is one group.\nRed = still open, Green = fully decided.\nSelect a group to review images on the right.",
+        "onboarding_step_actions_title": "4) Make decisions",
+        "onboarding_step_actions_body": "Set status for selected images here:\n• Keep\n• Delete\n• Unsure\n\nTips: K = Keep, D = Delete, U = Unsure, Z = Undo.",
+        "onboarding_step_finalize_title": "5) Finalize export",
+        "onboarding_step_finalize_body": "When decisions are done, export the Keep images to the output folder here.",
         "preview_from_input": "Preview from input folder",
         "no_images_imported": "No images imported",
         "images_loaded": "{count} images loaded",
@@ -1011,70 +1045,70 @@ Enter your license key above and click "Activate".
     .highlight { background: #FF9800; color: white; padding: 4px 8px; border-radius: 4px; }
 </style>
 
-<h2>📊 Plan Comparison</h2>
+<h2>Plan Comparison</h2>
 
 <table>
     <tr>
         <th class="feature-name">Feature / Limit</th>
         <th class="plan-free">FREE<br><span class="price">€0</span></th>
-        <th class="plan-pro">PRO ⭐<br><span class="price">from €19/year</span></th>
+        <th class="plan-pro">PRO<br><span class="price">from €19/year</span></th>
     </tr>
     
     <!-- Basic Features -->
     <tr>
-        <td class="feature-name">🔍 Image Analysis & Duplicate Detection</td>
-        <td class="plan-free"><span class="check">✓</span></td>
-        <td class="plan-pro"><span class="check">✓</span></td>
+        <td class="feature-name">Image Analysis & Duplicate Detection</td>
+        <td class="plan-free">Yes</td>
+        <td class="plan-pro">Yes</td>
     </tr>
     <tr>
-        <td class="feature-name">📊 Image Limit</td>
+        <td class="feature-name">Image Limit</td>
         <td class="plan-free">250 images total</td>
         <td class="plan-pro"><span class="highlight">Unlimited</span></td>
     </tr>
     <tr>
-        <td class="feature-name">💻 Device Limit</td>
+        <td class="feature-name">Device Limit</td>
         <td class="plan-free">1 device</td>
         <td class="plan-pro">3 devices</td>
     </tr>
     
     <!-- PRO Features -->
     <tr>
-        <td class="feature-name">🚀 Batch Processing (Mass Import)</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
-        <td class="plan-pro"><span class="check">✓</span></td>
+        <td class="feature-name">Batch Processing (Mass Import)</td>
+        <td class="plan-free">No</td>
+        <td class="plan-pro">Yes</td>
     </tr>
     <tr>
-        <td class="feature-name">📷 HEIC/HEIF Format Support</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
-        <td class="plan-pro"><span class="check">✓</span></td>
+        <td class="feature-name">HEIC/HEIF Format Support</td>
+        <td class="plan-free">No</td>
+        <td class="plan-pro">Yes</td>
     </tr>
     <tr>
-        <td class="feature-name">⚡ Extended Caching (2-8x faster)</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
-        <td class="plan-pro"><span class="check">✓</span></td>
+        <td class="feature-name">Extended Caching (2-8x faster)</td>
+        <td class="plan-free">No</td>
+        <td class="plan-pro">Yes</td>
     </tr>
     <tr>
-        <td class="feature-name">🎯 Quality Analysis (Sharpness/Exposure/Details)</td>
+        <td class="feature-name">Quality Analysis (Sharpness/Exposure/Details)</td>
         <td class="plan-free">Basic</td>
         <td class="plan-pro"><span class="highlight">Advanced</span></td>
     </tr>
     <tr>
-        <td class="feature-name">📦 Batch Deletion</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
-        <td class="plan-pro"><span class="check">✓</span></td>
+        <td class="feature-name">Batch Deletion</td>
+        <td class="plan-free">No</td>
+        <td class="plan-pro">Yes</td>
     </tr>
     <tr>
-        <td class="feature-name">📄 Export Formats (CSV, JSON)</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
-        <td class="plan-pro"><span class="check">✓</span></td>
+        <td class="feature-name">Export Formats (CSV, JSON)</td>
+        <td class="plan-free">No</td>
+        <td class="plan-pro">Yes</td>
     </tr>
     <tr>
-        <td class="feature-name">📧 Support</td>
-        <td class="plan-free"><span class="cross">✗</span></td>
+        <td class="feature-name">Support</td>
+        <td class="plan-free">No</td>
         <td class="plan-pro">Email</td>
     </tr>
     <tr>
-        <td class="feature-name">📱 Offline Grace Period</td>
+        <td class="feature-name">Offline Grace Period</td>
         <td class="plan-free">-</td>
         <td class="plan-pro">7 days</td>
     </tr>
@@ -1227,7 +1261,7 @@ Status: Offline usage active
         "validation_select_output": "Please choose a target folder first.",
         "validation_optional_input": "You can start with existing data or choose an additional photo folder.",
         "validation_ready": "Everything is ready. The analysis can start.",
-        "help_dialog_content": "PhotoCleaner - Intelligent Photo Management\n\nWorkflow:\n1. 📁 Import: Choose a folder with photos\n2. ▶ Analysis: Find duplicate photos automatically\n3. ⚙ Settings: Adjust quality parameters\n4. Decide for each photo: Keep or Delete\n\nKeyboard Shortcuts:\n? = This help\nDelete = Mark for deletion\nK = Keep photo\nSpace = Next photo",
+        "help_dialog_content": "PhotoCleaner - Intelligent Photo Management\n\nWorkflow:\n1. Import: Choose a folder with photos\n2. Analysis: Find duplicate photos automatically\n3. Settings: Adjust quality parameters\n4. Decide for each photo: Keep or Delete\n\nKeyboard Shortcuts:\n? = This help\nDelete = Mark for deletion\nK = Keep photo\nSpace = Next photo",
         "closed_eyes_detection": "Detect closed eyes",
         "redeye_detection": "Detect red-eye effect",
         "blurry_detection": "Blurry photos",
@@ -1237,8 +1271,8 @@ Status: Offline usage active
         "image_analysis_async": "Image analysis running",
         "image_analysis": "Image analysis running",
         "min_eye_size": "Minimum eye size (pixels):",
-        "delete_button": "🗑 Delete",
-        "reset_icon": "↺ Reset",
+        "delete_button": "Delete",
+        "reset_icon": "Reset",
         "not_possible": "Not possible",
         "select_group_message": "<h3>Select a group</h3>",
         "actions_on_selection": "<b>Actions on selection:</b>",
@@ -1350,7 +1384,7 @@ Status: Offline usage active
         "phase_e_shortcut_prev_group": "<b>←</b> Previous Group",
         "phase_e_batch_select": "Multi-select: Shift+Click, Ctrl+A",
         "phase_e_unsure_prominent": "? Unsure – Standard for difficult cases",
-        "phase_e_unsure_recommendation": "🔍 These images require further review",
+        "phase_e_unsure_recommendation": "These images require further review",
         "phase_e_action_visibility": "Actions (Merge/Split/Undo):",
         "phase_e_merge_available": "Merge available",
         "phase_e_split_available": "Split available",
@@ -1364,7 +1398,7 @@ Status: Offline usage active
         "phase_f_kpi_accuracy": "Accuracy vs. auto-recommendation",
         "phase_f_kpi_total_decisions": "Total decisions",
         "phase_f_kpi_export_title": "Export KPI data",
-        "phase_f_kpi_export_button": "📊 Export KPI Report",
+        "phase_f_kpi_export_button": "Export KPI Report",
         "phase_f_user_test_mode": "Test mode (KPI tracking active)",
         "phase_f_mode_indicator": "🧪 In test mode (decisions are recorded)",
         "phase_f_export_success": "KPI report exported successfully: {path}",

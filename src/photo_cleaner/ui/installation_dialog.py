@@ -151,23 +151,23 @@ class InstallationDialog(QDialog):
         info = self.manager.system_info
         
         # OS & Python
-        os_label = QLabel(f"🖥 Betriebssystem: {info.os_name} ({info.os_version})")
+        os_label = QLabel(f"Betriebssystem: {info.os_name} ({info.os_version})")
         layout.addWidget(os_label)
         
-        python_label = QLabel(f"🐍 Python: {info.python_version} ({'64-bit' if info.is_64bit else '32-bit'})")
+        python_label = QLabel(f"Python: {info.python_version} ({'64-bit' if info.is_64bit else '32-bit'})")
         layout.addWidget(python_label)
         
         # CPU & GPU
-        cpu_label = QLabel(f"⚙ CPU Kerne: {info.cpu_cores}")
+        cpu_label = QLabel(f"CPU Kerne: {info.cpu_cores}")
         layout.addWidget(cpu_label)
         
-        gpu_icon = "✓" if info.has_gpu else "✗"
-        gpu_label = QLabel(f"{gpu_icon} GPU: {'Verfügbar' if info.has_gpu else 'Nicht erkannt'}")
+        gpu_state = "Verfügbar" if info.has_gpu else "Nicht erkannt"
+        gpu_label = QLabel(f"GPU: {gpu_state}")
         layout.addWidget(gpu_label)
         
         # Build Tools (wichtig für dlib)
-        bt_icon = "✓" if info.has_build_tools else "✗"
-        bt_label = QLabel(f"{bt_icon} C++ Build Tools: {'Verfügbar' if info.has_build_tools else 'Nicht erkannt'}")
+        bt_state = "Verfügbar" if info.has_build_tools else "Nicht erkannt"
+        bt_label = QLabel(f"C++ Build Tools: {bt_state}")
         if not info.has_build_tools:
             bt_label.setToolTip(t("build_tools_required"))
         layout.addWidget(bt_label)
@@ -198,7 +198,7 @@ class InstallationDialog(QDialog):
         mediapipe_layout.addWidget(mediapipe_label, 1)
         
         if mediapipe_dep.installed:
-            mediapipe_status = QLabel("✓ Installiert")
+            mediapipe_status = QLabel("Installiert")
             mediapipe_status.setStyleSheet("QLabel { color: green; font-weight: bold; }")
             mediapipe_layout.addWidget(mediapipe_status)
             self.mediapipe_radio.setEnabled(False)
@@ -221,12 +221,12 @@ class InstallationDialog(QDialog):
         dlib_layout.addWidget(dlib_label, 1)
         
         if dlib_dep.installed:
-            dlib_status = QLabel("✓ Installiert")
+            dlib_status = QLabel("Installiert")
             dlib_status.setStyleSheet("QLabel { color: green; font-weight: bold; }")
             dlib_layout.addWidget(dlib_status)
             self.dlib_radio.setEnabled(False)
         elif not self.manager.system_info.has_build_tools:
-            warning_label = QLabel("⚠ Build Tools fehlen")
+            warning_label = QLabel("Build Tools fehlen")
             warning_label.setStyleSheet("QLabel { color: orange; font-weight: bold; }")
             warning_label.setToolTip("Installation kann fehlschlagen ohne Build Tools")
             dlib_layout.addWidget(warning_label)
@@ -266,7 +266,7 @@ class InstallationDialog(QDialog):
         
         if rec.recommended_package == "none":
             self.recommendation_label.setText(
-                "✓ Alle erweiterten Funktionen sind bereits installiert!"
+                "Alle erweiterten Funktionen sind bereits installiert."
             )
             self.recommendation_label.setStyleSheet(
                 "QLabel { background-color: #d4edda; padding: 10px; border-radius: 5px; color: #155724; }"
@@ -275,7 +275,7 @@ class InstallationDialog(QDialog):
             self.install_button.setText(t("complete"))
         else:
             # Zeige Empfehlung
-            rec_text = f"💡 <b>Empfehlung für Ihr System:</b> {rec.recommended_package}<br>"
+            rec_text = f"<b>Empfehlung für Ihr System:</b> {rec.recommended_package}<br>"
             rec_text += f"<i>{rec.reason}</i>"
             
             if rec.warning:

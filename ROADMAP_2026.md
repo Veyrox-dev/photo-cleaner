@@ -60,6 +60,7 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 - ✅ MSI-Permissions-Fix: Thumbnail-Cache in benutzerschreibbarem Cache-Ordner statt `Program Files`
 - ✅ MSI-Cloud-Config ohne manuellen Endnutzer-Schritt: Build injiziert `SUPABASE_PROJECT_URL` + `SUPABASE_ANON_KEY` automatisch in den Installer-Payload
 - ✅ Build/Release-Doku aktualisiert: Cloud-Config-Handling in `docs/guides/MSI_BUILD.md` dokumentiert
+- ▶ Neu eingeplant: Code-Signing (Publisher-Vertrauen) vorbereiten, damit Installer nicht mehr als "Unbekannter Herausgeber" erscheint
 - ▶ Verbleibend (nicht-blockierend): TensorFlow-Importdauer/GPU-Enumeration beobachten
 - ▶ Verbleibend (nicht-blockierend): TensorFlow Retracing-Warnungen im Analysepfad reduzieren
 - ▶ Verbleibend (optional): MediaPipe-Thread-Import robuster/fallback-schneller machen
@@ -79,6 +80,7 @@ Separat und ergänzend zu den EXE-Smoke-Tests.
 |---|---|
 | Version auf 1.0.0 bumpen, Tag `v1.0.0-rc1` setzen | Hoch |
 | MSI auf virgin Win 10 / Win 11 testen (Install / Upgrade / Uninstall) | Hoch |
+| Code-Signing-Zertifikat beschaffen + EXE/MSI mit Timestamp signieren (Publisher-Vertrauen) | Mittel |
 | Stripe + Supabase Produktionsbereitschaft end-to-end validieren | Hoch |
 | Lizenz-Vollständig-Durchlauf (Kauf → Aktivierung → Ablauf → Erneuerung) | Hoch |
 | User Manual vervollständigen | Mittel |

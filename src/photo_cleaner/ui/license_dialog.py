@@ -225,11 +225,11 @@ class LicenseDialog(QDialog):
         valid = status.get("valid", False)
         
         if not valid:
-            label.setText(f'<p style="background: #333; padding: 10px; border-radius: 5px;">📋 <b>{t("license_your_plan")}:</b> FREE ({t("license_plan_standard")})</p>')
+            label.setText(f'<p style="background: #333; padding: 10px; border-radius: 5px;"><b>{t("license_your_plan")}:</b> FREE ({t("license_plan_standard")})</p>')
         elif license_type == "PRO":
-            label.setText(f'<p style="background: #2a2a2a; padding: 10px; border-radius: 5px;">⭐ <b>{t("license_your_plan")}:</b> PRO ({t("license_plan_active")})</p>')
+            label.setText(f'<p style="background: #2a2a2a; padding: 10px; border-radius: 5px;"><b>{t("license_your_plan")}:</b> PRO ({t("license_plan_active")})</p>')
         else:
-            label.setText(f'<p style="background: #333; padding: 10px; border-radius: 5px;">📋 <b>{t("license_your_plan")}:</b> {license_type}</p>')
+            label.setText(f'<p style="background: #333; padding: 10px; border-radius: 5px;"><b>{t("license_your_plan")}:</b> {license_type}</p>')
 
     def refresh_status(self):
         """Aktualisiert Status-Anzeigen."""
@@ -244,22 +244,22 @@ class LicenseDialog(QDialog):
         if valid or license_type == "FREE":
             if license_type == "PRO":
                 color = "#FF9800"  # Orange
-                icon = "⭐"
+                icon = ""
             else:  # FREE
                 color = "#4CAF50"  # Green
-                icon = "✓"
+                icon = ""
                 # Show user-friendly message for FREE mode
                 if not valid:
                     license_type = f"FREE ({t('license_basic_features')})"
         else:
             # Invalid license (corrupted, expired, machine mismatch)
             color = "#999"  # Gray
-            icon = "⚠"
+            icon = ""
             reason = status.get("reason", t("license_invalid"))
             license_type = f"{license_type} ({reason})"
 
         self.status_label.setText(
-            f'<span style="color: {color}; font-size: 14pt;">{icon} {license_type}</span>'
+            f'<span style="color: {color}; font-size: 14pt;">{license_type}</span>'
         )
 
         # Details (vereinfacht fuer FREE-Mode, detailliert fuer PRO/invalid)
@@ -275,8 +275,8 @@ class LicenseDialog(QDialog):
 {t('license_user')}: {status.get('user', t('license_not_assigned'))}
 {t('license_machine_id')}: {status.get('machine_id_license', 'N/A')[:16]}...
 {t('license_expires')}: {expires}
-{t('license_signature')}: {'✓ ' + t('license_valid') if status.get('signature_valid') else '✗ ' + t('license_invalid')}
-{t('license_machine')}: {'✓ ' + t('license_correct') if status.get('machine_match') else '✗ ' + t('license_mismatch')}
+{t('license_signature')}: {t('license_valid') if status.get('signature_valid') else t('license_invalid')}
+{t('license_machine')}: {t('license_correct') if status.get('machine_match') else t('license_mismatch')}
             """.strip()
 
         self.details_text.setText(details)
@@ -284,7 +284,7 @@ class LicenseDialog(QDialog):
         # Features
         enabled_features = status.get("enabled_features", [])
         if enabled_features:
-            features_text = "✓ " + "\n✓ ".join(enabled_features)
+            features_text = "\n".join(enabled_features)
         else:
             features_text = t("license_no_premium_features")
 

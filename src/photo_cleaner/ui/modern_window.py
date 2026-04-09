@@ -104,6 +104,7 @@ from photo_cleaner.ui.onboarding_state import (
     reset_onboarding_completed,
     should_show_onboarding,
 )
+from photo_cleaner.ui.onboarding_tour import OnboardingStep, OnboardingTourDialog
 from photo_cleaner.ui.group_filters import GroupFilterOptions, group_matches_filters
 from photo_cleaner.ui.quota_messaging import build_quota_limit_message
 from photo_cleaner.ui.review_guidance import recommend_next_step
@@ -193,10 +194,10 @@ class RatingWorkerThread(QThread):
         
         # LOG MTCNN status (informational only, not a blocker)
         if self.mtcnn_status.get("available", False):
-            logger.info("[WORKER] ✓ MTCNN available - will use face detection for rating")
+            logger.info("[WORKER] MTCNN available - will use face detection for rating")
         else:
             error_msg = self.mtcnn_status.get("error", "MTCNN not available")
-            logger.warning(f"[WORKER] ⚠ MTCNN not available ({error_msg}) - will use Haar Cascade fallback")
+            logger.warning(f"[WORKER] MTCNN not available ({error_msg}) - will use Haar Cascade fallback")
             logger.warning("[WORKER] Rating will continue with lower accuracy")
         
         db = None
@@ -367,7 +368,7 @@ class RatingWorkerThread(QThread):
                             """,
                             (str(best_path),),
                         )
-                        logger.info(f"⭐ {best_path.name} als Empfohlung markiert")
+                        logger.info(f"{best_path.name} als Empfehlung markiert")
                     
                     if second_path:
                         conn.execute(
@@ -378,7 +379,7 @@ class RatingWorkerThread(QThread):
                             """,
                             (str(second_path),),
                         )
-                        logger.info(f"🥈 {second_path.name} als Zweitwahl markiert")
+                        logger.info(f"{second_path.name} als Zweitwahl markiert")
                     
                     conn.commit()
                 except (sqlite3.DatabaseError, sqlite3.OperationalError) as e:
@@ -693,13 +694,7 @@ class FinalizationResultDialog(QDialog):
         title_label.setFont(title_font)
         layout.addWidget(title_label)
         
-        # Icon/checkmark
         colors = get_semantic_colors()
-        check_label = QLabel("✓ " + t("finalization_success_summary").format(
-            total=self.total_files,
-            groups=self.groups_found
-        ))
-        check_label.setStyleSheet(f"color: {colors['success']};")
         
         card.setLayout(layout)
         self._apply_card_styling(card, colors["success"])
@@ -1852,12 +1847,12 @@ class ImageDetailDialog(QDialog):
         info_layout.addWidget(status_label)
         
         if self.file_row.locked:
-            lock_label = QLabel("🔒 <b>LOCKED</b>")
+            lock_label = QLabel("<b>LOCKED</b>")
             lock_label.setStyleSheet(f"color: {get_semantic_colors()['warning']}; padding: 4px;")
             info_layout.addWidget(lock_label)
         
         if self.file_row.is_recommended:
-            rec_label = QLabel("⭐ <b>RECOMMENDED</b>")
+            rec_label = QLabel("<b>RECOMMENDED</b>")
             rec_label.setStyleSheet(f"color: {get_semantic_colors()['success']}; padding: 4px;")
             info_layout.addWidget(rec_label)
         
@@ -2100,9 +2095,9 @@ class ThumbnailCard(QWidget):
         status_text = self.file_row.status.value
         
         if self.file_row.is_recommended:
-            status_text = "⭐ " + status_text
+            status_text = "RECOMMENDED " + status_text
         if self.file_row.locked:
-            status_text = "🔒 " + status_text
+            status_text = "LOCKED " + status_text
         
         self.status_label = QLabel(status_text)
         self.status_label.setAlignment(Qt.AlignCenter)
@@ -2142,13 +2137,13 @@ class ThumbnailCard(QWidget):
             # Color coding: Blue shades (avoid confusion with status colors - green/orange/red)
             if score >= 70:
                 score_color = quality_colors['high']  # Dark Blue (high quality)
-                score_icon = "✓"
+                score_icon = ""
             elif score >= 40:
                 score_color = quality_colors['medium']  # Medium Blue (medium quality)
                 score_icon = "~"
             else:
                 score_color = quality_colors['low']  # Light Blue (low quality)
-                score_icon = "✗"
+                score_icon = ""
 
             if score >= 70:
                 rating_text = t("quality_rating_very_good")
@@ -2157,7 +2152,7 @@ class ThumbnailCard(QWidget):
             else:
                 rating_text = t("quality_rating_poor")
 
-            score_text = f"{score_icon} {rating_text}"
+            score_text = f"{score_icon} {rating_text}".strip()
             score_label = QLabel(score_text)
             score_label.setAlignment(Qt.AlignCenter)
             score_label.setStyleSheet(f"""
@@ -2243,9 +2238,9 @@ class ThumbnailCard(QWidget):
         status_text = new_status.value
         
         if self.file_row.is_recommended:
-            status_text = "⭐ " + status_text
+            status_text = "RECOMMENDED " + status_text
         if self.file_row.locked:
-            status_text = "🔒 " + status_text
+            status_text = "LOCKED " + status_text
         
         self.status_label.setText(status_text)
         self.status_label.setStyleSheet(f"""
@@ -2277,7 +2272,7 @@ class ThumbnailCard(QWidget):
     def set_thumbnail_image(self, qimg: QImage) -> None:
         """Apply QImage thumbnail (UI thread only)."""
         if qimg.isNull():
-            self.thumbnail.setText("❌")
+            self.thumbnail.setText("N/A")
             return
         pixmap = QPixmap.fromImage(qimg)
         scaled = pixmap.scaled(160, 160, Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -2319,9 +2314,9 @@ class ImageDetailWindow(QMainWindow):
         status_color = status_colors.get(self.file_row.status.value, status_colors['UNDECIDED'])
         status_text = f"<span style='color: {status_color};'>{self.file_row.status.value}</span>"
         if self.file_row.is_recommended:
-            status_text = "⭐ " + status_text
+            status_text = "RECOMMENDED " + status_text
         if self.file_row.locked:
-            status_text = "🔒 " + status_text
+            status_text = "LOCKED " + status_text
         
         header = QLabel(f"<h3>{self.file_row.path.name}</h3><p>Status: {status_text}</p>")
         layout.addWidget(header)
@@ -2547,9 +2542,9 @@ class SideBySideComparisonWindow(QMainWindow):
         control_bar.setSpacing(4)
         control_bar.setContentsMargins(0, 0, 0, 0)
         
-        self.sync_pan_checkbox = QPushButton("🔗 Sync: AUS")
+        self.sync_pan_checkbox = QPushButton(t('sync_pan_on'))
         self.sync_pan_checkbox.setCheckable(True)
-        self.sync_pan_checkbox.setChecked(False)  # Default OFF
+        self.sync_pan_checkbox.setChecked(True)  # Default ON
         self.sync_pan_checkbox.setMaximumWidth(120)
         self.sync_pan_checkbox.setMaximumHeight(28)
         bg_success = get_semantic_colors()["success"]
@@ -2572,7 +2567,7 @@ class SideBySideComparisonWindow(QMainWindow):
         control_bar.addWidget(self.sync_pan_checkbox)
         
         # NEW: Reset Pan/Zoom button
-        reset_pan_btn = QPushButton("↺ Reset")
+        reset_pan_btn = QPushButton(t("reset_button"))
         reset_pan_btn.setMaximumWidth(80)
         reset_pan_btn.setMaximumHeight(28)
         reset_pan_btn.setStyleSheet(
@@ -2593,6 +2588,9 @@ class SideBySideComparisonWindow(QMainWindow):
         control_bar.addWidget(close_btn)
         
         layout.addLayout(control_bar)
+
+        # Default to synchronized pan/zoom for side-by-side comparisons.
+        self._toggle_sync_pan()
     
     def _build_image_panel(self, file_row: FileRow, title: str) -> QWidget:
         """Build panel for one image."""
@@ -2701,7 +2699,7 @@ class SideBySideComparisonWindow(QMainWindow):
         is_enabled = self.sync_pan_checkbox.isChecked()
         
         if is_enabled:
-            self.sync_pan_checkbox.setText("🔗 Sync: AN")
+            self.sync_pan_checkbox.setText(t('sync_pan_on'))
             bg_success = get_semantic_colors()["success"]
             self.sync_pan_checkbox.setStyleSheet(f"""
                 QPushButton {{
@@ -2726,7 +2724,7 @@ class SideBySideComparisonWindow(QMainWindow):
                 self.left_view.zoom_changed.connect(self._on_left_zoom_changed)
                 self.right_view.zoom_changed.connect(self._on_right_zoom_changed)
         else:
-            self.sync_pan_checkbox.setText("🔗 Sync: AUS")
+            self.sync_pan_checkbox.setText(t('sync_pan_off'))
             self.sync_pan_checkbox.setStyleSheet("""
                 QPushButton {
                     padding: 8px 16px;
@@ -3114,6 +3112,9 @@ class ModernMainWindow(QMainWindow):
         
         # Setup auto-save timer
         self._setup_auto_save()
+
+        # Show first-run onboarding immediately after startup UI is ready.
+        self._maybe_show_first_run_onboarding()
         
         # Start automatic scan only after DB/services/UI are ready
         if self._pending_scan:
@@ -3980,7 +3981,7 @@ class ModernMainWindow(QMainWindow):
                             """,
                             (str(best_path),),
                         )
-                        logger.info(f"⭐ {best_path.name} als Empfohlung markiert")
+                        logger.info(f"{best_path.name} als Empfehlung markiert")
                     
                     if second_path:
                         self.conn.execute(
@@ -3991,7 +3992,7 @@ class ModernMainWindow(QMainWindow):
                             """,
                             (str(second_path),),
                         )
-                        logger.info(f"🥈 {second_path.name} als Zweitwahl markiert")
+                        logger.info(f"{second_path.name} als Zweitwahl markiert")
                     
                     self.conn.commit()
                 except (sqlite3.DatabaseError, sqlite3.OperationalError) as e:
@@ -4807,13 +4808,13 @@ class ModernMainWindow(QMainWindow):
         status = self.check_eye_detection_availability().get(stage, {"available": True, "message": "Bereit"})
 
         if status.get("available"):
-            self.eye_mode_status_label.setText("✓ Bereit")
+            self.eye_mode_status_label.setText("Bereit")
             success_color = get_semantic_colors()["success"]
             self.eye_mode_status_label.setStyleSheet(f"padding: 4px 8px; border-radius: 6px; font-size: 12px; background-color: {success_color}; color: white;")
             self.eye_mode_fix_btn.hide()
         else:
             msg = status.get("message", "Nicht verfügbar")
-            self.eye_mode_status_label.setText(f"⚠ {msg}")
+            self.eye_mode_status_label.setText(msg)
             error_color = get_semantic_colors()["error"]
             self.eye_mode_status_label.setStyleSheet(f"padding: 4px 8px; border-radius: 6px; font-size: 12px; background-color: {error_color}; color: white;")
             # Show fix button for actionable fixes
@@ -4879,7 +4880,7 @@ class ModernMainWindow(QMainWindow):
         
         # Header / Toggle button
         header_layout = QHBoxLayout()
-        self.quality_toggle_btn = QPushButton(f"🔽 {t('quality_settings').upper()}")
+        self.quality_toggle_btn = QPushButton(f"{t('quality_settings').upper()}")
         self.quality_toggle_btn.setCheckable(True)
         self.quality_toggle_btn.setChecked(False)
         bg = get_label_background_color()
@@ -4923,7 +4924,7 @@ class ModernMainWindow(QMainWindow):
         self.preset_manager = get_preset_manager()
         
         # === Eye Detection Subsection ===
-        eye_section = self._create_settings_section("👁 Augenerkennung")
+        eye_section = self._create_settings_section("Augenerkennung")
         eye_layout = eye_section.layout()
         
         # Eye Detection Threshold slider
@@ -4960,7 +4961,7 @@ class ModernMainWindow(QMainWindow):
         content_layout.addWidget(eye_section)
         
         # === Image Quality Subsection ===
-        quality_section = self._create_settings_section("🎨 Bildqualität")
+        quality_section = self._create_settings_section("Bildqualität")
         quality_layout = quality_section.layout()
         
         quality_layout.addLayout(self._create_slider_control(
@@ -4994,7 +4995,7 @@ class ModernMainWindow(QMainWindow):
         content_layout.addWidget(quality_section)
         
         # === Detection Options Subsection ===
-        detection_section = self._create_settings_section("🔍 Erkennungsoptionen")
+        detection_section = self._create_settings_section("Erkennungsoptionen")
         detection_layout = detection_section.layout()
         
         self.detect_closed_eyes_cb = self._create_checkbox_control(
@@ -5035,7 +5036,7 @@ class ModernMainWindow(QMainWindow):
         content_layout.addWidget(detection_section)
         
         # === Preset System Subsection ===
-        preset_section = self._create_settings_section("💾 Voreinstellungen")
+        preset_section = self._create_settings_section("Voreinstellungen")
         preset_layout = preset_section.layout()
         
         preset_combo_layout = QHBoxLayout()
@@ -5054,7 +5055,7 @@ class ModernMainWindow(QMainWindow):
         # Preset buttons
         preset_btn_layout = QHBoxLayout()
         
-        self.save_preset_btn = QPushButton("💾 Speichern")
+        self.save_preset_btn = QPushButton(t("save_settings"))
         self.save_preset_btn.setFixedWidth(120)
         self.save_preset_btn.clicked.connect(self._save_current_preset)
         preset_btn_layout.addWidget(self.save_preset_btn)
@@ -5195,10 +5196,10 @@ class ModernMainWindow(QMainWindow):
         """Schalte Quality Settings Panel um."""
         if checked:
             self.quality_content.show()
-            self.quality_toggle_btn.setText(f"🔼 {t('quality_settings').upper()}")
+            self.quality_toggle_btn.setText(f"{t('quality_settings').upper()}")
         else:
             self.quality_content.hide()
-            self.quality_toggle_btn.setText(f"🔽 {t('quality_settings').upper()}")
+            self.quality_toggle_btn.setText(f"{t('quality_settings').upper()}")
     
     def _on_preset_selected(self, preset_name: str):
         """Lade ausgewähltes Preset."""
@@ -5209,7 +5210,7 @@ class ModernMainWindow(QMainWindow):
         if preset:
             self.config_system.load_preset(preset)
             self._update_ui_from_config()
-            self.quality_status_label.setText(f"✓ Voreinstellung '{preset_name}' geladen")
+            self.quality_status_label.setText(f"Voreinstellung '{preset_name}' geladen")
     
     def _save_current_preset(self):
         """Speichere aktuelle Einstellungen als Preset."""
@@ -5261,7 +5262,7 @@ class ModernMainWindow(QMainWindow):
             self.preset_combo.setCurrentText(new_name)
             self.preset_combo.blockSignals(False)
             
-            self.quality_status_label.setText(f"✓ Voreinstellung '{new_name}' gespeichert")
+            self.quality_status_label.setText(f"Voreinstellung '{new_name}' gespeichert")
         else:
             QMessageBox.warning(self, t("error"), t("preset_save_failed").format(error=error))
     
@@ -5292,7 +5293,7 @@ class ModernMainWindow(QMainWindow):
                 self.preset_combo.setCurrentIndex(0)
                 self.preset_combo.blockSignals(False)
                 
-                self.quality_status_label.setText(f"✓ Voreinstellung gelöscht")
+                self.quality_status_label.setText("Voreinstellung gelöscht")
             else:
                 QMessageBox.warning(self, t("error"), t("preset_delete_failed").format(error=error))
     
@@ -5316,16 +5317,16 @@ class ModernMainWindow(QMainWindow):
             self.preset_combo.setCurrentIndex(0)
             self.preset_combo.blockSignals(False)
             
-            self.quality_status_label.setText("✓ Voreinstellungen zurückgesetzt")
+            self.quality_status_label.setText("Voreinstellungen zurückgesetzt")
     
     def _on_config_applied(self, changes):
         """Callback wenn Konfigurationsänderungen angewendet wurden."""
         self._update_ui_from_config()
-        self.quality_status_label.setText("✓ Einstellungen aktualisiert")
+        self.quality_status_label.setText("Einstellungen aktualisiert")
     
     def _on_config_validation_error(self, key, error_msg):
         """Callback bei Validierungsfehler."""
-        self.quality_status_label.setText(f"✗ Fehler in '{key}': {error_msg}")
+        self.quality_status_label.setText(f"Fehler in '{key}': {error_msg}")
     
     def _update_ui_from_config(self):
         """Aktualisiere UI-Controls von aktueller Konfiguration."""
@@ -5629,12 +5630,12 @@ class ModernMainWindow(QMainWindow):
         
         status_colors = get_status_colors()
         
-        self.keep_btn = QPushButton(f"✓ {t('keep')} (K)")
+        self.keep_btn = QPushButton(f"{t('keep')} (K)")
         self.keep_btn.setStyleSheet(_build_button_style(status_colors['KEEP'], padding="12px 12px", font_size=12))
         self.keep_btn.clicked.connect(lambda: self._apply_status_to_selection(FileStatus.KEEP))
         layout.addWidget(self.keep_btn)
         
-        self.del_btn = QPushButton(f"✕ {t('delete')} (D)")
+        self.del_btn = QPushButton(f"{t('delete')} (D)")
         self.del_btn.setStyleSheet(_build_button_style(status_colors['DELETE'], padding="12px 12px", font_size=12))
         self.del_btn.clicked.connect(lambda: self._apply_status_to_selection(FileStatus.DELETE))
         layout.addWidget(self.del_btn)
@@ -5742,7 +5743,6 @@ class ModernMainWindow(QMainWindow):
         self._clear_grid()
         self.grid_title.setText(f"<h3>{t('select_group')}</h3>")
         self._update_menu_state()
-        self._maybe_show_first_run_onboarding()
         
         total_time = time.monotonic() - start_time
         logger.info(f"[UI] refresh_groups() FINISHED in {total_time:.3f}s (query={query_time:.3f}s, render={render_time:.3f}s)")
@@ -5783,29 +5783,60 @@ class ModernMainWindow(QMainWindow):
         """Show onboarding once per user and once per app session."""
         if self._onboarding_prompted_this_session:
             return
-        if not self.groups:
-            return
         if not should_show_onboarding(self._user_settings):
             return
 
         self._onboarding_prompted_this_session = True
 
-        msg = QMessageBox(self)
-        msg.setIcon(QMessageBox.Information)
-        msg.setWindowTitle(t("onboarding_title"))
-        msg.setText(t("onboarding_message"))
-        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
-        msg.button(QMessageBox.Ok).setText(t("onboarding_start_review"))
-        msg.button(QMessageBox.Cancel).setText(t("onboarding_skip"))
+        steps = self._build_onboarding_tour_steps()
+        if not steps:
+            return
 
-        dont_show_checkbox = QCheckBox(t("onboarding_dont_show_again"), msg)
-        msg.setCheckBox(dont_show_checkbox)
+        tour = OnboardingTourDialog(
+            self,
+            steps,
+            dont_show_label=t("onboarding_dont_show_again"),
+            skip_label=t("onboarding_skip"),
+            next_label=t("onboarding_next"),
+            prev_label=t("onboarding_previous"),
+            finish_label=t("onboarding_finish"),
+            interactive_toggle_label=t("onboarding_interactive_mode"),
+            interactive_hint_label=t("onboarding_interactive_hint"),
+        )
+        tour.setWindowTitle(t("onboarding_title"))
+        result = tour.exec()
 
-        msg.exec()
-
-        if dont_show_checkbox.isChecked():
+        if result == QDialog.Accepted or tour.dont_show_again:
             mark_onboarding_completed(self._user_settings)
             self._save_user_settings()
+
+    def _build_onboarding_tour_steps(self) -> List[OnboardingStep]:
+        """Build visible onboarding steps for the current UI state."""
+        steps: List[OnboardingStep] = []
+
+        def _append_step(widget: Optional[QWidget], title_key: str, body_key: str) -> None:
+            if widget is None:
+                return
+            if not widget.isVisible():
+                return
+            steps.append(
+                OnboardingStep(
+                    title=t(title_key),
+                    body=t(body_key),
+                    target=widget,
+                )
+            )
+
+        _append_step(self, "onboarding_step_welcome_title", "onboarding_step_welcome_body")
+        _append_step(self.import_btn, "onboarding_step_import_title", "onboarding_step_import_body")
+        _append_step(self.search_box, "onboarding_step_filter_title", "onboarding_step_filter_body")
+        _append_step(self.group_list, "onboarding_step_groups_title", "onboarding_step_groups_body")
+
+        action_panel = self.keep_btn.parentWidget() if hasattr(self, "keep_btn") and self.keep_btn else None
+        _append_step(action_panel, "onboarding_step_actions_title", "onboarding_step_actions_body")
+
+        _append_step(self.finalize_btn, "onboarding_step_finalize_title", "onboarding_step_finalize_body")
+        return steps
 
     def _reset_first_run_onboarding(self) -> None:
         """Reset onboarding completion state for future sessions."""
@@ -7280,7 +7311,7 @@ class ModernMainWindow(QMainWindow):
             
             if rated_ok:
                 total_merged = len(group_ids) + len(single_file_ids)
-                self._show_status_message(f"✓ {t('merge_success')}: {total_merged} Gruppen → 1 Gruppe")
+                self._show_status_message(f"{t('merge_success')}: {total_merged} Gruppen -> 1 Gruppe")
             else:
                 self._show_status_message(t("merge_success") + " (ohne Neubewertung)")
             

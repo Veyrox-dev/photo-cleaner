@@ -437,10 +437,10 @@ class EyeDetectionPreferencesDialog(QDialog):
             return
         try:
             _ = dlib.shape_predictor(p)
-            self.dlib_status_label.setText("Status: ✓ Predictor geladen")
+            self.dlib_status_label.setText("Status: Predictor geladen")
         except (OSError, RuntimeError):
             logger.debug(f"Invalid dlib predictor at {p}", exc_info=True)
-            self.dlib_status_label.setText("Status: ✗ Predictor ungültig")
+            self.dlib_status_label.setText("Status: Predictor ungültig")
 
     def _run_test_placeholder(self) -> None:
         # Placeholder that clears table and shows a mock result for now

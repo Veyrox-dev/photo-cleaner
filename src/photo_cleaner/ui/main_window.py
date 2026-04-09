@@ -331,7 +331,7 @@ class MainWindow(QMainWindow):
         self.status_label = QLabel("")
         
         # Finalisierungs-Button
-        self.finalize_btn = QPushButton("✓ Fertigstellen & Exportieren")
+        self.finalize_btn = QPushButton("Fertigstellen & Exportieren")
         self.finalize_btn.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; padding: 8px 16px; }")
         self.finalize_btn.clicked.connect(self._finalize_and_export)
         self.finalize_btn.setToolTip(t("finalize_export_tooltip"))
@@ -459,7 +459,7 @@ class MainWindow(QMainWindow):
             # Add star badge for recommended images
             display_name = fr.path.name
             if fr.is_recommended:
-                display_name = f"⭐ {display_name}"
+                display_name = f"RECOMMENDED {display_name}"
             item = QListWidgetItem(icon, display_name)
             badge = " (LOCK)" if fr.locked else ""
             if fr.is_recommended:
@@ -582,18 +582,18 @@ class MainWindow(QMainWindow):
 
     def _update_details(self, fr: FileRow) -> None:
         status_icons = {
-            FileStatus.KEEP.value: "✓ KEEP",
-            FileStatus.DELETE.value: "✗ DELETE",
+            FileStatus.KEEP.value: "KEEP",
+            FileStatus.DELETE.value: "DELETE",
             FileStatus.UNSURE.value: "? UNSURE",
             FileStatus.UNDECIDED.value: "○ UNDECIDED",
         }
         status_display = status_icons.get(fr.status.value, fr.status.value)
         info = [
             f"Status: {status_display}",
-            f"Locked: {'🔒 JA' if fr.locked else '🔓 NEIN'}",
+            f"Locked: {'JA' if fr.locked else 'NEIN'}",
         ]
         if fr.is_recommended:
-            info.append("⭐ EMPFOHLEN (Auto-Auswahl)")
+            info.append("EMPFOHLEN (Auto-Auswahl)")
         info.append("")
         info.append(f"Pfad: {fr.path}")
         try:
@@ -618,11 +618,11 @@ class MainWindow(QMainWindow):
 
     def _show_status(self, res: dict) -> None:
         if res.get("ok"):
-            self.status_label.setText("✓ Aktion erfolgreich")
+            self.status_label.setText("Aktion erfolgreich")
             self.status_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
             return
         msg = res.get("message") or res.get("error") or "Fehler"
-        self.status_label.setText(f"✗ {msg}")
+        self.status_label.setText(msg)
         self.status_label.setStyleSheet("color: #F44336; font-weight: bold;")
 
     def _update_progress(self) -> None:
@@ -876,7 +876,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.information(
                     self,
                     "Export erfolgreich",
-                    f"✓ {success_count} Bild(er) wurden erfolgreich exportiert nach:\n{self.output_path}"
+                    f"{success_count} Bild(er) wurden erfolgreich exportiert nach:\n{self.output_path}"
                 )
             else:
                 error_text = "\n".join(errors[:5])  # Erste 5 Fehler
@@ -885,7 +885,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(
                     self,
                     "Export teilweise fehlgeschlagen",
-                    f"✓ {success_count} Bild(er) erfolgreich exportiert\n✗ {failure_count} Fehler\n\n{error_text}"
+                    f"{success_count} Bild(er) erfolgreich exportiert\n{failure_count} Fehler\n\n{error_text}"
                 )
         
         except Exception as e:
