@@ -1,6 +1,34 @@
 # PhotoCleaner - Changelog
 > Version 0.8.5 - MSI Reliability + Review UX Hotfixes (2026-04-09)
 
+## [Unreleased] - Settings Refactor + Milestone Progress + Week-5 Benchmark (2026-04-09) 🚀
+
+### ⚙️ Settings UX Refactor
+- Settings-Dialog strukturell vereinfacht (weniger Tabs, klarere Gruppierung)
+- "System"-Tab auf erste Position gesetzt
+- Sprache/Theme zentral in den Settings gebündelt
+- Doppelte Sprache/Theme-Steuerung aus der oberen Haupt-UI entfernt
+- Nicht mehr genutzte Alt-Methode im Settings-Dialog entfernt (Dead-Code-Cleanup)
+
+### 📈 Analyse-Fortschritt (Meilensteine)
+- Fortschrittsdialog um sichtbare 4-Stufen-Meilensteine erweitert
+  - Ausstehend: grau
+  - Aktiv: blau (laufend)
+  - Abgeschlossen: gruen
+- Asynchroner Haupt-Analyseflow auf den Meilenstein-Dialog umgestellt (Scannen -> Gruppierung -> Bewertung -> Finalisierung)
+- Fortschrittsbegriff vereinheitlicht: "Verbleibende Zeit" (DE) / "Remaining time" (EN)
+
+### 🧪 Week-5 Benchmark (Realdaten)
+- Profiling-Lauf gegen reales Testmaterial ausgeführt (`C:\Users\chris\OneDrive\Bilder\01_Photocleaner\Input`)
+- Ergebnisdatei erstellt: `profiling_results/phase2_baseline_20260409_190250.json`
+- Befund bestätigt: Stage 4 / Quality-Analyse ist dominanter Laufzeitblock
+- Lock-/Thread-Wartezeiten als primärer Engpass sichtbar (nicht Indexing/Grouping)
+
+### 🗺️ Planungsentscheidung (Roadmap)
+- Week-5 Performance-Plan konkretisiert (A/B-Benchmark, Multiprocessing-Track, MTCNN-Staffelung, Overhead-Reduktion)
+- Presets explizit als Backlog-Kandidat belassen (nicht sofort umsetzen)
+- Kein kurzfristiger Sprachwechsel (Rust/Alternative) eingeplant; zuerst Pipeline-Orchestrierung optimieren
+
 ## [Unreleased] - MSI Reliability + Review UX Hotfixes (2026-04-09) 🔧
 
 ### 🧩 Review UI Clarity (Gruppenliste)

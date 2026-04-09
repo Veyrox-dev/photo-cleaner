@@ -65,6 +65,16 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 - ▶ Verbleibend (nicht-blockierend): TensorFlow Retracing-Warnungen im Analysepfad reduzieren
 - ▶ Verbleibend (optional): MediaPipe-Thread-Import robuster/fallback-schneller machen
 
+### Status-Delta (2026-04-09, abends)
+
+- ✅ Settings-Dialog umgebaut: weniger Tabs, klarere Struktur, Systemeinstellungen an erster Stelle
+- ✅ Doppelte Sprache/Theme-Steuerung entfernt (nur noch zentral im Settings-Dialog)
+- ✅ Analyse-Fortschritt modernisiert: sichtbare 4-Stufen-Meilensteine (ausstehend/grau, aktiv/blau, abgeschlossen/gruen)
+- ✅ ETA-Begriff in UI auf "Verbleibende Zeit" umgestellt (DE) / "Remaining time" (EN)
+- ✅ Benchmark auf Realdaten ausgeführt (`C:\Users\chris\OneDrive\Bilder\01_Photocleaner\Input`)
+- ✅ Profiling-Erkenntnis bestätigt: Stage 4 (Quality-Analyse) ist klarer Hauptengpass
+- ✅ Week-5-Plan präzisiert: kein kurzfristiger Sprachwechsel, erst Orchestrierung/Parallelisierung optimieren
+
 ### 1 · MSI Smoke-Test auf Virgin Windows
 Installer (`.msi`) auf einer frischen Maschine validieren: Install → Upgrade → Uninstall.
 Separat und ergänzend zu den EXE-Smoke-Tests.
@@ -180,9 +190,11 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 - 📄 Umsetzungsplan: `docs/architecture/WEEK4_ONBOARDING_SMART_FILTER.md`
 
 ### Woche 5
-- Reproduzierbarer Benchmark-Flow für 1k/5k/10k
-- Presets Fast/Balanced/Best Quality als Backlog-Kandidat (noch nicht umsetzen)
-- Sichtbare Fortschrittsmeilensteine im langen Run
+- ✅ Sichtbare Fortschrittsmeilensteine im langen Run umgesetzt
+- ✅ Realdaten-Benchmark als Baseline durchgeführt (Input-Ordner, Profiling-Artefakt vorhanden)
+- ▶ A/B-Benchmark-Flow finalisieren (Current Thread-Batch vs. Process-Parallel vs. Fast-Mode)
+- ▶ Profiling-Ausgabe bereinigen (image_count korrekt berichten)
+- 📌 Presets Fast/Balanced/Best Quality bleiben Backlog (nicht in Week 5/6 implementieren)
 
 #### Week-5 Performance-Plan (Profiling-basiert, 2026-04-09)
 - Fokus auf Stage 4 (Quality-Analyse), da aktuell groesster Laufzeitblock.
@@ -199,19 +211,23 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 - Saubere Entscheidungsgrundlage fuer spaetere Architektur-Schritte.
 
 ### Woche 6
-- Performance-Optimierungen für große Bildbestände
-- Progressive Results in der Analyse bereitstellen
+- Stage-4-Optimierung umsetzen (Quality-Analyse als Hauptengpass)
+- Multiprocessing-Variante für Quality-Stage produktionsreif schalten (Feature-Flag + Fallback)
+- MTCNN-Einsatz staffeln (Top-K/Kandidaten statt Vollanalyse auf allen Bildern)
+- Thread-/Progress-Overhead reduzieren (Callback-Intervall, Logging, Synchronisationsdruck)
 - Cache-Pfad und Qualitätsdrift validieren
 
 ### Woche 7
-- Stabilisierung und Bugfixing
+- Stabilisierung + Regressionstests auf optimiertem Analysepfad
 - Frozen-Build-Validierung und Review-Polish
 - FREE/PRO Lizenz-Sanity und Delete-Safety final prüfen
+- Optional: Progressive Results in der Analyse starten (nur wenn Week-6-Ziele stabil)
 
 ### Woche 8
 - Pilot-Release-Readiness
 - Support-Playbook für Gruppierungsprobleme
 - KPI-Tracking für Trust, Korrekturen und Durchsatz
+- Release-Entscheidung auf Basis der A/B-Benchmark-Deltas und Smoke-Test-Status
 
 ### Team-Aufteilung (Empfehlung)
 
