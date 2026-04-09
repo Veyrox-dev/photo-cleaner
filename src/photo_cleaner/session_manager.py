@@ -78,8 +78,8 @@ class GroupSelectionSnapshot:
     def from_dict(cls, data: Dict) -> "GroupSelectionSnapshot":
         """Create from dict."""
         return cls(
-            group_id=data['group_id'],
-            selected_indices=data['selected_indices'],
+            group_id=data.get('group_id', ''),
+            selected_indices=data.get('selected_indices', []) or [],
             last_selected_index=data.get('last_selected_index', -1),
             timestamp=data.get('timestamp', datetime.now().isoformat()),
         )

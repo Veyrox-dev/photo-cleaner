@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 from photo_cleaner.cache.image_cache_manager import ImageCacheManager
+from photo_cleaner.i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class CacheManagementDialog(QDialog):
         """
         super().__init__(parent)
         self.cache_manager = cache_manager
-        self.setWindowTitle("Image Cache Management")
+        self.setWindowTitle(t("cache_dialog_title"))
         self.setGeometry(100, 100, 600, 500)
         
         self._init_ui()
@@ -53,7 +54,7 @@ class CacheManagementDialog(QDialog):
         main_layout = QVBoxLayout()
         
         # Statistics group
-        stats_group = QGroupBox("Cache Statistics")
+        stats_group = QGroupBox(t("cache_stats_group"))
         stats_layout = QVBoxLayout()
         
         self.stats_text = QTextEdit()
@@ -61,7 +62,7 @@ class CacheManagementDialog(QDialog):
         self.stats_text.setStyleSheet("font-family: monospace; font-size: 9pt;")
         stats_layout.addWidget(self.stats_text)
         
-        refresh_stats_btn = QPushButton("Refresh Statistics")
+        refresh_stats_btn = QPushButton(t("cache_refresh_stats"))
         refresh_stats_btn.clicked.connect(self._refresh_stats)
         stats_layout.addWidget(refresh_stats_btn)
         
@@ -69,17 +70,17 @@ class CacheManagementDialog(QDialog):
         main_layout.addWidget(stats_group)
         
         # Cache control group
-        control_group = QGroupBox("Cache Control")
+        control_group = QGroupBox(t("cache_control_group"))
         control_layout = QVBoxLayout()
         
         # Use cache checkbox
-        self.use_cache_checkbox = QCheckBox("Enable caching (recommended)")
+        self.use_cache_checkbox = QCheckBox(t("cache_enable_checkbox"))
         self.use_cache_checkbox.setChecked(True)
         control_layout.addWidget(self.use_cache_checkbox)
         
         # Force reanalyze checkbox
         self.force_reanalyze_checkbox = QCheckBox(
-            "Force re-analyze on next run (ignores cache)"
+            t("cache_force_reanalyze_checkbox")
         )
         control_layout.addWidget(self.force_reanalyze_checkbox)
         
@@ -87,13 +88,13 @@ class CacheManagementDialog(QDialog):
         
         # Clear old entries
         clear_old_layout = QHBoxLayout()
-        clear_old_label = QLabel("Clear entries older than:")
+        clear_old_label = QLabel(t("cache_clear_older_than"))
         self.days_spinbox = QSpinBox()
         self.days_spinbox.setMinimum(1)
         self.days_spinbox.setMaximum(365)
         self.days_spinbox.setValue(30)
-        self.days_spinbox.setSuffix(" days")
-        clear_old_btn = QPushButton("Clear")
+        self.days_spinbox.setSuffix(t("cache_days_suffix"))
+        clear_old_btn = QPushButton(t("cache_clear_button"))
         clear_old_btn.clicked.connect(self._clear_old)
         
         clear_old_layout.addWidget(clear_old_label)
@@ -103,7 +104,7 @@ class CacheManagementDialog(QDialog):
         control_layout.addLayout(clear_old_layout)
         
         # Clear all button
-        clear_all_btn = QPushButton("Clear All Cache")
+        clear_all_btn = QPushButton(t("cache_clear_all_button"))
         clear_all_btn.setStyleSheet("background-color: #ffcccc;")
         clear_all_btn.clicked.connect(self._clear_all)
         control_layout.addWidget(clear_all_btn)
@@ -112,7 +113,7 @@ class CacheManagementDialog(QDialog):
         main_layout.addWidget(control_group)
         
         # Close button
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton(t("close"))
         close_btn.clicked.connect(self.accept)
         main_layout.addWidget(close_btn)
         
@@ -124,7 +125,7 @@ class CacheManagementDialog(QDialog):
     def _refresh_stats(self):
         """Refresh and display cache statistics."""
         if not self.cache_manager:
-            self.stats_text.setText("Cache manager not available")
+            self.stats_text.setText(t("cache_manager_unavailable"))
             return
         
         try:
@@ -133,43 +134,43 @@ class CacheManagementDialog(QDialog):
             
             lines = [
                 "=" * 50,
-                "IMAGE CACHE STATISTICS",
+                t("cache_stats_header"),
                 "=" * 50,
-                f"Total entries:      {size_info['entries']}",
-                f"Average quality:    {size_info['avg_quality_score']:.2f}",
-                f"Top-N entries:      {size_info['top_n_entries']}",
-                f"Oldest entry:       {size_info['oldest_entry'] or 'N/A'}",
-                f"Newest entry:       {size_info['newest_entry'] or 'N/A'}",
+                t("cache_total_entries").format(count=size_info['entries']),
+                t("cache_avg_quality").format(value=size_info['avg_quality_score']),
+                t("cache_topn_entries").format(count=size_info['top_n_entries']),
+                t("cache_oldest_entry").format(value=size_info['oldest_entry'] or t("cache_not_available")),
+                t("cache_newest_entry").format(value=size_info['newest_entry'] or t("cache_not_available")),
                 "",
-                "SESSION STATISTICS",
+                t("cache_session_stats_header"),
                 "-" * 50,
-                f"Cache hits:         {stats.cache_hits}",
-                f"Cache misses:       {stats.cache_misses}",
-                f"Cache updates:      {stats.cache_updates}",
+                t("cache_hits").format(count=stats.cache_hits),
+                t("cache_misses").format(count=stats.cache_misses),
+                t("cache_updates").format(count=stats.cache_updates),
             ]
             
             total = stats.cache_hits + stats.cache_misses
             if total > 0:
                 hit_rate = stats.cache_hits / total * 100
-                lines.append(f"Hit rate:           {hit_rate:.1f}%")
+                lines.append(t("cache_hit_rate").format(rate=hit_rate))
             
             lines.append("=" * 50)
             
             self.stats_text.setText("\n".join(lines))
         except Exception as e:
-            self.stats_text.setText(f"Error retrieving statistics:\n{e}")
+            self.stats_text.setText(t("cache_stats_error").format(error=e))
     
     def _clear_old(self):
         """Clear cache entries older than N days."""
         if not self.cache_manager:
-            QMessageBox.warning(self, "Error", "Cache manager not available")
+            QMessageBox.warning(self, t("error"), t("cache_manager_unavailable"))
             return
         
         days = self.days_spinbox.value()
         reply = QMessageBox.question(
             self,
-            "Confirm",
-            f"Clear cache entries older than {days} days?\n\nThese images will need to be re-analyzed.",
+            t("cache_confirm_title"),
+            t("cache_clear_old_confirm").format(days=days),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
@@ -181,25 +182,23 @@ class CacheManagementDialog(QDialog):
             cleared = self.cache_manager.clear_cache(older_than_days=days)
             QMessageBox.information(
                 self,
-                "Success",
-                f"Cleared {cleared} cache entries.",
+                t("success"),
+                t("cache_cleared_count").format(count=cleared),
             )
             self._refresh_stats()
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to clear cache:\n{e}")
+            QMessageBox.critical(self, t("error"), t("cache_clear_failed_detail").format(error=e))
     
     def _clear_all(self):
         """Clear entire cache."""
         if not self.cache_manager:
-            QMessageBox.warning(self, "Error", "Cache manager not available")
+            QMessageBox.warning(self, t("error"), t("cache_manager_unavailable"))
             return
         
         reply = QMessageBox.question(
             self,
-            "Confirm",
-            "Clear entire cache?\n\n"
-            "All cached analysis results will be deleted.\n"
-            "Next scan will require full re-analysis of all images.",
+            t("cache_confirm_title"),
+            t("cache_clear_all_confirm"),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
@@ -211,12 +210,12 @@ class CacheManagementDialog(QDialog):
             cleared = self.cache_manager.clear_cache(older_than_days=None)
             QMessageBox.information(
                 self,
-                "Success",
-                f"Cleared {cleared} cache entries.",
+                t("success"),
+                t("cache_cleared_count").format(count=cleared),
             )
             self._refresh_stats()
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to clear cache:\n{e}")
+            QMessageBox.critical(self, t("error"), t("cache_clear_failed_detail").format(error=e))
     
     def get_cache_settings(self) -> dict:
         """
@@ -241,7 +240,7 @@ class CacheStatusWidget:
     def get_status_text(self) -> str:
         """Get cache status as text."""
         if not self.cache_manager:
-            return "Cache: Disabled"
+            return t("cache_status_disabled")
         
         try:
             size_info = self.cache_manager.get_cache_size()
@@ -252,10 +251,12 @@ class CacheStatusWidget:
                 hit_rate = stats.cache_hits / (stats.cache_hits + stats.cache_misses) * 100
             
             return (
-                f"Cache: {size_info['entries']} entries | "
-                f"Hits: {stats.cache_hits} | "
-                f"Hit rate: {hit_rate:.0f}%"
+                t("cache_status_summary").format(
+                    entries=size_info['entries'],
+                    hits=stats.cache_hits,
+                    rate=hit_rate,
+                )
             )
         except (KeyError, ValueError, OSError):
             logger.debug("Cache stats retrieval failed", exc_info=True)
-            return "Cache: Error retrieving status"
+            return t("cache_status_error")

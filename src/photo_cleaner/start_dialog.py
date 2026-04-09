@@ -19,6 +19,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
+from photo_cleaner.i18n import t
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,14 +43,12 @@ class StartDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Titel
-        title = QLabel("Willkommen beim Photo Cleaner")
+        title = QLabel(t("start_dialog_welcome_title"))
         title.setStyleSheet("font-size: 16px; font-weight: bold;")
         layout.addWidget(title)
 
         # Info-Text
-        info = QLabel(
-            "Wählen Sie den Input-Ordner mit Ihren Bildern und den Output-Ordner für die sortierten Bilder."
-        )
+        info = QLabel(t("start_dialog_welcome_info"))
         info.setWordWrap(True)
         layout.addWidget(info)
 
@@ -59,9 +59,9 @@ class StartDialog(QDialog):
         input_label = QLabel(t("inputordner"))
         input_label.setMinimumWidth(100)
         self.input_edit = QLineEdit()
-        self.input_edit.setPlaceholderText("Ordner mit zu sortierenden Bildern...")
+        self.input_edit.setPlaceholderText(t("start_dialog_input_placeholder"))
         self.input_edit.setReadOnly(True)
-        input_btn = QPushButton("Durchsuchen...")
+        input_btn = QPushButton(t("browse"))
         input_btn.clicked.connect(self._select_input)
         input_layout.addWidget(input_label)
         input_layout.addWidget(self.input_edit)
@@ -73,9 +73,9 @@ class StartDialog(QDialog):
         output_label = QLabel(t("outputordner"))
         output_label.setMinimumWidth(100)
         self.output_edit = QLineEdit()
-        self.output_edit.setPlaceholderText("Zielordner für sortierte Bilder...")
+        self.output_edit.setPlaceholderText(t("start_dialog_output_placeholder"))
         self.output_edit.setReadOnly(True)
-        output_btn = QPushButton("Durchsuchen...")
+        output_btn = QPushButton(t("browse"))
         output_btn.clicked.connect(self._select_output)
         output_layout.addWidget(output_label)
         output_layout.addWidget(self.output_edit)
@@ -87,9 +87,9 @@ class StartDialog(QDialog):
         # Buttons (Abbrechen / Starten)
         button_layout = QHBoxLayout()
         button_layout.addStretch()
-        cancel_btn = QPushButton("Abbrechen")
+        cancel_btn = QPushButton(t("cancel"))
         cancel_btn.clicked.connect(self.reject)
-        start_btn = QPushButton("Starten")
+        start_btn = QPushButton(t("start"))
         start_btn.setDefault(True)
         start_btn.clicked.connect(self._validate_and_start)
         button_layout.addWidget(cancel_btn)
@@ -99,7 +99,7 @@ class StartDialog(QDialog):
     def _select_input(self):
         """Input-Ordner auswählen."""
         folder = QFileDialog.getExistingDirectory(
-            self, "Input-Ordner wählen", str(Path.home())
+            self, t("start_dialog_pick_input_title"), str(Path.home())
         )
         if folder:
             self.input_path = Path(folder)
@@ -108,7 +108,7 @@ class StartDialog(QDialog):
     def _select_output(self):
         """Output-Ordner auswählen."""
         folder = QFileDialog.getExistingDirectory(
-            self, "Output-Ordner wählen", str(Path.home())
+            self, t("start_dialog_pick_output_title"), str(Path.home())
         )
         if folder:
             self.output_path = Path(folder)
@@ -120,8 +120,8 @@ class StartDialog(QDialog):
         if not self.input_path or not self.input_path.exists():
             QMessageBox.warning(
                 self,
-                "Fehlende Auswahl",
-                "Bitte wählen Sie einen gültigen Input-Ordner.",
+                t("start_dialog_missing_selection_title"),
+                t("start_dialog_invalid_input"),
             )
             return
 
@@ -129,8 +129,8 @@ class StartDialog(QDialog):
         if not self.output_path:
             QMessageBox.warning(
                 self,
-                "Fehlende Auswahl",
-                "Bitte wählen Sie einen gültigen Output-Ordner.",
+                t("start_dialog_missing_selection_title"),
+                t("start_dialog_invalid_output"),
             )
             return
 
@@ -138,8 +138,8 @@ class StartDialog(QDialog):
         if self.input_path.resolve() == self.output_path.resolve():
             QMessageBox.warning(
                 self,
-                "Ungültige Auswahl",
-                "Input- und Output-Ordner dürfen nicht identisch sein.",
+                t("start_dialog_invalid_selection_title"),
+                t("start_dialog_same_folder_error"),
             )
             return
 
@@ -148,15 +148,15 @@ class StartDialog(QDialog):
             if self.output_path.resolve() in self.input_path.resolve().parents:
                 QMessageBox.warning(
                     self,
-                    "Ungültige Auswahl",
-                    "Output-Ordner darf nicht innerhalb des Input-Ordners liegen.",
+                    t("start_dialog_invalid_selection_title"),
+                    t("start_dialog_output_inside_input_error"),
                 )
                 return
             if self.input_path.resolve() in self.output_path.resolve().parents:
                 QMessageBox.warning(
                     self,
-                    "Ungültige Auswahl",
-                    "Input-Ordner darf nicht innerhalb des Output-Ordners liegen.",
+                    t("start_dialog_invalid_selection_title"),
+                    t("start_dialog_input_inside_output_error"),
                 )
                 return
         except (ValueError, TypeError):
@@ -169,8 +169,8 @@ class StartDialog(QDialog):
         except OSError as e:
             QMessageBox.critical(
                 self,
-                "Fehler",
-                f"Output-Ordner konnte nicht erstellt werden:\n{e}",
+                t("error"),
+                t("start_dialog_output_create_failed").format(error=e),
             )
             return
 

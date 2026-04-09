@@ -159,6 +159,12 @@ from photo_cleaner.ui.group_confidence import (
 )
 from photo_cleaner.ui.theme_manager import ThemeManager
 
+try:
+    from shiboken6 import isValid as _qt_is_valid
+except ImportError:
+    def _qt_is_valid(obj) -> bool:
+        return obj is not None
+
 
 class RatingWorkerThread(QThread):
     """Worker thread for auto-rating operation (Bug #1 Fix).
@@ -409,6 +415,197 @@ class RatingWorkerThread(QThread):
         self._should_cancel = True
 
 
+class MergeGroupRatingWorker(QThread):
+    """Background worker for re-rating a newly merged group."""
+
+    progress = Signal(int, int, str, str, int, int)
+    finished = Signal(bool)
+    error = Signal(str)
+
+    def __init__(self, db_path: Path, group_id: str, top_n: int):
+        super().__init__()
+        self.db_path = db_path
+        self.group_id = group_id
+        self.top_n = top_n
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        self._cancelled = True
+
+    def run(self) -> None:
+        db = None
+        try:
+            self.progress.emit(5, 1, t("merge_progress_phase_prepare"), t("merge_progress_detail_prepare"), 0, 0)
+
+            db = Database(self.db_path)
+            conn = db.connect()
+            files = FileRepository(conn)
+
+            cur = conn.execute(
+                """
+                SELECT f.path
+                FROM duplicates d
+                JOIN files f ON f.file_id = d.file_id
+                WHERE d.group_id = ? AND f.is_deleted = 0
+                ORDER BY f.path
+                """,
+                (self.group_id,),
+            )
+            paths = [Path(row["path"]) for row in cur.fetchall()]
+            if not paths:
+                self.finished.emit(False)
+                return
+
+            total_images = len(paths)
+            self.progress.emit(
+                15,
+                1,
+                t("merge_progress_phase_prepare"),
+                t("merge_progress_detail_found_images").format(count=total_images),
+                total_images,
+                total_images,
+            )
+
+            if self._cancelled:
+                self.finished.emit(False)
+                return
+
+            self.progress.emit(30, 2, t("merge_progress_phase_models"), t("merge_progress_detail_models"), 0, 0)
+            QualityAnalyzer = _get_quality_analyzer()
+            GroupScorer = _get_group_scorer()
+            analyzer = QualityAnalyzer(use_face_mesh=True)
+            scorer = GroupScorer(top_n=self.top_n)
+
+            self.progress.emit(
+                40,
+                3,
+                t("merge_progress_phase_compare"),
+                t("merge_progress_detail_compare_count").format(current=0, total=total_images),
+                0,
+                total_images,
+            )
+
+            def _progress_cb(local_done: int, local_total: int) -> None:
+                if self._cancelled:
+                    return
+                if local_total <= 0:
+                    pct = 40
+                else:
+                    pct = 40 + int(round((local_done / local_total) * 30))
+                total_local = max(local_total, total_images)
+                self.progress.emit(
+                    min(70, max(40, pct)),
+                    3,
+                    t("merge_progress_phase_compare"),
+                    t("merge_progress_detail_compare_count").format(current=local_done, total=total_local),
+                    max(0, local_done),
+                    max(1, total_local),
+                )
+
+            results = analyzer.analyze_batch(paths, progress_callback=_progress_cb)
+            if self._cancelled:
+                self.finished.emit(False)
+                return
+
+            self.progress.emit(75, 4, t("merge_progress_phase_scoring"), t("merge_progress_detail_scoring_count").format(current=0, total=0), 0, 0)
+            group_scores = scorer.score_multiple_groups({self.group_id: results})
+            scorer.apply_scores_to_db(group_scores, files, action_id="AUTO_RATING_MERGE")
+
+            best_path, second_path, all_scores = scorer.auto_select_best_image(self.group_id, results)
+            total_scores = len(all_scores)
+
+            conn.execute(
+                """
+                UPDATE files
+                SET is_recommended = 0, keeper_source = 'undecided', quality_score = NULL,
+                    sharpness_component = NULL, lighting_component = NULL,
+                    resolution_component = NULL, face_quality_component = NULL
+                WHERE file_id IN (
+                    SELECT file_id FROM duplicates WHERE group_id = ?
+                )
+                """,
+                (self.group_id,),
+            )
+
+            for idx, item in enumerate(all_scores, start=1):
+                if self._cancelled:
+                    self.finished.emit(False)
+                    return
+                if len(item) == 4:
+                    path, score, _, components = item
+                    conn.execute(
+                        """
+                        UPDATE files
+                        SET quality_score = ?,
+                            sharpness_component = ?,
+                            lighting_component = ?,
+                            resolution_component = ?,
+                            face_quality_component = ?
+                        WHERE path = ?
+                        """,
+                        (
+                            score,
+                            components.sharpness_score,
+                            components.lighting_score,
+                            components.resolution_score,
+                            components.face_quality_score,
+                            str(path),
+                        ),
+                    )
+                else:
+                    path, score, _ = item
+                    conn.execute(
+                        """
+                        UPDATE files
+                        SET quality_score = ?
+                        WHERE path = ?
+                        """,
+                        (score, str(path)),
+                    )
+
+                if total_scores > 0 and (idx == total_scores or idx == 1 or idx % 5 == 0):
+                    pct = 75 + int(round((idx / total_scores) * 21))
+                    self.progress.emit(
+                        min(96, max(75, pct)),
+                        4,
+                        t("merge_progress_phase_scoring"),
+                        t("merge_progress_detail_scoring_count").format(current=idx, total=total_scores),
+                        idx,
+                        total_scores,
+                    )
+
+            if best_path:
+                conn.execute(
+                    """
+                    UPDATE files
+                    SET is_recommended = 1, keeper_source = 'auto'
+                    WHERE path = ?
+                    """,
+                    (str(best_path),),
+                )
+
+            if second_path:
+                conn.execute(
+                    """
+                    UPDATE files
+                    SET keeper_source = 'auto_secondary'
+                    WHERE path = ?
+                    """,
+                    (str(second_path),),
+                )
+
+            self.progress.emit(98, 5, t("merge_progress_phase_finalize"), t("merge_progress_detail_finalize"), 0, 0)
+            conn.commit()
+            self.progress.emit(100, 5, t("merge_progress_phase_done"), t("merge_progress_detail_done"), 0, 0)
+            self.finished.emit(True)
+        except Exception as e:
+            logger.error("MergeGroupRatingWorker failed: %s", e, exc_info=True)
+            self.error.emit(str(e))
+        finally:
+            if db:
+                db.close()
+
+
 class DuplicateFinderThread(QThread):
     """Worker thread for duplicate group building."""
 
@@ -475,20 +672,28 @@ class ProgressStepDialog(QDialog):
     
     cancelled = Signal()
     
-    def __init__(self, parent=None):
+    def __init__(
+        self,
+        parent=None,
+        *,
+        window_title: str | None = None,
+        step_names: Optional[List[str]] = None,
+        show_sub_progress: bool = False,
+    ):
         super().__init__(parent)
-        self.setWindowTitle(t("image_analysis"))
+        self.setWindowTitle(window_title or t("image_analysis"))
         self.setWindowModality(Qt.WindowModal)
         self.setMinimumWidth(500)
         self.setMinimumHeight(200)
-        self.step_count = 4
         self.current_step = 0
-        self.step_names = [
+        self.step_names = step_names or [
             t("progress_step_1_scanning"),
             t("progress_step_2_grouping"),
             t("progress_step_3_rating"),
             t("progress_step_4_finalization"),
         ]
+        self.step_count = len(self.step_names)
+        self._show_sub_progress = show_sub_progress
         self.start_time = time.time()
         self.last_update_time = 0
         self.last_percentage = 0
@@ -542,6 +747,23 @@ class ProgressStepDialog(QDialog):
         self.progress_bar.setValue(0)
         self.progress_bar.setTextVisible(True)
         layout.addWidget(self.progress_bar)
+
+        # Optional sub-progress for detailed per-phase updates.
+        self.sub_status_label = QLabel("")
+        self.sub_status_label.setStyleSheet("font-size: 11px;")
+        layout.addWidget(self.sub_status_label)
+
+        self.sub_progress_bar = QProgressBar()
+        self.sub_progress_bar.setMinimum(0)
+        self.sub_progress_bar.setMaximum(100)
+        self.sub_progress_bar.setValue(0)
+        self.sub_progress_bar.setTextVisible(True)
+        self.sub_progress_bar.setFixedHeight(16)
+        layout.addWidget(self.sub_progress_bar)
+
+        if not self._show_sub_progress:
+            self.sub_status_label.hide()
+            self.sub_progress_bar.hide()
         
         # Status info
         info_layout = QHBoxLayout()
@@ -586,6 +808,21 @@ class ProgressStepDialog(QDialog):
                 border-radius: 3px;
             }}
         """)
+
+        self.sub_progress_bar.setStyleSheet(f"""
+            QProgressBar {{
+                border: 1px solid {colors['neutral']};
+                border-radius: 4px;
+                background-color: {bg_color};
+                text-align: center;
+                min-height: 16px;
+                font-size: 10px;
+            }}
+            QProgressBar::chunk {{
+                background-color: {colors['info']};
+                border-radius: 3px;
+            }}
+        """)
         
         # Dialog styling
         self.setStyleSheet(f"""
@@ -602,28 +839,34 @@ class ProgressStepDialog(QDialog):
         self._update_step_visuals()
 
     def _set_milestone_state(self, bar: QProgressBar, state: str) -> None:
+        colors = get_theme_colors()
+        semantic = get_semantic_colors()
+        border = colors.get("border", "#7f8c8d")
+        pending_bg = colors.get("alternate_base", "#d0d3d6")
+        base_bg = colors.get("base", "#d9dde1")
+
         if state == "done":
             bar.setRange(0, 100)
             bar.setValue(100)
             bar.setStyleSheet(
-                "QProgressBar { border: 1px solid #7f8c8d; border-radius: 4px; background-color: #d9dde1; }"
-                "QProgressBar::chunk { background-color: #2e9b52; border-radius: 3px; }"
+                f"QProgressBar {{ border: 1px solid {border}; border-radius: 4px; background-color: {base_bg}; }}"
+                f"QProgressBar::chunk {{ background-color: {semantic['success']}; border-radius: 3px; }}"
             )
             return
 
         if state == "active":
             bar.setRange(0, 0)
             bar.setStyleSheet(
-                "QProgressBar { border: 1px solid #7f8c8d; border-radius: 4px; background-color: #d9dde1; }"
-                "QProgressBar::chunk { background-color: #2f6fde; border-radius: 3px; }"
+                f"QProgressBar {{ border: 1px solid {border}; border-radius: 4px; background-color: {base_bg}; }}"
+                f"QProgressBar::chunk {{ background-color: {semantic['info']}; border-radius: 3px; }}"
             )
             return
 
         bar.setRange(0, 100)
         bar.setValue(0)
         bar.setStyleSheet(
-            "QProgressBar { border: 1px solid #7f8c8d; border-radius: 4px; background-color: #d0d3d6; }"
-            "QProgressBar::chunk { background-color: #a7afb8; border-radius: 3px; }"
+            f"QProgressBar {{ border: 1px solid {border}; border-radius: 4px; background-color: {pending_bg}; }}"
+            f"QProgressBar::chunk {{ background-color: {colors.get('disabled_bg', pending_bg)}; border-radius: 3px; }}"
         )
 
     def _update_step_visuals(self) -> None:
@@ -657,6 +900,30 @@ class ProgressStepDialog(QDialog):
         
         # Calculate and update ETA
         self._update_eta(value)
+
+    def set_sub_progress(self, status: str = "", current: int = 0, total: int = 0) -> None:
+        """Update optional sub-progress details for the active phase."""
+        if not self._show_sub_progress:
+            return
+
+        self.sub_status_label.show()
+        self.sub_progress_bar.show()
+        self.sub_status_label.setText(status)
+
+        if total > 0:
+            self.sub_progress_bar.setRange(0, total)
+            self.sub_progress_bar.setValue(max(0, min(current, total)))
+            self.sub_progress_bar.setFormat("%v/%m")
+            return
+
+        if status:
+            self.sub_progress_bar.setRange(0, 0)
+            self.sub_progress_bar.setFormat("")
+            return
+
+        self.sub_progress_bar.setRange(0, 100)
+        self.sub_progress_bar.setValue(0)
+        self.sub_progress_bar.setFormat("%p%")
     
     def _update_eta(self, percentage: int):
         """Calculate and display ETA based on progress rate."""
@@ -675,6 +942,30 @@ class ProgressStepDialog(QDialog):
         
         self.eta_label.setText(eta_text)
         QApplication.processEvents()
+    
+    # QProgressDialog API compatibility methods
+    def setMinimum(self, value: int):
+        """Set progress bar minimum (compatibility with QProgressDialog)."""
+        self.progress_bar.setMinimum(value)
+    
+    def setMaximum(self, value: int):
+        """Set progress bar maximum (compatibility with QProgressDialog)."""
+        self.progress_bar.setMaximum(value)
+    
+    def setValue(self, value: int):
+        """Set progress bar value (compatibility with QProgressDialog)."""
+        self.progress_bar.setValue(value)
+        self.last_percentage = value
+        self.last_update_time = time.time()
+        self._update_eta(value)
+    
+    def setLabelText(self, text: str):
+        """Set label text (compatibility with QProgressDialog)."""
+        self.status_label.setText(text)
+    
+    def setFormat(self, text: str):
+        """Set format string (compatibility with QProgressDialog)."""
+        self.progress_bar.setFormat(text)
 
 
 class FinalizationResultDialog(QDialog):
@@ -1548,6 +1839,17 @@ def _get_component_bar_color(score: float) -> str:
     return quality_colors["low"]
 
 
+def _best_text_color_for_bg(background_color: str) -> str:
+    """Return readable foreground color for a given background color."""
+    color = QColor(background_color)
+    return "#111111" if color.lightness() > 165 else "#ffffff"
+
+
+def _is_qobject_alive(obj) -> bool:
+    """Best-effort check whether a Qt object is still alive."""
+    return obj is not None and _qt_is_valid(obj)
+
+
 def _build_button_style(
     background_color: str,
     *,
@@ -1906,7 +2208,7 @@ class ImageDetailDialog(QDialog):
         
         self.file_row = file_row
         
-        self.setWindowTitle(f"Detail: {file_row.path.name}")
+        self.setWindowTitle(t("detail_dialog_title").format(name=file_row.path.name))
         self.resize(1400, 900)
         self.setModal(True)
         
@@ -2048,7 +2350,7 @@ class ImageDetailDialog(QDialog):
         info_layout.addWidget(quality_box)
         
         # EXIF data
-        info_layout.addWidget(QLabel("<h4>EXIF Data</h4>"))
+        info_layout.addWidget(QLabel(t("exif_data_header")))
         
         exif_scroll = QScrollArea()
         exif_scroll.setWidgetResizable(True)
@@ -2063,7 +2365,7 @@ class ImageDetailDialog(QDialog):
         info_layout.addWidget(exif_scroll)
         
         # Show loading message while EXIF is being read
-        exif_label.setText("<i>EXIF-Daten werden geladen...</i>")
+        exif_label.setText(t("exif_loading"))
         
         # Start async EXIF extraction in worker thread
         self._exif_thread = ExifWorkerThread(self.file_row.path)
@@ -2074,16 +2376,16 @@ class ImageDetailDialog(QDialog):
         # Zoom controls
         info_layout.addWidget(QLabel(t("h4zoom_controlsh4")))
         info_layout.addWidget(QLabel(t("mousewheel_zoom")))
-        info_layout.addWidget(QLabel("Ctrl+Wheel: Fine zoom"))
+        info_layout.addWidget(QLabel(t("zoom_ctrl_wheel_fine")))
         info_layout.addWidget(QLabel(t("_zoom_inout")))
-        info_layout.addWidget(QLabel("0: Reset zoom"))
-        info_layout.addWidget(QLabel("Double-click: Fit view"))
-        info_layout.addWidget(QLabel("Drag: Pan image"))
+        info_layout.addWidget(QLabel(t("zoom_reset")))
+        info_layout.addWidget(QLabel(t("zoom_fit_view")))
+        info_layout.addWidget(QLabel(t("zoom_drag_pan")))
         
         info_layout.addStretch()
         
         # Close button
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton(t("close"))
         close_btn.clicked.connect(self.accept)
         info_layout.addWidget(close_btn)
         
@@ -2100,12 +2402,12 @@ class ImageDetailDialog(QDialog):
             logger.debug(f"EXIF display updated for {self.file_row.path.name}")
         except Exception as e:
             logger.error(f"Failed to format EXIF data: {e}", exc_info=True)
-            exif_label.setText(f"<i>Fehler beim Anzeigen von EXIF-Daten: {e}</i>")
+            exif_label.setText(t("exif_display_error").format(error=e))
     
     def _on_exif_error(self, exif_label: QLabel, error_msg: str):
         """P2 FIX #16: Callback when EXIF extraction fails in worker thread."""
         logger.error(f"EXIF extraction error: {error_msg}")
-        exif_label.setText(f"<i>EXIF-Daten konnten nicht geladen werden: {error_msg}</i>")
+        exif_label.setText(t("exif_load_error").format(error=error_msg))
     
     def _load_image(self):
         """Load and display the image."""
@@ -2136,6 +2438,7 @@ class ThumbnailCard(QWidget):
     """Modern card widget for thumbnail display with hover effects."""
     
     clicked = Signal(int)  # Emits index when clicked
+    selection_toggled = Signal(int, bool)  # Emits (index, checked)
     
     def __init__(self, file_row: FileRow, index: int, parent=None):
         super().__init__(parent)
@@ -2145,6 +2448,7 @@ class ThumbnailCard(QWidget):
         self._hovered = False
         self._selected = False
         self._pixmap = None  # Track pixmap for explicit cleanup
+        self._syncing_checkbox = False
         
         self.setFixedSize(180, 220)
         self.setCursor(Qt.PointingHandCursor)
@@ -2172,6 +2476,18 @@ class ThumbnailCard(QWidget):
             }}
         """)
 
+        # Explicit selection checkbox (keyboard-free multi-selection)
+        self.select_checkbox = QCheckBox(self.thumbnail)
+        self.select_checkbox.move(6, 6)
+        self.select_checkbox.setCursor(Qt.PointingHandCursor)
+        self.select_checkbox.setToolTip(t("thumbnail_checkbox_tooltip"))
+        self.select_checkbox.setStyleSheet(
+            f"QCheckBox {{ background: {to_rgba(get_theme_colors()['base'], 0.85)}; border-radius: 3px; padding: 1px; }}"
+            f"QCheckBox::indicator {{ width: 14px; height: 14px; border: 1px solid {get_theme_colors()['border']}; border-radius: 3px; background: {get_theme_colors()['base']}; }}"
+            f"QCheckBox::indicator:checked {{ background: {get_semantic_colors()['info']}; border: 1px solid {get_semantic_colors()['info']}; }}"
+        )
+        self.select_checkbox.stateChanged.connect(self._on_checkbox_state_changed)
+
         # Placeholder - real thumbnail is loaded asynchronously by worker
         self.set_thumbnail_placeholder()
         
@@ -2183,16 +2499,17 @@ class ThumbnailCard(QWidget):
         status_text = self.file_row.status.value
         
         if self.file_row.is_recommended:
-            status_text = "RECOMMENDED " + status_text
+            status_text = t("detail_badge_recommended") + " " + status_text
         if self.file_row.locked:
-            status_text = "LOCKED " + status_text
+            status_text = t("detail_badge_locked") + " " + status_text
         
+        status_text_color = _best_text_color_for_bg(status_color)
         self.status_label = QLabel(status_text)
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setStyleSheet(f"""
             QLabel {{
                 background-color: {status_color};
-                color: white;
+                color: {status_text_color};
                 font-weight: bold;
                 padding: 4px;
                 border-radius: 4px;
@@ -2241,12 +2558,13 @@ class ThumbnailCard(QWidget):
                 rating_text = t("quality_rating_poor")
 
             score_text = f"{score_icon} {rating_text}".strip()
+            score_text_color = _best_text_color_for_bg(score_color)
             score_label = QLabel(score_text)
             score_label.setAlignment(Qt.AlignCenter)
             score_label.setStyleSheet(f"""
                 QLabel {{
                     background-color: {score_color};
-                    color: white;
+                    color: {score_text_color};
                     font-weight: bold;
                     padding: 2px 6px;
                     border-radius: 6px;
@@ -2277,10 +2595,22 @@ class ThumbnailCard(QWidget):
         """Emit clicked signal."""
         if event.button() == Qt.LeftButton:
             self.clicked.emit(self.index)
+        super().mousePressEvent(event)
+
+    def _on_checkbox_state_changed(self, state: int) -> None:
+        if self._syncing_checkbox:
+            return
+        checked = state == int(Qt.CheckState.Checked)
+        self._selected = checked
+        self._update_selection_style()
+        self.selection_toggled.emit(self.index, checked)
     
     def set_selected(self, selected: bool):
         """Mark card as selected."""
         self._selected = selected
+        self._syncing_checkbox = True
+        self.select_checkbox.setChecked(selected)
+        self._syncing_checkbox = False
         self._update_selection_style()
     
     def is_selected(self) -> bool:
@@ -2326,15 +2656,16 @@ class ThumbnailCard(QWidget):
         status_text = new_status.value
         
         if self.file_row.is_recommended:
-            status_text = "RECOMMENDED " + status_text
+            status_text = t("detail_badge_recommended") + " " + status_text
         if self.file_row.locked:
-            status_text = "LOCKED " + status_text
+            status_text = t("detail_badge_locked") + " " + status_text
         
         self.status_label.setText(status_text)
+        status_text_color = _best_text_color_for_bg(status_color)
         self.status_label.setStyleSheet(f"""
             QLabel {{
                 background-color: {status_color};
-                color: white;
+            color: {status_text_color};
                 font-weight: bold;
                 padding: 4px;
                 border-radius: 4px;
@@ -2346,26 +2677,43 @@ class ThumbnailCard(QWidget):
         """Explicitly cleanup resources before deletion (prevents memory leak)."""
         # CRITICAL: Clear pixmap reference to release memory
         self._pixmap = None
-        if self.thumbnail:
-            self.thumbnail.clear()
-            self.thumbnail.setPixmap(QPixmap())  # Set to empty pixmap
+        if _is_qobject_alive(getattr(self, "thumbnail", None)):
+            try:
+                self.thumbnail.clear()
+                self.thumbnail.setPixmap(QPixmap())  # Set to empty pixmap
+            except RuntimeError:
+                logger.debug("Thumbnail QLabel already deleted during cleanup")
+        self.thumbnail = None
 
     def set_thumbnail_placeholder(self) -> None:
         """Set a neutral placeholder before async thumbnail arrives."""
+        if not _is_qobject_alive(self) or not _is_qobject_alive(getattr(self, "thumbnail", None)):
+            return
         placeholder = QPixmap(160, 160)
         placeholder.fill(Qt.gray)
         self._pixmap = placeholder
-        self.thumbnail.setPixmap(placeholder)
+        try:
+            self.thumbnail.setPixmap(placeholder)
+        except RuntimeError:
+            logger.debug("Thumbnail QLabel deleted before placeholder could be applied")
 
     def set_thumbnail_image(self, qimg: QImage) -> None:
         """Apply QImage thumbnail (UI thread only)."""
+        if not _is_qobject_alive(self) or not _is_qobject_alive(getattr(self, "thumbnail", None)):
+            return
         if qimg.isNull():
-            self.thumbnail.setText("N/A")
+            try:
+                self.thumbnail.setText("N/A")
+            except RuntimeError:
+                logger.debug("Thumbnail QLabel deleted before null-image text update")
             return
         pixmap = QPixmap.fromImage(qimg)
         scaled = pixmap.scaled(160, 160, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self._pixmap = scaled
-        self.thumbnail.setPixmap(scaled)
+        try:
+            self.thumbnail.setPixmap(scaled)
+        except RuntimeError:
+            logger.debug("Thumbnail QLabel deleted before image update")
 
 
 class ImageDetailWindow(QMainWindow):
@@ -2380,7 +2728,7 @@ class ImageDetailWindow(QMainWindow):
         self.current_index = current_index  # NEW: Current position in group
         
         # Eigenständiges Fenster
-        self.setWindowTitle(f"Detailansicht - {file_row.path.name}")
+        self.setWindowTitle(t("detail_window_title").format(name=file_row.path.name))
         self.resize(1200, 800)
         self.setAttribute(Qt.WA_DeleteOnClose)
         
@@ -2402,12 +2750,26 @@ class ImageDetailWindow(QMainWindow):
         status_color = status_colors.get(self.file_row.status.value, status_colors['UNDECIDED'])
         status_text = f"<span style='color: {status_color};'>{self.file_row.status.value}</span>"
         if self.file_row.is_recommended:
-            status_text = "RECOMMENDED " + status_text
+            status_text = f"{t('detail_badge_recommended')} " + status_text
         if self.file_row.locked:
-            status_text = "LOCKED " + status_text
+            status_text = f"{t('detail_badge_locked')} " + status_text
         
+        header_row = QHBoxLayout()
         header = QLabel(f"<h3>{self.file_row.path.name}</h3><p>Status: {status_text}</p>")
-        layout.addWidget(header)
+        header_row.addWidget(header)
+        header_row.addStretch()
+
+        badge_text = self._detail_status_badge_text()
+        badge_fg = _best_text_color_for_bg(status_color)
+        status_badge = QLabel(badge_text)
+        status_badge.setStyleSheet(
+            f"background-color: {status_color}; color: {badge_fg};"
+            "font-weight: bold; padding: 6px 10px; border-radius: 10px;"
+            "font-size: 11px;"
+        )
+        status_badge.setAlignment(Qt.AlignCenter)
+        header_row.addWidget(status_badge, alignment=Qt.AlignTop | Qt.AlignRight)
+        layout.addLayout(header_row)
         
         # Quality Score Display (compact banner like side-by-side)
         colors = get_theme_colors()
@@ -2431,7 +2793,7 @@ class ImageDetailWindow(QMainWindow):
                 if part
             ]
 
-            score_label = QLabel(" | ".join(parts) if parts else "Keine Qualitätsdaten verfügbar")
+            score_label = QLabel(" | ".join(parts) if parts else t("no_quality_data_available"))
             score_label.setWordWrap(True)
             score_label.setToolTip(explanation.tooltip_text)
             score_label.setStyleSheet(
@@ -2459,13 +2821,13 @@ class ImageDetailWindow(QMainWindow):
                 image_view.set_image(pixmap)
         except (OSError, IOError, ValueError) as e:
             logger.error(f"Fehler beim Laden des Bildes {self.file_row.path.name}: {e}", exc_info=True)
-            error_label = QLabel("Bild konnte nicht geladen werden")
+            error_label = QLabel(t("image_could_not_be_loaded"))
             error_label.setStyleSheet(f"color: {get_semantic_colors()['error']}; padding: 10px; font-size: 14px;")
             layout.addWidget(error_label)
         
         # P2 FIX #16: EXIF Info - load in background to avoid blocking UI
         # Create placeholder label
-        info_label = QLabel("<i>EXIF-Daten werden geladen...</i>")
+        info_label = QLabel(t("exif_loading"))
         hint_color = get_text_hint_color()
         info_label.setStyleSheet(f"color: {hint_color}; font-size: 12px; padding: 8px;")
         info_label.setWordWrap(True)
@@ -2532,7 +2894,7 @@ class ImageDetailWindow(QMainWindow):
             if info_parts:
                 text = " | ".join(info_parts)
             else:
-                text = "<i>Keine EXIF-Daten verfügbar</i>"
+                text = t("exif_no_data")
             
             hint_color = get_text_hint_color()
             self._exif_label.setText(text)
@@ -2540,12 +2902,12 @@ class ImageDetailWindow(QMainWindow):
             logger.debug(f"EXIF display updated for {self.file_row.path.name}")
         except Exception as e:
             logger.error(f"Failed to format EXIF data: {e}", exc_info=True)
-            self._exif_label.setText(f"<i>Fehler beim Anzeigen von EXIF-Daten</i>")
+            self._exif_label.setText(t("exif_display_error_simple"))
     
     def _on_image_exif_error(self, error_msg: str):
         """P2 FIX #16: Callback when EXIF extraction fails for ImageDetailWindow."""
         logger.error(f"EXIF extraction error: {error_msg}")
-        self._exif_label.setText("<i>EXIF-Daten konnten nicht geladen werden</i>")
+        self._exif_label.setText(t("exif_load_error_simple"))
     
     def _navigate_previous(self):
         """Navigate to previous image in group (Feature 2)."""
@@ -2562,13 +2924,31 @@ class ImageDetailWindow(QMainWindow):
     def _reload_image(self):
         """Reload window with new file from navigation."""
         self.file_row = self.all_files[self.current_index]
-        self.setWindowTitle(f"Detailansicht - {self.file_row.path.name}")
+        self.setWindowTitle(t("detail_window_title").format(name=self.file_row.path.name))
         
         # Rebuild UI with new file
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         self._main_layout = QVBoxLayout(central_widget)
         self._build_ui()
+
+    def _detail_status_badge_text(self) -> str:
+        """Return concise, localized status label for top-right badge."""
+        if self.file_row.status == FileStatus.KEEP:
+            base = t("keep")
+        elif self.file_row.status == FileStatus.DELETE:
+            base = t("delete")
+        elif self.file_row.status == FileStatus.UNSURE:
+            base = t("unsure")
+        else:
+            base = t("group_status_open")
+
+        parts = [base]
+        if self.file_row.is_recommended:
+            parts.append(t("detail_badge_recommended"))
+        if self.file_row.locked:
+            parts.append(t("detail_badge_locked"))
+        return " • ".join(parts)
 
 
 class SideBySideComparisonWindow(QMainWindow):
@@ -3139,7 +3519,14 @@ class ModernMainWindow(QMainWindow):
         # Batch selection state - PER GROUP (not global!)
         # Maps group_id -> (selected_indices: set, last_selected_index: int)
         self._group_selection_state: dict[str, tuple[set[int], int]] = {}
+        self._checked_group_ids: set[str] = set()
         self.use_virtual_scrolling = True  # Enable for groups > 50 images
+
+        # Merge workflow async state
+        self._merge_worker: Optional[MergeGroupRatingWorker] = None
+        self._merge_progress_dialog: Optional[ProgressStepDialog] = None
+        self._merge_target_group_id: Optional[str] = None
+        self._merge_group_count: int = 0
         
         # Session management
         self.session_manager = SessionManager()
@@ -3303,7 +3690,7 @@ class ModernMainWindow(QMainWindow):
         )
         
         # Connect cancel button
-        progress.canceled.connect(self._cancel_indexing)
+        progress.cancelled.connect(self._cancel_indexing)
         
         # Start thread
         self.indexing_thread.start()
@@ -3318,10 +3705,10 @@ class ModernMainWindow(QMainWindow):
             if isinstance(self._indexing_progress_dialog, ProgressStepDialog):
                 self._indexing_progress_dialog.set_progress(
                     self._indexing_progress_dialog.progress_bar.value(),
-                    "Abbruch wird ausgefuehrt...",
+                    t("cancel_in_progress"),
                 )
             else:
-                self._indexing_progress_dialog.setLabelText("Abbruch wird ausgefuehrt...")
+                self._indexing_progress_dialog.setLabelText(t("cancel_in_progress"))
 
     def _update_progress_dialog(self, dialog: QProgressDialog, *, value: int | None = None, label: str | None = None, force: bool = False) -> None:
         if dialog is None or not dialog.isVisible():
@@ -3391,7 +3778,7 @@ class ModernMainWindow(QMainWindow):
                 stage_pct = min(70, int(round((current / total) * 70)))
                 elapsed = max(0.0, time.monotonic() - self._pipeline_start_ts)
                 eta = self._format_eta(elapsed, current, total)
-                label = f"Schritt 1/3: Bilder einlesen und hashen... ({current}/{total})"
+                label = t("progress_step_1_index_hash").format(current=current, total=total)
                 if eta:
                     label += f"\n{eta}"
                 self._update_progress_dialog(progress_dialog, value=stage_pct, label=label)
@@ -3404,10 +3791,16 @@ class ModernMainWindow(QMainWindow):
         
         if progress_dialog:
             try:
-                progress_dialog.canceled.disconnect(self._cancel_indexing)
+                if isinstance(progress_dialog, ProgressStepDialog):
+                    progress_dialog.cancelled.disconnect(self._cancel_indexing)
+                else:
+                    progress_dialog.canceled.disconnect(self._cancel_indexing)
             except (RuntimeError, TypeError):
                 pass
-            progress_dialog.canceled.connect(self._cancel_post_indexing)
+            if isinstance(progress_dialog, ProgressStepDialog):
+                progress_dialog.cancelled.connect(self._cancel_post_indexing)
+            else:
+                progress_dialog.canceled.connect(self._cancel_post_indexing)
             if isinstance(progress_dialog, ProgressStepDialog):
                 progress_dialog.set_step(2)
                 progress_dialog.set_progress(70, t("progress_step_2_grouping"))
@@ -3415,7 +3808,7 @@ class ModernMainWindow(QMainWindow):
                 self._update_progress_dialog(
                     progress_dialog,
                     value=70,
-                    label="Schritt 2/3: Duplikatgruppen werden erstellt...",
+                    label=t("progress_step_2_grouping_legacy"),
                     force=True,
                 )
         self._indexing_progress_dialog = progress_dialog
@@ -3441,7 +3834,10 @@ class ModernMainWindow(QMainWindow):
     def _on_indexing_error(self, error_msg: str, progress_dialog):
         """Handle indexing error."""
         try:
-            progress_dialog.canceled.disconnect(self._cancel_indexing)
+            if isinstance(progress_dialog, ProgressStepDialog):
+                progress_dialog.cancelled.disconnect(self._cancel_indexing)
+            else:
+                progress_dialog.canceled.disconnect(self._cancel_indexing)
         except (AttributeError, RuntimeError, TypeError):
             pass
         progress_dialog.close()
@@ -3484,7 +3880,7 @@ class ModernMainWindow(QMainWindow):
             self._update_progress_dialog(
                 progress,
                 value=70,
-                label="Schritt 2/3: Duplikatgruppen werden erstellt...",
+                label=t("progress_step_2_grouping_legacy"),
                 force=True,
             )
         self._post_indexing_progress_dialog = progress
@@ -3507,10 +3903,10 @@ class ModernMainWindow(QMainWindow):
             if isinstance(self._post_indexing_progress_dialog, ProgressStepDialog):
                 self._post_indexing_progress_dialog.set_progress(
                     self._post_indexing_progress_dialog.progress_bar.value(),
-                    "Abbruch wird ausgefuehrt...",
+                    t("cancel_in_progress"),
                 )
             else:
-                self._post_indexing_progress_dialog.setLabelText("Abbruch wird ausgefuehrt...")
+                self._post_indexing_progress_dialog.setLabelText(t("cancel_in_progress"))
 
     def _on_duplicate_finder_finished(self, group_rows) -> None:
         import time
@@ -3549,7 +3945,7 @@ class ModernMainWindow(QMainWindow):
                 self._update_progress_dialog(
                     progress,
                     value=75,
-                    label="Schritt 3/3: Bildbewertung startet...",
+                    label=t("progress_step_3_rating_start"),
                     force=True,
                 )
 
@@ -3609,7 +4005,7 @@ class ModernMainWindow(QMainWindow):
                 if done > 0 and total > 0:
                     elapsed = max(0.0, time.monotonic() - self._pipeline_start_ts)
                     eta = self._format_eta(elapsed, done, total)
-                label = "Schritt 3/3: Bilder werden bewertet"
+                label = t("progress_step_3_rating_legacy")
                 if done > 0 and total > 0:
                     label += f" ({done}/{total})"
                 if eta:
@@ -3649,7 +4045,7 @@ class ModernMainWindow(QMainWindow):
                 self._update_progress_dialog(
                     self._post_indexing_progress_dialog,
                     value=95,
-                    label="Schritt 3/3: Abschluss und Anzeige wird vorbereitet...",
+                    label=t("progress_step_4_finalizing_legacy"),
                     force=True,
                 )
 
@@ -3873,16 +4269,13 @@ class ModernMainWindow(QMainWindow):
             
         except (OSError, IOError, ValueError, PermissionError, sqlite3.DatabaseError, sqlite3.OperationalError) as e:
             logger.error(f"Analysis pipeline failed: {e}", exc_info=True)
-            error_msg = f"Bei der Analyse ist ein Fehler aufgetreten:\n\n"
-            error_msg += f"Fehlerdetails: {str(e)}\n\n"
-            error_msg += f"Bitte stellen Sie sicher, dass:\n"
-            error_msg += f"• Der Ordner gültige Bilddateien enthält\n"
-            error_msg += f"• Sie Leserechte für den Ordner haben\n"
-            error_msg += f"• Genügend Speicherplatz vorhanden ist"
+            error_msg = t("analysis_error_header")
+            error_msg += t("analysis_error_details").format(error=str(e))
+            error_msg += t("analysis_error_checklist")
             
             QMessageBox.critical(
                 self,
-                "Fehler bei der Analyse",
+                t("analysis_error_title"),
                 error_msg
             )
         finally:
@@ -3902,7 +4295,7 @@ class ModernMainWindow(QMainWindow):
         # Email field
         email_label = QLabel(t("error_report_email_label"))
         email_input = QLineEdit()
-        email_input.setPlaceholderText("beispiel@website.de")
+        email_input.setPlaceholderText(t("error_report_email_placeholder"))
         layout.addWidget(email_label)
         layout.addWidget(email_input)
         
@@ -3937,13 +4330,13 @@ class ModernMainWindow(QMainWindow):
             message = msg_input.toPlainText().strip()
             
             if not email and not message:
-                QMessageBox.warning(dialog, "Warnung", "Bitte geben Sie E-Mail oder Nachricht ein.")
+                QMessageBox.warning(dialog, t("warning"), t("error_report_empty_input"))
                 return
             
             # Log error report (in production, this would send to error tracking service)
             logger.info(f"Error report submitted: email={email}, message={message[:100]}")
             
-            QMessageBox.information(dialog, "Erfolg", t("error_report_sent"))
+            QMessageBox.information(dialog, t("success"), t("error_report_sent"))
             dialog.accept()
         
         send_btn.clicked.connect(send_report)
@@ -3978,7 +4371,7 @@ class ModernMainWindow(QMainWindow):
                 return info
             
             if progress:
-                progress.setLabelText("Bilder werden bewertet...")
+                progress.setLabelText(t("progress_rating_images"))
                 QApplication.processEvents()
             
             logger.info(f"Creating QualityAnalyzer (use_face_mesh=True)...")
@@ -3993,12 +4386,12 @@ class ModernMainWindow(QMainWindow):
             done = 0
 
             if progress:
-                progress.setLabelText("Lade Modelle...")
+                progress.setLabelText(t("progress_loading_models"))
                 progress.setValue(86)
                 QApplication.processEvents()
             analyzer.warmup()
             if progress:
-                progress.setLabelText(f"Bilder werden bewertet... {done}/{total_images}")
+                progress.setLabelText(t("progress_rating_images_count").format(done=done, total=total_images))
                 QApplication.processEvents()
             
             for group_id, paths in groups.items():
@@ -4008,7 +4401,7 @@ class ModernMainWindow(QMainWindow):
                 if progress:
                     pct = 85 + int(10 * (done / max(1, total_images)))
                     progress.setValue(min(94, pct))
-                    progress.setLabelText(f"Bilder werden bewertet... {done}/{total_images}")
+                    progress.setLabelText(t("progress_rating_images_count").format(done=done, total=total_images))
                     QApplication.processEvents()
                     if progress.wasCanceled():
                         logger.info("Rating cancelled by user")
@@ -4020,7 +4413,7 @@ class ModernMainWindow(QMainWindow):
                     if progress:
                         pct = 85 + int(10 * (current_done / max(1, total_images)))
                         progress.setValue(min(94, pct))
-                        progress.setLabelText(f"Bilder werden bewertet... {current_done}/{total_images}")
+                        progress.setLabelText(t("progress_rating_images_count").format(done=current_done, total=total_images))
                         QApplication.processEvents()
 
                 results = analyzer.analyze_batch(paths, progress_callback=_progress_cb)
@@ -4146,7 +4539,7 @@ class ModernMainWindow(QMainWindow):
                 return False
 
             if progress:
-                progress.setLabelText("Gruppe wird neu bewertet...")
+                progress.setLabelText(t("progress_re_rating_group"))
                 progress.setValue(10)
                 QApplication.processEvents()
                 if progress.wasCanceled():
@@ -4531,10 +4924,11 @@ class ModernMainWindow(QMainWindow):
                 if hasattr(card, 'status_label'):
                     status_colors = get_status_colors()
                     status_color = status_colors.get(card.file_row.status.value, status_colors['UNDECIDED'])
+                    status_fg = _best_text_color_for_bg(status_color)
                     card.status_label.setStyleSheet(f"""
                         QLabel {{
                             background-color: {status_color};
-                            color: white;
+                            color: {status_fg};
                             font-weight: bold;
                             padding: 4px;
                             border-radius: 4px;
@@ -5512,10 +5906,11 @@ class ModernMainWindow(QMainWindow):
         
         self.group_list = QListWidget()
         self.group_list.itemSelectionChanged.connect(self._on_group_selected)
+        self.group_list.itemChanged.connect(self._on_group_item_check_changed)
         self.group_list.setAlternatingRowColors(False)
         self.group_list.setIconSize(QSize(48, 48))
-        # NEW Feature 3: Multi-select for group merging
-        self.group_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        # Click on row opens group; checkbox handles multi-group merge selection.
+        self.group_list.setSelectionMode(QAbstractItemView.SingleSelection)
         
         # FIX (Feb 22, 2026): Async thumbnail loading with proper threading
         self._group_thumb_cache = SmartThumbnailCache(max_size_mb=100)
@@ -6252,6 +6647,8 @@ class ModernMainWindow(QMainWindow):
         
         render_count = 0
         queued_count = 0
+        visible_group_ids: set[str] = set()
+        self.group_list.blockSignals(True)
         for grp_idx, grp in enumerate(self.groups):
             # Check if this is a single-image group
             is_single = grp.group_id.startswith("SINGLE_")
@@ -6267,6 +6664,9 @@ class ModernMainWindow(QMainWindow):
             
             item = QListWidgetItem(label)
             item.setData(Qt.UserRole, grp.group_id)
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+            item.setCheckState(Qt.CheckState.Checked if grp.group_id in self._checked_group_ids else Qt.CheckState.Unchecked)
+            visible_group_ids.add(grp.group_id)
 
             # FIX (Feb 22, 2026): Set gray placeholder - actual thumbnail loaded by ThumbnailLoader
             placeholder = QPixmap(48, 48)
@@ -6323,10 +6723,18 @@ class ModernMainWindow(QMainWindow):
             # Keep text readable against red/green status backgrounds across themes.
             text_color = QColor("#ffffff") if status_color.lightness() < 170 else QColor("#111111")
             item.setData(Qt.ForegroundRole, QBrush(text_color))
+
+            if grp.group_id in self._checked_group_ids:
+                self._apply_group_checked_visual(item, True)
             
             self.group_list.addItem(item)
+
+        self.group_list.blockSignals(False)
+        # Keep only currently visible group checks to avoid stale selections.
+        self._checked_group_ids.intersection_update(visible_group_ids)
         
         logger.info(f"[UI] _render_groups() added {render_count} items to list (filtered from {len(self.groups)} total groups)")
+        self._update_merge_groups_button_state()
 
         if hasattr(self, "smart_filter_counter_label"):
             active_text = self.group_filter_combo.currentText() if filter_mode != "all" else t("smart_filter_none")
@@ -6407,10 +6815,23 @@ class ModernMainWindow(QMainWindow):
         if not card:
             logger.debug(f"[UI] Grid thumbnail callback: stale index {list_index}")
             return
+        if card not in self.thumbnail_cards:
+            logger.debug(f"[UI] Grid thumbnail callback: index {list_index} not in current page cards")
+            self._grid_thumb_index_map.pop(list_index, None)
+            return
+        if not _is_qobject_alive(card) or not _is_qobject_alive(getattr(card, "thumbnail", None)):
+            logger.debug(f"[UI] Grid thumbnail callback: card {list_index} already deleted")
+            self._grid_thumb_index_map.pop(list_index, None)
+            return
         if qimg.isNull():
             logger.debug(f"[UI] Grid thumbnail callback: null image index {list_index}")
             return
-        card.set_thumbnail_image(qimg)
+        try:
+            card.set_thumbnail_image(qimg)
+        except RuntimeError:
+            logger.debug(f"[UI] Grid thumbnail callback: runtime error for stale card {list_index}")
+            self._grid_thumb_index_map.pop(list_index, None)
+            return
         logger.debug(f"[UI] Grid thumbnail set for index {list_index} path={card.file_row.path}")
         self._grid_thumb_done += 1
         self._update_thumbnail_progress()
@@ -6460,16 +6881,7 @@ class ModernMainWindow(QMainWindow):
     def _on_group_selected(self):
         """Handle group selection."""
         items = self.group_list.selectedItems()
-        
-        # NEW Feature 3: Enable Merge button when 2+ groups selected
-        if hasattr(self, 'merge_groups_btn'):
-            num_selected = len(items)
-            if num_selected >= 2:
-                self.merge_groups_btn.setEnabled(True)
-                self.merge_groups_btn.setText(f"{t('merge_groups')} (M, {num_selected})")
-            else:
-                self.merge_groups_btn.setEnabled(False)
-                self.merge_groups_btn.setText(f"{t('merge_groups')} (M)")
+        self._update_merge_groups_button_state()
         
         if not items:
             return
@@ -6478,6 +6890,58 @@ class ModernMainWindow(QMainWindow):
         group_id = items[0].data(Qt.UserRole)
         self.current_group = group_id
         self._load_group_files(group_id)
+
+    def _on_group_item_check_changed(self, item: QListWidgetItem) -> None:
+        """Sync checked group IDs for merge workflow (keyboard-free multi-select)."""
+        group_id = str(item.data(Qt.UserRole) or "")
+        if not group_id:
+            return
+        if item.checkState() == Qt.CheckState.Checked:
+            self._checked_group_ids.add(group_id)
+            self._apply_group_checked_visual(item, True)
+        else:
+            self._checked_group_ids.discard(group_id)
+            self._apply_group_checked_visual(item, False)
+        self._update_merge_groups_button_state()
+
+    def _apply_group_checked_visual(self, item: QListWidgetItem, checked: bool) -> None:
+        """Apply stronger visual feedback for checked group entries."""
+        if checked:
+            accent = QColor(get_semantic_colors()["info"])
+            accent.setAlpha(95)
+            item.setBackground(QBrush(accent))
+            item.setForeground(QBrush(QColor(_best_text_color_for_bg(get_semantic_colors()["info"]))))
+            return
+
+        group_id = str(item.data(Qt.UserRole) or "")
+        grp = self.group_lookup.get(group_id)
+        if not grp:
+            return
+
+        semantic_colors = get_semantic_colors()
+        if grp.open_count == 0:
+            status_color = QColor(semantic_colors["success"])
+            bg_alpha = 60
+        elif grp.open_count > 0 and grp.decided_count > 0:
+            status_color = QColor(semantic_colors["error"])
+            bg_alpha = 65
+        else:
+            status_color = QColor(semantic_colors["error"])
+            bg_alpha = 85
+        status_color.setAlpha(bg_alpha)
+        item.setBackground(QBrush(status_color))
+        text_color = QColor("#ffffff") if status_color.lightness() < 170 else QColor("#111111")
+        item.setForeground(QBrush(text_color))
+
+    def _update_merge_groups_button_state(self) -> None:
+        if not hasattr(self, 'merge_groups_btn'):
+            return
+        count = len(self._checked_group_ids)
+        self.merge_groups_btn.setEnabled(count >= 2)
+        if count >= 2:
+            self.merge_groups_btn.setText(f"{t('merge_groups')} (M, {count})")
+        else:
+            self.merge_groups_btn.setText(f"{t('merge_groups')} (M)")
     
     def _load_group_files(self, group_id: str):
         """Load files for selected group, sorted by score (best first)."""
@@ -6661,6 +7125,7 @@ class ModernMainWindow(QMainWindow):
         for idx, file_row in enumerate(self.files_in_group[start:end], start=start):
             card = ThumbnailCard(file_row, idx)
             card.clicked.connect(self._on_card_clicked)
+            card.selection_toggled.connect(self._on_card_checkbox_toggled)
             self.thumbnail_cards.append(card)
             if self._grid_thumb_loader:
                 self._grid_thumb_index_map[idx] = card
@@ -6723,6 +7188,7 @@ class ModernMainWindow(QMainWindow):
     def _clear_grid(self):
         """Clear thumbnail grid, preserving selection state."""
         # Don't clear selected_indices - they persist across renders
+        self._grid_thumb_index_map = {}
         
         # CRITICAL: Explicit cleanup to prevent memory leak
         for card in self.thumbnail_cards:
@@ -6780,26 +7246,27 @@ class ModernMainWindow(QMainWindow):
                     self._save_group_selection_state(self.current_group or "", selected_indices, last_selected)
                     self._update_selection_ui()
             
-            # Normal click: Zeige Bild groß im Hauptbereich
+            # Normal click: open image only (selection is checkbox-driven)
             else:
-                if not selected_indices:
-                    self.current_index = index
-                    file_row = self.files_in_group[index]
-                    self._show_large_image(file_row)
-                else:
-                    # If there's a selection, toggle this card
-                    if index in selected_indices:
-                        selected_indices.remove(index)
-                        if card:
-                            card.set_selected(False)
-                    else:
-                        selected_indices.add(index)
-                        if card:
-                            card.set_selected(True)
-                    
-                    last_selected = index
-                    self._save_group_selection_state(self.current_group or "", selected_indices, last_selected)
-                    self._update_selection_ui()
+                self.current_index = index
+                file_row = self.files_in_group[index]
+                self._show_large_image(file_row)
+
+    def _on_card_checkbox_toggled(self, index: int, checked: bool) -> None:
+        """Handle explicit checkbox selection toggle for a thumbnail card."""
+        if index < 0 or index >= len(self.files_in_group):
+            return
+        group_id = self.current_group or ""
+        selected_indices, last_selected = self._get_group_selection_state(group_id)
+        if checked:
+            selected_indices.add(index)
+            last_selected = index
+        else:
+            selected_indices.discard(index)
+            if last_selected == index:
+                last_selected = max(selected_indices) if selected_indices else -1
+        self._save_group_selection_state(group_id, selected_indices, last_selected)
+        self._update_selection_ui()
     
     def _select_all(self):
         """Select all images in current group."""
@@ -7292,11 +7759,13 @@ class ModernMainWindow(QMainWindow):
     def _merge_selected_groups(self):
         """Merge selected duplicate groups (Feature 3)."""
         try:
-            items = self.group_list.selectedItems()
+            selected_group_ids = [gid for gid in self._checked_group_ids if gid]
+            if not selected_group_ids:
+                # Backward-compatible fallback: use current list selection.
+                selected_group_ids = [str(item.data(Qt.UserRole)) for item in self.group_list.selectedItems() if item.data(Qt.UserRole)]
             group_ids: list[str] = []
             single_file_ids: list[int] = []
-            for item in items:
-                gid = str(item.data(Qt.UserRole))
+            for gid in selected_group_ids:
                 if gid.startswith("SINGLE_"):
                     try:
                         single_file_ids.append(int(gid.replace("SINGLE_", "")))
@@ -7309,17 +7778,15 @@ class ModernMainWindow(QMainWindow):
                 QMessageBox.warning(
                     self, 
                     t("merge_failed"), 
-                    "Bitte wählen Sie mindestens 2 Gruppen zum Zusammenführen aus."
+                    t("merge_select_min_two")
                 )
                 return
             
             # Confirmation dialog
             reply = QMessageBox.question(
                 self,
-                "Gruppen zusammenführen?",
-                f"Möchten Sie {len(group_ids)} Gruppen zusammenführen?\n\n"
-                f"Die Bilder werden in einer neuen Gruppe zusammengefasst und "
-                f"automatisch neu bewertet.",
+                t("merge_confirm_title"),
+                t("merge_confirm_message").format(count=len(group_ids) + len(single_file_ids)),
                 QMessageBox.Yes | QMessageBox.No
             )
             
@@ -7390,52 +7857,104 @@ class ModernMainWindow(QMainWindow):
             
             self.conn.commit()
             
-            # Re-run quality scoring on merged group (can be expensive)
-            progress = QProgressDialog(
-                "Neue Gruppe wird bewertet...",
-                t("cancel"),
-                0,
-                100,
+            # Re-rate merged group in background worker (non-blocking UI)
+            progress = ProgressStepDialog(
                 self,
+                window_title=t("merge_progress_title"),
+                step_names=[
+                    t("merge_progress_phase_prepare"),
+                    t("merge_progress_phase_models"),
+                    t("merge_progress_phase_compare"),
+                    t("merge_progress_phase_scoring"),
+                    t("merge_progress_phase_finalize"),
+                ],
+                show_sub_progress=True,
             )
-            progress.setWindowTitle(t("analysis_running"))
-            progress.setMinimumDuration(0)
-            progress.setMinimumWidth(460)
+            progress.setMinimumWidth(500)
             progress.setMinimumHeight(140)
-            progress.setStyleSheet(
-                "QLabel { padding: 6px 8px; }"
-                "QProgressBar { min-height: 18px; text-align: center; }"
-            )
-            self._center_progress_dialog_text(progress)
-            progress.setValue(5)
-            QApplication.processEvents()
-            
-            rated_ok = self._auto_rate_single_group(new_group_id, progress)
-            progress.close()
-            
-            if rated_ok:
-                total_merged = len(group_ids) + len(single_file_ids)
-                self._show_status_message(f"{t('merge_success')}: {total_merged} Gruppen -> 1 Gruppe")
-            else:
-                self._show_status_message(t("merge_success") + " (ohne Neubewertung)")
-            
-            # Refresh groups and select the new merged group
-            self.refresh_groups()
-            
-            # Find and select the new merged group
-            for i in range(self.group_list.count()):
-                item = self.group_list.item(i)
-                if item.data(Qt.UserRole) == new_group_id:
-                    self.group_list.setCurrentItem(item)
-                    break
+            progress.set_step(1)
+            progress.set_progress(5, t("merge_progress_phase_prepare"))
+            progress.set_sub_progress(t("merge_progress_detail_prepare"))
+            progress.show()
+
+            self.group_list.setEnabled(False)
+            self.merge_groups_btn.setEnabled(False)
+            self._merge_target_group_id = new_group_id
+            self._merge_group_count = len(group_ids) + len(single_file_ids)
+            self._merge_progress_dialog = progress
+            self._merge_worker = MergeGroupRatingWorker(self.db_path, new_group_id, self.top_n)
+            self._merge_worker.progress.connect(self._on_merge_progress)
+            self._merge_worker.finished.connect(self._on_merge_finished)
+            self._merge_worker.error.connect(self._on_merge_error)
+            progress.cancelled.connect(self._cancel_merge)
+            self._merge_worker.start()
+            return
             
         except (KeyError, ValueError, sqlite3.DatabaseError, sqlite3.OperationalError) as e:
             logger.error(f"Error merging groups: {e}", exc_info=True)
             QMessageBox.critical(
                 self,
                 t("merge_failed"),
-                f"Fehler beim Zusammenführen: {e}"
+                t("merge_error_detail").format(error=e)
             )
+
+    def _cancel_merge(self) -> None:
+        if self._merge_worker:
+            self._merge_worker.cancel()
+        if self._merge_progress_dialog:
+            self._merge_progress_dialog.set_progress(
+                self._merge_progress_dialog.progress_bar.value(),
+                t("cancel_in_progress"),
+            )
+            self._merge_progress_dialog.set_sub_progress(t("cancel_in_progress"))
+
+    def _on_merge_progress(self, pct: int, step: int, label: str, detail: str, sub_current: int, sub_total: int) -> None:
+        if not self._merge_progress_dialog:
+            return
+        self._merge_progress_dialog.set_step(step)
+        self._merge_progress_dialog.set_progress(max(0, min(100, int(pct))), label)
+        self._merge_progress_dialog.set_sub_progress(detail, sub_current, sub_total)
+
+    def _on_merge_finished(self, rated_ok: bool) -> None:
+        target_group = self._merge_target_group_id
+        merged_count = self._merge_group_count
+
+        if self._merge_progress_dialog:
+            self._merge_progress_dialog.close()
+            self._merge_progress_dialog = None
+
+        self.group_list.setEnabled(True)
+        self._checked_group_ids.clear()
+        self._update_merge_groups_button_state()
+
+        if rated_ok:
+            self._show_status_message(t("merge_success_status").format(count=merged_count))
+        else:
+            self._show_status_message(t("merge_success_without_rerating"))
+
+        self.refresh_groups()
+        if target_group:
+            for i in range(self.group_list.count()):
+                item = self.group_list.item(i)
+                if item.data(Qt.UserRole) == target_group:
+                    self.group_list.setCurrentItem(item)
+                    break
+
+        self._merge_worker = None
+        self._merge_target_group_id = None
+        self._merge_group_count = 0
+
+    def _on_merge_error(self, error_msg: str) -> None:
+        if self._merge_progress_dialog:
+            self._merge_progress_dialog.close()
+            self._merge_progress_dialog = None
+        self.group_list.setEnabled(True)
+        self._checked_group_ids.clear()
+        self._update_merge_groups_button_state()
+        self._merge_worker = None
+        self._merge_target_group_id = None
+        self._merge_group_count = 0
+        QMessageBox.critical(self, t("merge_failed"), t("merge_error_detail").format(error=error_msg))
     
     # Theme and mode
     
@@ -7735,7 +8254,12 @@ class ModernMainWindow(QMainWindow):
             
             # Restore group selection states
             for group_id, group_snapshot in session.image_groups.items():
-                selected_set = set(group_snapshot.selected_indices)
+                # Handle cases where selected_indices might be None or not iterable
+                selected_indices = group_snapshot.selected_indices or []
+                if not isinstance(selected_indices, (list, tuple, set)):
+                    logger.warning(f"Invalid selected_indices type for group {group_id}: {type(selected_indices)}")
+                    selected_indices = []
+                selected_set = set(selected_indices)
                 self._group_selection_state[group_id] = (selected_set, group_snapshot.last_selected_index)
 
             # Do not block startup with a modal dialog; this also avoids terminal
@@ -7816,7 +8340,12 @@ class ModernMainWindow(QMainWindow):
         self._group_selection_state.clear()
         
         for group_id, group_snapshot in session.image_groups.items():
-            selected_set = set(group_snapshot.selected_indices)
+            # Handle cases where selected_indices might be None or not iterable
+            selected_indices = group_snapshot.selected_indices or []
+            if not isinstance(selected_indices, (list, tuple, set)):
+                logger.warning(f"Invalid selected_indices type for group {group_id}: {type(selected_indices)}")
+                selected_indices = []
+            selected_set = set(selected_indices)
             self._group_selection_state[group_id] = (selected_set, group_snapshot.last_selected_index)
         
         # Refresh UI to show restored state
@@ -7934,17 +8463,12 @@ def run_modern_ui(
         
         warning_dialog = QMessageBox(win)
         warning_dialog.setIcon(QMessageBox.Warning)
-        warning_dialog.setWindowTitle("Gesichtserkennung Hinweis")
+        warning_dialog.setWindowTitle(t("mtcnn_warning_title"))
         warning_dialog.setText(
-            "<b>Moderne Gesichtserkennung nicht verfügbar</b>"
+            t("mtcnn_warning_header")
         )
         warning_dialog.setInformativeText(
-            "PhotoCleaner konnte die moderne Gesichtserkennung (MTCNN) nicht initialisieren.\n\n"
-            f"Fehler: {error_msg}\n\n"
-            "Das Programm funktioniert weiterhin, verwendet aber eine ältere Methode (Haar Cascade) "
-            "zur Gesichtserkennung. Dies kann die Genauigkeit bei der Auswahl der besten Fotos "
-            "mit Gesichtern beeinträchtigen.\n\n"
-            "Die Analyse von Bildschärfe, Belichtung und anderen Qualitätsmerkmalen funktioniert normal."
+            t("mtcnn_warning_body").format(error=error_msg)
         )
         warning_dialog.setStandardButtons(QMessageBox.Ok)
         warning_dialog.setDefaultButton(QMessageBox.Ok)
