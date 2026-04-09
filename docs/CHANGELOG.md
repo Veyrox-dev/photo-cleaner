@@ -33,6 +33,28 @@
 - Neue Integrationsabdeckung: `tests/integration/test_export_delete_integration.py` (Exporter + mark_deleted + Locked-File-Skip + Streaming-Partial-Failure)
 - Integrationssuite erfolgreich: 2/2 Tests gruen
 
+### 🚀 Week-4 Kickoff: First-Run Onboarding (Show Once)
+- Neue Onboarding-State-Logik: `src/photo_cleaner/ui/onboarding_state.py`
+- Modern UI zeigt einmalig einen Quick-Start-Dialog bei erstem Review mit optionalem "Nicht erneut anzeigen"
+- Persistenz im User-Settings-JSON: `first_run_onboarding_completed`
+- DE/EN i18n ergänzt (Onboarding-Titel, Kurzstart-Text, Buttons)
+- Neue Unit-Tests: `tests/unit/test_onboarding_state.py` (4/4 gruen)
+
+### 🔎 Week-4 Smart Filter Foundation
+- Neue Filterlogik ausgelagert: `src/photo_cleaner/ui/group_filters.py`
+- Gruppenpanel erweitert um Filter-Toggles: Open only, Low confidence only, Large groups only
+- Filter-Statuszeile ergänzt (sichtbar/gesamt + aktive Filter)
+- DE/EN i18n für neue Smart-Filter-Labels und Tooltips ergänzt
+- Neue Unit-Tests: `tests/unit/test_group_filters.py` (5/5 gruen)
+
+### 🧭 Week-4 Safe-Review Guidance + Quota Messaging
+- Neue Guidance-Logik: `src/photo_cleaner/ui/review_guidance.py`
+- Gruppen-Header zeigt jetzt einen klaren "Nächster Schritt"-Hinweis je nach Confidence/Open-State
+- Quota-Messaging verbessert: `src/photo_cleaner/ui/quota_messaging.py`
+- Pipeline-Blocker für FREE-Limit zeigt nun handlungsorientierte Meldung (Grund + nächster Schritt Upgrade/Lizenzverwaltung)
+- DE/EN i18n für Guidance- und Quota-Texte ergänzt
+- Neue Unit-Tests: `tests/unit/test_review_guidance.py` und `tests/unit/test_quota_messaging.py` (6/6 gruen)
+
 ## [Unreleased] - Week 1 Trust Foundation Complete + UX Overhaul (Phase C–F) (2026-04-08) 🎉
 
 ### 📊 Phase C: Status Language Clarity

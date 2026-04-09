@@ -172,8 +172,8 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 - ✅ Sicherheitsregressionen für Delete/Export ergänzt (Controller + Integrationsabdeckung)
 
 ### Woche 4
-- ▶ Onboarding, Smart Filter und Quota-/Upgrade-Messaging umsetzen
-- ▶ Safe-Review-Hinweise für Erstnutzer integrieren
+- ▶ Onboarding, Smart Filter und Quota-/Upgrade-Messaging umsetzen (Onboarding + Smart-Filter + Quota-Messaging-Grundlage implementiert)
+- ▶ Safe-Review-Hinweise für Erstnutzer integrieren (Header-Hinweise implementiert)
 - ▶ First-run-Test auf sauberem Windows-Setup
 - 📄 Umsetzungsplan: `docs/architecture/WEEK4_ONBOARDING_SMART_FILTER.md`
 

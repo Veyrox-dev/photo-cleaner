@@ -99,6 +99,14 @@ from photo_cleaner.services.status_service import StatusService
 # LAZY: Import QualityAnalyzer and GroupScorer only when needed (they import numpy)
 # NOTE: get_thumbnail is used for detail views only; list/grid thumbnails are async.
 from photo_cleaner.ui.thumbnail_cache import get_thumbnail
+from photo_cleaner.ui.onboarding_state import (
+    mark_onboarding_completed,
+    reset_onboarding_completed,
+    should_show_onboarding,
+)
+from photo_cleaner.ui.group_filters import GroupFilterOptions, group_matches_filters
+from photo_cleaner.ui.quota_messaging import build_quota_limit_message
+from photo_cleaner.ui.review_guidance import recommend_next_step
 from photo_cleaner.ui_actions import UIActions
 from photo_cleaner.session_manager import SessionManager
 from photo_cleaner.ui.indexing_thread import IndexingThread  # v0.5.3
@@ -3063,7 +3071,8 @@ class ModernMainWindow(QMainWindow):
         
         # Theme
         self.current_theme = "Dunkel"
-        self._user_settings = {}
+        self._user_settings = self._load_user_settings()
+        self._onboarding_prompted_this_session = False
 
         # Load language and theme from settings BEFORE building UI
         try:
@@ -3632,8 +3641,8 @@ class ModernMainWindow(QMainWindow):
                 progress.close()
                 QMessageBox.warning(
                     self,
-                    "Free-Limit erreicht",
-                    reason or "Free-Limit erreicht. Bitte Upgrade auf PRO.",
+                    t("quota_limit_title"),
+                    build_quota_limit_message(total_files, reason, t),
                 )
                 return
 
@@ -4332,6 +4341,15 @@ class ModernMainWindow(QMainWindow):
             if hasattr(self, 'needs_review_only_cb'):
                 self.needs_review_only_cb.setText(t("needs_review_only"))
                 self.needs_review_only_cb.setToolTip(t("needs_review_only_tooltip"))
+            if hasattr(self, 'open_only_cb'):
+                self.open_only_cb.setText(t("open_only"))
+                self.open_only_cb.setToolTip(t("open_only_tooltip"))
+            if hasattr(self, 'low_confidence_only_cb'):
+                self.low_confidence_only_cb.setText(t("low_confidence_only"))
+                self.low_confidence_only_cb.setToolTip(t("low_confidence_only_tooltip"))
+            if hasattr(self, 'high_impact_only_cb'):
+                self.high_impact_only_cb.setText(t("high_impact_only"))
+                self.high_impact_only_cb.setToolTip(t("high_impact_only_tooltip").format(count=5))
             if hasattr(self, 'lock_btn'):
                 self.lock_btn.setText(t("lock_unlock_button"))
             if hasattr(self, 'compare_btn'):
@@ -5388,11 +5406,32 @@ class ModernMainWindow(QMainWindow):
         self.needs_review_only_cb.stateChanged.connect(self._apply_group_filter)
         layout.addWidget(self.needs_review_only_cb)
 
+        self.open_only_cb = QCheckBox(t("open_only"))
+        self.open_only_cb.setToolTip(t("open_only_tooltip"))
+        self.open_only_cb.stateChanged.connect(self._apply_group_filter)
+        layout.addWidget(self.open_only_cb)
+
+        self.low_confidence_only_cb = QCheckBox(t("low_confidence_only"))
+        self.low_confidence_only_cb.setToolTip(t("low_confidence_only_tooltip"))
+        self.low_confidence_only_cb.stateChanged.connect(self._apply_group_filter)
+        layout.addWidget(self.low_confidence_only_cb)
+
+        self.high_impact_only_cb = QCheckBox(t("high_impact_only"))
+        self.high_impact_only_cb.setToolTip(t("high_impact_only_tooltip").format(count=5))
+        self.high_impact_only_cb.stateChanged.connect(self._apply_group_filter)
+        layout.addWidget(self.high_impact_only_cb)
+
         self.needs_review_counter_label = QLabel(t("needs_review_counter").format(visible=0, total=0))
         self.needs_review_counter_label.setStyleSheet(
             f"padding: 6px 8px; font-size: 11px; background-color: {get_theme_colors()['alternate_base']}; border-radius: 8px;"
         )
         layout.addWidget(self.needs_review_counter_label)
+
+        self.smart_filter_counter_label = QLabel(t("smart_filter_counter").format(visible=0, total=0, active=t("smart_filter_none")))
+        self.smart_filter_counter_label.setStyleSheet(
+            f"padding: 6px 8px; font-size: 11px; background-color: {get_theme_colors()['alternate_base']}; border-radius: 8px;"
+        )
+        layout.addWidget(self.smart_filter_counter_label)
         
         self.group_list = QListWidget()
         self.group_list.itemSelectionChanged.connect(self._on_group_selected)
@@ -5722,9 +5761,44 @@ class ModernMainWindow(QMainWindow):
         self._clear_grid()
         self.grid_title.setText(f"<h3>{t('select_group')}</h3>")
         self._update_menu_state()
+        self._maybe_show_first_run_onboarding()
         
         total_time = time.monotonic() - start_time
         logger.info(f"[UI] refresh_groups() FINISHED in {total_time:.3f}s (query={query_time:.3f}s, render={render_time:.3f}s)")
+
+    def _maybe_show_first_run_onboarding(self) -> None:
+        """Show onboarding once per user and once per app session."""
+        if self._onboarding_prompted_this_session:
+            return
+        if not self.groups:
+            return
+        if not should_show_onboarding(self._user_settings):
+            return
+
+        self._onboarding_prompted_this_session = True
+
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Information)
+        msg.setWindowTitle(t("onboarding_title"))
+        msg.setText(t("onboarding_message"))
+        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        msg.button(QMessageBox.Ok).setText(t("onboarding_start_review"))
+        msg.button(QMessageBox.Cancel).setText(t("onboarding_skip"))
+
+        dont_show_checkbox = QCheckBox(t("onboarding_dont_show_again"), msg)
+        msg.setCheckBox(dont_show_checkbox)
+
+        msg.exec()
+
+        if dont_show_checkbox.isChecked():
+            mark_onboarding_completed(self._user_settings)
+            self._save_user_settings()
+
+    def _reset_first_run_onboarding(self) -> None:
+        """Reset onboarding completion state for future sessions."""
+        reset_onboarding_completed(self._user_settings)
+        self._save_user_settings()
+        self._onboarding_prompted_this_session = False
     
     def _show_large_image(self, file_row: FileRow):
         """Öffne Detailansicht in eigenständigem Fenster."""
@@ -5992,7 +6066,13 @@ class ModernMainWindow(QMainWindow):
         logger.info(f"[UI] _render_groups() starting for {len(self.groups)} groups...")
         self.group_list.clear()
         term = self.search_box.text().lower().strip()
-        needs_review_only = hasattr(self, "needs_review_only_cb") and self.needs_review_only_cb.isChecked()
+        filter_opts = GroupFilterOptions(
+            needs_review_only=hasattr(self, "needs_review_only_cb") and self.needs_review_only_cb.isChecked(),
+            open_only=hasattr(self, "open_only_cb") and self.open_only_cb.isChecked(),
+            low_confidence_only=hasattr(self, "low_confidence_only_cb") and self.low_confidence_only_cb.isChecked(),
+            high_impact_only=hasattr(self, "high_impact_only_cb") and self.high_impact_only_cb.isChecked(),
+            high_impact_threshold=5,
+        )
 
         self._group_thumb_total = 0
         self._group_thumb_done = 0
@@ -6008,10 +6088,8 @@ class ModernMainWindow(QMainWindow):
             else:
                 display_id = self._format_group_display_id(grp.group_id)
                 label = t("group_list_many").format(id=display_id, count=grp.total)
-            
-            if term and term not in label.lower() and term not in str(grp.sample_path).lower():
-                continue
-            if needs_review_only and grp.needs_review_count <= 0:
+
+            if not group_matches_filters(grp, term, filter_opts):
                 continue
             
             item = QListWidgetItem(label)
@@ -6072,6 +6150,22 @@ class ModernMainWindow(QMainWindow):
             self.group_list.addItem(item)
         
         logger.info(f"[UI] _render_groups() added {render_count} items to list (filtered from {len(self.groups)} total groups)")
+
+        if hasattr(self, "smart_filter_counter_label"):
+            active_filters: list[str] = []
+            if filter_opts.needs_review_only:
+                active_filters.append(t("needs_review_only"))
+            if filter_opts.open_only:
+                active_filters.append(t("open_only"))
+            if filter_opts.low_confidence_only:
+                active_filters.append(t("low_confidence_only"))
+            if filter_opts.high_impact_only:
+                active_filters.append(t("high_impact_only"))
+            active_text = ", ".join(active_filters) if active_filters else t("smart_filter_none")
+            self.smart_filter_counter_label.setText(
+                t("smart_filter_counter").format(visible=render_count, total=len(self.groups), active=active_text)
+            )
+
         if hasattr(self, "needs_review_counter_label"):
             total_needs_review = sum(1 for grp in self.groups if grp.needs_review_count > 0)
             visible_needs_review = sum(
@@ -6368,9 +6462,11 @@ class ModernMainWindow(QMainWindow):
         grp = self.group_lookup.get(self.current_group)
         if grp and grp.group_id:
             display_id = self._format_group_display_id(grp.group_id)
+            next_step_hint = recommend_next_step(grp, t)
             self.grid_title.setText(
                 f"<h3>{t('group_title').format(id=display_id, count=len(self.files_in_group))}</h3>"
-                f"<small>Pruefstatus: {_get_confidence_i18n_label(grp.confidence_level)} | {grp.diagnostics_text}</small>"
+                f"<small>Pruefstatus: {_get_confidence_i18n_label(grp.confidence_level)} | {grp.diagnostics_text}</small><br>"
+                f"<small>{t('review_next_step')}: {next_step_hint}</small>"
             )
         else:
             # Fallback: Group nicht in lookup - Log und zeige generischen Title
