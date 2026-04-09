@@ -77,6 +77,8 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 - ✅ Zentrale Theme-Style-Bausteine eingeführt (Panel/Progress/Checkbox/ListWidget)
 - ✅ Merge-Feedback auf Analyse-ähnlichen Detaillierungsgrad angehoben (Phasen + Prozent + Detailfortschritt)
 - ✅ Keine offenen Syntax-/Problems-Fehler in den geänderten Kernmodulen
+- ✅ Theme-Audit fortgeführt: Grid-Bereich + Pagination-Controls auf zentrale Theme-Refresh-Logik gehoben
+- ✅ Eye-Mode-Statusbanner von hartem `color:white` auf kontrastbasierte Theme-Textfarbe umgestellt
 
 **Nächster Fokus (direkt anschlussfähig):**
 - ▶ Theme-Audit-Restlauf: verbleibende lokale `setStyleSheet`-Inseln systematisch auf zentrale Builder migrieren
@@ -91,6 +93,8 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 - ✅ Benchmark auf Realdaten ausgeführt (`C:\Users\chris\OneDrive\Bilder\01_Photocleaner\Input`)
 - ✅ Profiling-Erkenntnis bestätigt: Stage 4 (Quality-Analyse) ist klarer Hauptengpass
 - ✅ Week-5-Plan präzisiert: kein kurzfristiger Sprachwechsel, erst Orchestrierung/Parallelisierung optimieren
+- ✅ Week-5 Umsetzung gestartet: Progress-Event-Throttling (Rating/Merge Worker + UI) reduziert Eventloop-Repaint-Last
+- ✅ Week-5 Umsetzung gestartet: Score-DB-Updates auf `executemany`-Batching umgestellt (weniger SQLite-Statement-Overhead)
 
 ### 1 · MSI Smoke-Test auf Virgin Windows
 Installer (`.msi`) auf einer frischen Maschine validieren: Install → Upgrade → Uninstall.

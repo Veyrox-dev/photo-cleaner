@@ -3,6 +3,12 @@
 
 ## [Unreleased] - Merge Progress UX + Theme Unification + Stability Fixes (2026-04-09) ✅
 
+### ⚡ Performance-Inkrement (Step 1, low risk)
+- Rating-/Merge-Worker senden Progress-Events jetzt throttled statt in hoher Frequenz bei jedem kleinen Zwischenstand
+- Merge-/Analyse-Progress in der UI wird ebenfalls throttled aktualisiert, um Repaint- und Eventloop-Last zu senken
+- Score-Schreibpfad auf SQLite-Batching umgestellt (`executemany` fuer Quality-Updates), statt viele einzelne `UPDATE`-Statements
+- Erwarteter Effekt: stabilere UI unter Last + weniger Overhead im langen Analyse-/Merge-Lauf
+
 ### 🔁 Merge Workflow UX (mehrstufig, nicht blockierend)
 - Merge-Neubewertung auf asynchronen Worker mit detailliertem Progress-Eventmodell umgestellt
 - Merge-Dialog zeigt jetzt sichtbare Phasen + Prozent + Detailstatus + Sub-Progress
@@ -31,6 +37,8 @@
 - Gruppenlisten-Textfarbe im Light Mode korrigiert (kein erzwungenes Weiß mehr)
 - Suchleiste + Filter-Combo explizit auf widget-spezifische Theme-Stile umgestellt
 - Theme-Wechsel verbessert: aktives Re-Polish für Such-/Filter-Widgets nach Umschalten
+- Theme-Audit erweitert: Grid-Scrollbereich + Pagination-Controls werden jetzt bei Theme-Wechsel aktiv neu gestylt
+- Eye-Mode-Statusbanner: hartes `color: white` entfernt, kontrastbasierte Textfarbe je Hintergrundfarbe
 
 ### 🧱 Stabilität / Crash-Fixes
 - Race-Condition bei asynchronen Thumbnail-Callbacks gefixt

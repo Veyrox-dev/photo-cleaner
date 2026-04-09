@@ -195,6 +195,7 @@ class RatingWorkerThread(QThread):
         self.top_n = top_n
         self.mtcnn_status = mtcnn_status or {"available": True, "error": None}
         self._should_cancel = False
+        self._progress_emit_interval_sec = 0.08
     
     def run(self):
         """Execute auto-rating in background thread."""
@@ -249,11 +250,28 @@ class RatingWorkerThread(QThread):
             
             total_images = sum(len(v) for v in groups.values())
             logger.info(f"[WORKER] Total images to analyze: {total_images}")
+
+            last_progress_emit_ts = 0.0
+            last_progress_signature: tuple[int, str] | None = None
+
+            def _emit_progress(pct: int, status: str, force: bool = False) -> None:
+                nonlocal last_progress_emit_ts, last_progress_signature
+                clamped_pct = max(0, min(100, int(pct)))
+                signature = (clamped_pct, status)
+                now = time.monotonic()
+                if not force:
+                    if signature == last_progress_signature:
+                        return
+                    if now - last_progress_emit_ts < self._progress_emit_interval_sec:
+                        return
+                self.progress.emit(clamped_pct, status)
+                last_progress_emit_ts = now
+                last_progress_signature = signature
             
             # EMIT IMMEDIATE progress signal - tells main thread worker is active!
             elapsed = time.monotonic() - start_time
             logger.info(f"[WORKER] Thread alive after {elapsed:.2f}s [DB query complete] - emitting status")
-            self.progress.emit(87, f"Modelle werden geladen... 0/{total_images}")
+            _emit_progress(87, f"Modelle werden geladen... 0/{total_images}", force=True)
             
             # Initialize QualityAnalyzer with progress feedback
             logger.info(f"[WORKER] Initializing QualityAnalyzer (use_face_mesh=True)...")
@@ -264,7 +282,7 @@ class RatingWorkerThread(QThread):
             logger.info(f"[WORKER] QualityAnalyzer initialized in {init_time:.2f}s")
             
             # Emit signal after first model is ready
-            self.progress.emit(88, f"QualityAnalyzer bereit, lade GroupScorer... 0/{total_images}")
+            _emit_progress(88, f"QualityAnalyzer bereit, lade GroupScorer... 0/{total_images}", force=True)
             
             logger.info(f"[WORKER] Initializing GroupScorer (top_n={self.top_n})...")
             scorer_start = time.monotonic()
@@ -279,11 +297,11 @@ class RatingWorkerThread(QThread):
             # NOW emit progress - models are ready
             total_init_time = time.monotonic() - start_time
             logger.info(f"[WORKER] Models ready after {total_init_time:.2f}s total, starting warmup and analysis...")
-            self.progress.emit(90, f"Modelle aufwärmen... 0/{total_images}")
+            _emit_progress(90, f"Modelle aufwärmen... 0/{total_images}", force=True)
             
             analyzer.warmup()
             logger.info(f"[WORKER] Warmup complete, beginning batch analysis")
-            self.progress.emit(87, f"Bilder werden bewertet... {done}/{total_images}")
+            _emit_progress(87, f"Bilder werden bewertet... {done}/{total_images}", force=True)
             
             for group_id, paths in groups.items():
                 if self._should_cancel:
@@ -295,7 +313,7 @@ class RatingWorkerThread(QThread):
                 
                 # Update progress before analysis
                 pct = 87 + int(7 * (done / max(1, total_images)))
-                self.progress.emit(min(94, pct), f"Bilder werden bewertet... {done}/{total_images}")
+                _emit_progress(min(94, pct), f"Bilder werden bewertet... {done}/{total_images}")
                 
                 group_base_done = done
                 def _progress_cb(local_done: int, local_total: int) -> None:
@@ -303,7 +321,7 @@ class RatingWorkerThread(QThread):
                         return
                     current_done = group_base_done + local_done
                     pct = 87 + int(7 * (current_done / max(1, total_images)))
-                    self.progress.emit(min(94, pct), f"Bilder werden bewertet... {current_done}/{total_images}")
+                    _emit_progress(min(94, pct), f"Bilder werden bewertet... {current_done}/{total_images}")
                 
                 results = analyzer.analyze_batch(paths, progress_callback=_progress_cb)
                 quality_results[group_id] = results
@@ -311,7 +329,7 @@ class RatingWorkerThread(QThread):
                 
                 # Update progress after analysis
                 pct = 87 + int(7 * (done / max(1, total_images)))
-                self.progress.emit(min(94, pct), f"Bilder werden bewertet... {done}/{total_images}")
+                _emit_progress(min(94, pct), f"Bilder werden bewertet... {done}/{total_images}", force=(done >= total_images))
             
             if self._should_cancel:
                 logger.info("Rating cancelled by user")
@@ -345,39 +363,48 @@ class RatingWorkerThread(QThread):
                         (group_id,),
                     )
                     
-                    # Store scores for all images
+                    # Store scores for all images in batches to reduce sqlite statement overhead.
+                    score_updates_with_components: list[tuple[float, float, float, float, float, str]] = []
+                    score_updates_basic: list[tuple[float, str]] = []
                     for item in all_scores:
                         if len(item) == 4:
                             path, score, disqualified, components = item
-                            conn.execute(
-                                """
-                                UPDATE files
-                                SET quality_score = ?,
-                                    sharpness_component = ?,
-                                    lighting_component = ?,
-                                    resolution_component = ?,
-                                    face_quality_component = ?
-                                WHERE path = ?
-                                """,
+                            score_updates_with_components.append(
                                 (
                                     score,
                                     components.sharpness_score,
                                     components.lighting_score,
                                     components.resolution_score,
                                     components.face_quality_score,
-                                    str(path)
-                                ),
+                                    str(path),
+                                )
                             )
                         else:
                             path, score, disqualified = item
-                            conn.execute(
-                                """
-                                UPDATE files
-                                SET quality_score = ?
-                                WHERE path = ?
-                                """,
-                                (score, str(path)),
-                            )
+                            score_updates_basic.append((score, str(path)))
+
+                    if score_updates_with_components:
+                        conn.executemany(
+                            """
+                            UPDATE files
+                            SET quality_score = ?,
+                                sharpness_component = ?,
+                                lighting_component = ?,
+                                resolution_component = ?,
+                                face_quality_component = ?
+                            WHERE path = ?
+                            """,
+                            score_updates_with_components,
+                        )
+                    if score_updates_basic:
+                        conn.executemany(
+                            """
+                            UPDATE files
+                            SET quality_score = ?
+                            WHERE path = ?
+                            """,
+                            score_updates_basic,
+                        )
                     
                     if best_path:
                         conn.execute(
@@ -439,6 +466,7 @@ class MergeGroupRatingWorker(QThread):
         self.group_id = group_id
         self.top_n = top_n
         self._cancelled = False
+        self._progress_emit_interval_sec = 0.08
 
     def cancel(self) -> None:
         self._cancelled = True
@@ -446,7 +474,32 @@ class MergeGroupRatingWorker(QThread):
     def run(self) -> None:
         db = None
         try:
-            self.progress.emit(5, 1, t("merge_progress_phase_prepare"), t("merge_progress_detail_prepare"), 0, 0)
+            last_progress_emit_ts = 0.0
+            last_progress_signature: tuple[int, int, str, str, int, int] | None = None
+
+            def _emit_progress(
+                pct: int,
+                step: int,
+                phase_label: str,
+                detail_label: str,
+                current: int,
+                total: int,
+                force: bool = False,
+            ) -> None:
+                nonlocal last_progress_emit_ts, last_progress_signature
+                clamped_pct = max(0, min(100, int(pct)))
+                signature = (clamped_pct, step, phase_label, detail_label, int(current), int(total))
+                now = time.monotonic()
+                if not force:
+                    if signature == last_progress_signature:
+                        return
+                    if now - last_progress_emit_ts < self._progress_emit_interval_sec:
+                        return
+                self.progress.emit(clamped_pct, step, phase_label, detail_label, int(current), int(total))
+                last_progress_emit_ts = now
+                last_progress_signature = signature
+
+            _emit_progress(5, 1, t("merge_progress_phase_prepare"), t("merge_progress_detail_prepare"), 0, 0, force=True)
 
             db = Database(self.db_path)
             conn = db.connect()
@@ -468,32 +521,34 @@ class MergeGroupRatingWorker(QThread):
                 return
 
             total_images = len(paths)
-            self.progress.emit(
+            _emit_progress(
                 15,
                 1,
                 t("merge_progress_phase_prepare"),
                 t("merge_progress_detail_found_images").format(count=total_images),
                 total_images,
                 total_images,
+                force=True,
             )
 
             if self._cancelled:
                 self.finished.emit(False)
                 return
 
-            self.progress.emit(30, 2, t("merge_progress_phase_models"), t("merge_progress_detail_models"), 0, 0)
+            _emit_progress(30, 2, t("merge_progress_phase_models"), t("merge_progress_detail_models"), 0, 0, force=True)
             QualityAnalyzer = _get_quality_analyzer()
             GroupScorer = _get_group_scorer()
             analyzer = QualityAnalyzer(use_face_mesh=True)
             scorer = GroupScorer(top_n=self.top_n)
 
-            self.progress.emit(
+            _emit_progress(
                 40,
                 3,
                 t("merge_progress_phase_compare"),
                 t("merge_progress_detail_compare_count").format(current=0, total=total_images),
                 0,
                 total_images,
+                force=True,
             )
 
             def _progress_cb(local_done: int, local_total: int) -> None:
@@ -504,7 +559,7 @@ class MergeGroupRatingWorker(QThread):
                 else:
                     pct = 40 + int(round((local_done / local_total) * 30))
                 total_local = max(local_total, total_images)
-                self.progress.emit(
+                _emit_progress(
                     min(70, max(40, pct)),
                     3,
                     t("merge_progress_phase_compare"),
@@ -518,7 +573,7 @@ class MergeGroupRatingWorker(QThread):
                 self.finished.emit(False)
                 return
 
-            self.progress.emit(75, 4, t("merge_progress_phase_scoring"), t("merge_progress_detail_scoring_count").format(current=0, total=0), 0, 0)
+            _emit_progress(75, 4, t("merge_progress_phase_scoring"), t("merge_progress_detail_scoring_count").format(current=0, total=0), 0, 0, force=True)
             group_scores = scorer.score_multiple_groups({self.group_id: results})
             scorer.apply_scores_to_db(group_scores, files, action_id="AUTO_RATING_MERGE")
 
@@ -538,22 +593,15 @@ class MergeGroupRatingWorker(QThread):
                 (self.group_id,),
             )
 
+            score_updates_with_components: list[tuple[float, float, float, float, float, str]] = []
+            score_updates_basic: list[tuple[float, str]] = []
             for idx, item in enumerate(all_scores, start=1):
                 if self._cancelled:
                     self.finished.emit(False)
                     return
                 if len(item) == 4:
                     path, score, _, components = item
-                    conn.execute(
-                        """
-                        UPDATE files
-                        SET quality_score = ?,
-                            sharpness_component = ?,
-                            lighting_component = ?,
-                            resolution_component = ?,
-                            face_quality_component = ?
-                        WHERE path = ?
-                        """,
+                    score_updates_with_components.append(
                         (
                             score,
                             components.sharpness_score,
@@ -561,22 +609,15 @@ class MergeGroupRatingWorker(QThread):
                             components.resolution_score,
                             components.face_quality_score,
                             str(path),
-                        ),
+                        )
                     )
                 else:
                     path, score, _ = item
-                    conn.execute(
-                        """
-                        UPDATE files
-                        SET quality_score = ?
-                        WHERE path = ?
-                        """,
-                        (score, str(path)),
-                    )
+                    score_updates_basic.append((score, str(path)))
 
                 if total_scores > 0 and (idx == total_scores or idx == 1 or idx % 5 == 0):
                     pct = 75 + int(round((idx / total_scores) * 21))
-                    self.progress.emit(
+                    _emit_progress(
                         min(96, max(75, pct)),
                         4,
                         t("merge_progress_phase_scoring"),
@@ -584,6 +625,29 @@ class MergeGroupRatingWorker(QThread):
                         idx,
                         total_scores,
                     )
+
+            if score_updates_with_components:
+                conn.executemany(
+                    """
+                    UPDATE files
+                    SET quality_score = ?,
+                        sharpness_component = ?,
+                        lighting_component = ?,
+                        resolution_component = ?,
+                        face_quality_component = ?
+                    WHERE path = ?
+                    """,
+                    score_updates_with_components,
+                )
+            if score_updates_basic:
+                conn.executemany(
+                    """
+                    UPDATE files
+                    SET quality_score = ?
+                    WHERE path = ?
+                    """,
+                    score_updates_basic,
+                )
 
             if best_path:
                 conn.execute(
@@ -605,9 +669,9 @@ class MergeGroupRatingWorker(QThread):
                     (str(second_path),),
                 )
 
-            self.progress.emit(98, 5, t("merge_progress_phase_finalize"), t("merge_progress_detail_finalize"), 0, 0)
+            _emit_progress(98, 5, t("merge_progress_phase_finalize"), t("merge_progress_detail_finalize"), 0, 0, force=True)
             conn.commit()
-            self.progress.emit(100, 5, t("merge_progress_phase_done"), t("merge_progress_detail_done"), 0, 0)
+            _emit_progress(100, 5, t("merge_progress_phase_done"), t("merge_progress_detail_done"), 0, 0, force=True)
             self.finished.emit(True)
         except Exception as e:
             logger.error("MergeGroupRatingWorker failed: %s", e, exc_info=True)
@@ -3521,6 +3585,8 @@ class ModernMainWindow(QMainWindow):
         self._rating_error_message: Optional[str] = None
         self._indexing_results: Optional[dict] = None
         self._progress_update_ts = 0.0
+        self._rating_progress_update_ts = 0.0
+        self._rating_progress_last_signature: tuple[int, int, int] | None = None
         self._pipeline_start_ts = 0.0
         self._pipeline_last_known_total = 0
         
@@ -3589,6 +3655,8 @@ class ModernMainWindow(QMainWindow):
         self._merge_progress_dialog: Optional[ProgressStepDialog] = None
         self._merge_target_group_id: Optional[str] = None
         self._merge_group_count: int = 0
+        self._merge_progress_update_ts = 0.0
+        self._merge_progress_last_signature: tuple[int, int, str, str, int, int] | None = None
         
         # Session management
         self.session_manager = SessionManager()
@@ -4048,11 +4116,27 @@ class ModernMainWindow(QMainWindow):
     def _on_rating_progress(self, pct: int, status: str) -> None:
         progress = self._post_indexing_progress_dialog
         if progress:
+            clamped = max(0, min(100, int(pct)))
+            mapped = 75 + int(round((clamped / 100) * 20))
+            done, total = self._extract_progress_counts(status)
+            signature = (mapped, done, total)
+            now = time.monotonic()
+            is_terminal = total > 0 and done >= total
+            if (
+                self._rating_progress_last_signature == signature
+                and not is_terminal
+            ):
+                return
+            if (
+                not is_terminal
+                and now - self._rating_progress_update_ts < 0.08
+            ):
+                return
+            self._rating_progress_update_ts = now
+            self._rating_progress_last_signature = signature
+
             if isinstance(progress, ProgressStepDialog):
                 # Phase D: Use new progress dialog with steps
-                clamped = max(0, min(100, int(pct)))
-                mapped = 75 + int(round((clamped / 100) * 20))
-                done, total = self._extract_progress_counts(status)
                 progress.set_step(3)
                 progress.set_progress(
                     mapped,
@@ -4062,9 +4146,6 @@ class ModernMainWindow(QMainWindow):
                 )
             else:
                 # Legacy: Keep old behavior for compatibility
-                clamped = max(0, min(100, int(pct)))
-                mapped = 75 + int(round((clamped / 100) * 20))
-                done, total = self._extract_progress_counts(status)
                 eta = ""
                 if done > 0 and total > 0:
                     elapsed = max(0.0, time.monotonic() - self._pipeline_start_ts)
@@ -5027,6 +5108,9 @@ class ModernMainWindow(QMainWindow):
                 self._update_progress_bar_style()
 
             self._update_sidebar_theme_styles()
+            self._update_grid_panel_style()
+            if hasattr(self, 'eye_mode_status_label'):
+                self._update_eye_mode_status_banner()
 
             if hasattr(self, 'status_bar_panel'):
                 self.status_bar_panel.setStyleSheet(build_panel_style(radius=0))
@@ -5363,13 +5447,21 @@ class ModernMainWindow(QMainWindow):
         if status.get("available"):
             self.eye_mode_status_label.setText("Bereit")
             success_color = get_semantic_colors()["success"]
-            self.eye_mode_status_label.setStyleSheet(f"padding: 4px 8px; border-radius: 6px; font-size: 12px; background-color: {success_color}; color: white;")
+            success_fg = _best_text_color_for_bg(success_color)
+            self.eye_mode_status_label.setStyleSheet(
+                f"padding: 4px 8px; border-radius: 6px; font-size: 12px; "
+                f"background-color: {success_color}; color: {success_fg};"
+            )
             self.eye_mode_fix_btn.hide()
         else:
             msg = status.get("message", "Nicht verfügbar")
             self.eye_mode_status_label.setText(msg)
             error_color = get_semantic_colors()["error"]
-            self.eye_mode_status_label.setStyleSheet(f"padding: 4px 8px; border-radius: 6px; font-size: 12px; background-color: {error_color}; color: white;")
+            error_fg = _best_text_color_for_bg(error_color)
+            self.eye_mode_status_label.setStyleSheet(
+                f"padding: 4px 8px; border-radius: 6px; font-size: 12px; "
+                f"background-color: {error_color}; color: {error_fg};"
+            )
             # Show fix button for actionable fixes
             fix = status.get("fix")
             if fix in ("download", "install"):
@@ -6063,16 +6155,7 @@ class ModernMainWindow(QMainWindow):
         self.grid_scroll = QScrollArea()
         self.grid_scroll.setWidgetResizable(True)
         self.grid_scroll.setFrameShape(QFrame.NoFrame)
-        colors = get_theme_colors()
-        grid_bg = colors['window']
-        grid_border = colors['border']
-        self.grid_scroll.setStyleSheet(f"""
-            QScrollArea {{
-                background-color: {grid_bg};
-                border: 2px solid {grid_border};
-                border-radius: 8px;
-            }}
-        """)
+        self._update_grid_panel_style()
         
         # Grid container
         self.grid_container = QWidget()
@@ -6084,6 +6167,30 @@ class ModernMainWindow(QMainWindow):
         layout.addWidget(self.grid_scroll)
         
         return panel
+
+    def _update_grid_panel_style(self) -> None:
+        """Apply theme style for grid area and pagination controls."""
+        if not hasattr(self, 'grid_scroll'):
+            return
+        colors = get_theme_colors()
+        self.grid_scroll.setStyleSheet(
+            f"QScrollArea {{ background-color: {colors['window']}; border: 2px solid {colors['border']}; border-radius: 8px; }}"
+        )
+        if hasattr(self, 'pagination_label'):
+            self.pagination_label.setStyleSheet(f"color: {colors['text']};")
+        for btn_name in ('prev_page_btn', 'next_page_btn'):
+            if hasattr(self, btn_name):
+                btn = getattr(self, btn_name)
+                btn.setStyleSheet(
+                    _build_button_style(
+                        colors['button'],
+                        text_color=colors['button_text'],
+                        hover_color=colors['alternate_base'],
+                        padding="6px 10px",
+                        font_size=12,
+                        radius=6,
+                    )
+                )
     
     def _build_actions_panel(self) -> QWidget:
         """Erstelle Schnellaktionen-Panel."""
@@ -7952,6 +8059,8 @@ class ModernMainWindow(QMainWindow):
             self._merge_target_group_id = new_group_id
             self._merge_group_count = len(group_ids) + len(single_file_ids)
             self._merge_progress_dialog = progress
+            self._merge_progress_update_ts = 0.0
+            self._merge_progress_last_signature = None
             self._merge_worker = MergeGroupRatingWorker(self.db_path, new_group_id, self.top_n)
             self._merge_worker.progress.connect(self._on_merge_progress)
             self._merge_worker.finished.connect(self._on_merge_finished)
@@ -7981,8 +8090,25 @@ class ModernMainWindow(QMainWindow):
     def _on_merge_progress(self, pct: int, step: int, label: str, detail: str, sub_current: int, sub_total: int) -> None:
         if not self._merge_progress_dialog:
             return
+        clamped_pct = max(0, min(100, int(pct)))
+        signature = (clamped_pct, int(step), label, detail, int(sub_current), int(sub_total))
+        now = time.monotonic()
+        is_terminal = clamped_pct >= 100
+        if (
+            self._merge_progress_last_signature == signature
+            and not is_terminal
+        ):
+            return
+        if (
+            not is_terminal
+            and now - self._merge_progress_update_ts < 0.08
+        ):
+            return
+        self._merge_progress_update_ts = now
+        self._merge_progress_last_signature = signature
+
         self._merge_progress_dialog.set_step(step)
-        self._merge_progress_dialog.set_progress(max(0, min(100, int(pct))), label)
+        self._merge_progress_dialog.set_progress(clamped_pct, label)
         self._merge_progress_dialog.set_sub_progress(detail, sub_current, sub_total)
 
     def _on_merge_finished(self, rated_ok: bool) -> None:
@@ -7992,6 +8118,7 @@ class ModernMainWindow(QMainWindow):
         if self._merge_progress_dialog:
             self._merge_progress_dialog.close()
             self._merge_progress_dialog = None
+        self._merge_progress_last_signature = None
 
         self.group_list.setEnabled(True)
         self._checked_group_ids.clear()
@@ -8018,6 +8145,7 @@ class ModernMainWindow(QMainWindow):
         if self._merge_progress_dialog:
             self._merge_progress_dialog.close()
             self._merge_progress_dialog = None
+        self._merge_progress_last_signature = None
         self.group_list.setEnabled(True)
         self._checked_group_ids.clear()
         self._update_merge_groups_button_state()
