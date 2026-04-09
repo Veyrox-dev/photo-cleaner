@@ -157,10 +157,11 @@ photo_cleaner/
 
 ## Versioning
 
-Current version: **0.8.2**
-- v0.8.2: Algorithm Improvements (Eye Quality, Gaze, Head Pose)
-- v0.7.0: Performance Speedup (9.19x faster)
-- v0.6.0: Data-Driven Foundation (Migrations, CI/CD)
+Current version: **0.8.5**
+- v0.8.5: MSI reliability, review UX hotfixes, cloud-config packaging
+- v0.8.2: Algorithm improvements (eye quality, gaze, head pose)
+- v0.7.0: Performance speedup (9.19x faster)
+- v0.6.0: Data-driven foundation (migrations, CI/CD)
 
 See [CHANGELOG.md](../CHANGELOG.md) for full history.
 
@@ -169,3 +170,4 @@ See [CHANGELOG.md](../CHANGELOG.md) for full history.
 - [Tech Documentation](../tech/) - Implementation details
 - [Standards](../standards/) - Quality metrics and audits
 - [Guides](../guides/) - How-to documentation
+- [Week 4 Plan](WEEK4_ONBOARDING_SMART_FILTER.md) - Onboarding, smart filters, quota messaging

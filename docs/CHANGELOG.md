@@ -1,5 +1,37 @@
 # PhotoCleaner - Changelog
-> Version 0.8.4 - Architecture Refactoring (Slice 6) + MSI Distribution Track (2026-04-04)
+> Version 0.8.5 - MSI Reliability + Review UX Hotfixes (2026-04-09)
+
+## [Unreleased] - MSI Reliability + Review UX Hotfixes (2026-04-09) 🔧
+
+### 🧩 Review UI Clarity (Gruppenliste)
+- Gruppenliste auf kompakte Anzeige umgestellt: "Gruppe 1 • X Bilder" statt technischer Group-IDs
+- Offene Gruppen visuell klar rot hervorgehoben, fertig entschiedene Gruppen gruen
+- Status-Text in der Liste verkuerzt (z. B. "Offen" statt laengerer Formulierung)
+
+### 🗂️ Cache & Permissions (MSI Runtime)
+- Kritischer MSI-Pfadfehler behoben: Thumbnail-Cache schreibt nicht mehr unter `C:\Program Files\PhotoCleaner\.cache`
+- Cache-Ziel auf benutzerschreibbaren App-Cache umgestellt (`AppConfig.get_cache_dir()/thumbnails`)
+- Ergebnis: Kein `WinError 5 Zugriff verweigert` mehr beim Thumbnail-Aufbau auf installierten Systemen
+
+### ☁️ Supabase Cloud Config im MSI
+- `scripts/build_msi.ps1` erweitert: liest `SUPABASE_PROJECT_URL` + `SUPABASE_ANON_KEY` aus Build-Umgebung oder Root-`.env`
+- Build injiziert automatisch `dist/PhotoCleaner/.env` vor dem WiX-Packaging
+- Endnutzer muessen keine manuelle `cloud.env` mehr anlegen, wenn der Build korrekt konfiguriert wurde
+- Guardrail: nur `ANON_KEY` im Client-Paket; Service-Role-Key bleibt ausgeschlossen
+
+### 📚 Dokumentation
+- `docs/guides/MSI_BUILD.md` um Build-Time-Cloud-Config und Beispiel-Workflow ergaenzt
+- `.env.example` klarer dokumentiert (Template/Fallback-Hinweise)
+
+### ✅ Build-Validierung
+- Rebuild in korrekter Reihenfolge verifiziert: `build.bat` -> `scripts/build_msi.ps1`
+- Frisches MSI erfolgreich erzeugt (`PhotoCleaner-0.8.5-x64.msi`), inkl. Cloud-Config-Injection im Dist-Payload
+
+### 🧪 Week-3 Weiterlauf: Delete/Export Sicherheitsregressionen
+- `tests/unit/test_export_delete_workflow_controller.py` erweitert (Happy-Path, Cancel-Flow, Fehler-Trunkierung, Default-Fehlertext)
+- Zielgerichtete Regression-Suite erfolgreich: 11/11 Tests gruen
+- Neue Integrationsabdeckung: `tests/integration/test_export_delete_integration.py` (Exporter + mark_deleted + Locked-File-Skip + Streaming-Partial-Failure)
+- Integrationssuite erfolgreich: 2/2 Tests gruen
 
 ## [Unreleased] - Week 1 Trust Foundation Complete + UX Overhaul (Phase C–F) (2026-04-08) 🎉
 

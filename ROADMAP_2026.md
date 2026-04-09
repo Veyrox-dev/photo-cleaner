@@ -1,6 +1,6 @@
 ﻿# PhotoCleaner – Roadmap 2026
 
-**Stand:** 07. April 2026 · Version 0.8.4
+**Stand:** 09. April 2026 · Version 0.8.5
 **Ziel:** v1.0.0 Launch Q3/Q4 2026
 **Launch-Readiness:** 7.6 / 10 → ein externes Gate offen
 
@@ -38,7 +38,7 @@ Protokoll: `docs/guides/MSI_BUILD.md` · Script: `scripts/smoke_test_protocol.py
 
 ## 📋 Nächste Schritte (kein Launch-Blocker, aber sinnvoll)
 
-### Status-Delta (2026-04-08)
+### Status-Delta (2026-04-09)
 
 **✅ Woche-1-Trust-Foundation VOLLSTÄNDIG ABGESCHLOSSEN** (2026-04-08)
 
@@ -51,14 +51,15 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 
 **Validierung:** 15/15 Tests grün, Smoke-Test erfolgreich, 0 Syntax-Fehler.
 
-**Nächster Schritt:** MSI-Retest mit neuer UX, Performance-Baseline, Launch-Prep Punkt 3 (Lizenz-Durchlauf E2E).
+**Nächster Schritt:** Week-4-Kickoff (Onboarding + Smart Filter + Quota/Upgrade-Messaging) gemäß `docs/architecture/WEEK4_ONBOARDING_SMART_FILTER.md`.
 
 ### Kurzfristige Bugfix-Liste (2026-04-09)
 
 - ✅ Gruppenliste kompakter: "Gruppe 1 • X Bilder", ohne SG-/Null-Prefix
 - ✅ Gruppenstatus visuell klar: fertig = grün, offen = rot
 - ✅ MSI-Permissions-Fix: Thumbnail-Cache in benutzerschreibbarem Cache-Ordner statt `Program Files`
-- ✅ MSI-Cloud-Config-Fallback: Supabase-Werte zusätzlich aus `%APPDATA%\PhotoCleaner\cloud.env` und `%PROGRAMDATA%\PhotoCleaner\cloud.env`
+- ✅ MSI-Cloud-Config ohne manuellen Endnutzer-Schritt: Build injiziert `SUPABASE_PROJECT_URL` + `SUPABASE_ANON_KEY` automatisch in den Installer-Payload
+- ✅ Build/Release-Doku aktualisiert: Cloud-Config-Handling in `docs/guides/MSI_BUILD.md` dokumentiert
 - ▶ Verbleibend (nicht-blockierend): TensorFlow-Importdauer/GPU-Enumeration beobachten
 - ▶ Verbleibend (nicht-blockierend): TensorFlow Retracing-Warnungen im Analysepfad reduzieren
 - ▶ Verbleibend (optional): MediaPipe-Thread-Import robuster/fallback-schneller machen
@@ -167,13 +168,14 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 
 ### Woche 3
 - ✅ Merge/Split-Flow inklusive Persistenz und Recovery implementiert
-- ▶ Undo-/Action-Log-Verhalten finalisieren
-- ▶ Sicherheitsregressionen für Delete/Export ergänzen
+- ✅ Undo-/Action-Log-Verhalten finalisiert (inkl. UI-Rueckmeldungen/History-Beschreibungen)
+- ✅ Sicherheitsregressionen für Delete/Export ergänzt (Controller + Integrationsabdeckung)
 
 ### Woche 4
-- Onboarding, Smart Filter und Quota-/Upgrade-Messaging umsetzen
-- Safe-Review-Hinweise für Erstnutzer integrieren
-- First-run-Test auf sauberem Windows-Setup
+- ▶ Onboarding, Smart Filter und Quota-/Upgrade-Messaging umsetzen
+- ▶ Safe-Review-Hinweise für Erstnutzer integrieren
+- ▶ First-run-Test auf sauberem Windows-Setup
+- 📄 Umsetzungsplan: `docs/architecture/WEEK4_ONBOARDING_SMART_FILTER.md`
 
 ### Woche 5
 - Reproduzierbarer Benchmark-Flow für 1k/5k/10k
