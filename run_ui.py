@@ -57,8 +57,8 @@ _DLL_DIR_HANDLES = []
 
 def parse_args():
     p = argparse.ArgumentParser(description="Photo Cleaner - Moderne deutsche UI")
-    p.add_argument("--input", type=Path, help="Input-Ordner (überspringt Dialog)")
-    p.add_argument("--output", type=Path, help="Output-Ordner (überspringt Dialog)")
+    p.add_argument("--input", type=Path, help="Input-Ordner (ueberspringt Dialog)")
+    p.add_argument("--output", type=Path, help="Output-Ordner (ueberspringt Dialog)")
     p.add_argument("--db", type=Path, help="Optionaler DB-Pfad (Standard: photo_cleaner.db oder Output-Ordner)")
     return p.parse_args()
 
@@ -403,7 +403,7 @@ def main():
         db_path = AppConfig.get_db_dir() / "photo_cleaner.db"
 
     # ====================================================================
-    # PHASE 1: SOFORT QApplication starten (fuer fruehen Splash)
+    # PHASE 1: SOFORT QApplication starten (für fruehen Splash)
     # ====================================================================
     from PySide6.QtWidgets import QApplication, QMessageBox
     app = QApplication(sys.argv)
@@ -648,6 +648,14 @@ def main():
 
 
 if __name__ == "__main__":
+    # Required for PyInstaller + multiprocessing on Windows (spawn mode).
+    try:
+        import multiprocessing
+
+        multiprocessing.freeze_support()
+    except Exception:
+        pass
+
     try:
         main()
     except KeyboardInterrupt:

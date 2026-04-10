@@ -51,6 +51,30 @@ try:
     pillow_heif_datas, pillow_heif_binaries, pillow_heif_hiddenimports = collect_all('pillow_heif')
 except Exception:
     pillow_heif_datas, pillow_heif_binaries, pillow_heif_hiddenimports = [], [], []
+setuptools_datas = collect_data_files('setuptools')
+distutils_hiddenimports = collect_submodules('setuptools._distutils')
+# PyInstaller may miss compiler namespace packages under setuptools._distutils.compilers.
+distutils_compiler_hiddenimports = [
+    'setuptools._distutils.compilers',
+    'setuptools._distutils.compilers.C',
+    'setuptools._distutils.compilers.C.base',
+    'setuptools._distutils.compilers.C.errors',
+    'setuptools._distutils.compilers.C.cygwin',
+    'setuptools._distutils.compilers.C.msvc',
+    'setuptools._distutils.compilers.C.unix',
+    'setuptools._distutils.compilers.C.zos',
+]
+
+tensorflow_hiddenimports = collect_submodules('tensorflow')
+keras_hiddenimports = collect_submodules(
+    'keras',
+    filter=lambda name: 'backend.torch' not in name,
+)
+mediapipe_hiddenimports += collect_submodules(
+    'mediapipe',
+    filter=lambda name: 'genai.converter' not in name,
+)
+mtcnn_hiddenimports = collect_submodules('mtcnn')
 
 # Explicitly collect Haar Cascade XMLs from cv2 (collect_data_files() can miss these)
 haar_xml_files = []
@@ -79,13 +103,13 @@ except Exception:
 a = Analysis(
     ['run_ui.py'],
     pathex=['.', 'src'],
-    binaries=tf_binaries + tf_extra_binaries + scipy_binaries + mediapipe_binaries + pillow_heif_binaries,
+    binaries=tf_binaries + tf_extra_binaries + scipy_binaries + mediapipe_binaries + pillow_heif_binaries + collect_dynamic_libs('mediapipe') + collect_dynamic_libs('mtcnn'),
     datas=[
         # Assets (Icons, Splash Screen)
         ('assets/*.ico', 'assets'),
         ('assets/*.png', 'assets'),
         ('assets/third_party/vc_runtime/*.dll', '.'),
-    ] + photo_cleaner_datas + collect_data_files('mtcnn', includes=['data/*.npy']) + haar_xml_files + scipy_datas + mediapipe_datas + pillow_heif_datas,
+    ] + photo_cleaner_datas + collect_data_files('mtcnn', includes=['data/*.npy']) + haar_xml_files + scipy_datas + mediapipe_datas + pillow_heif_datas + setuptools_datas,
     hiddenimports=[
         # === NUMPY (MUST BE FIRST - Critical for proper initialization) ===
         'numpy',
@@ -160,10 +184,10 @@ a = Analysis(
         'platformdirs.windows',
         'platformdirs.unix',
         'platformdirs.macos',
-    ] + collect_submodules('photo_cleaner') + scipy_hiddenimports + mediapipe_hiddenimports + pillow_heif_hiddenimports,
+    ] + collect_submodules('photo_cleaner') + scipy_hiddenimports + mediapipe_hiddenimports + pillow_heif_hiddenimports + mtcnn_hiddenimports + tensorflow_hiddenimports + keras_hiddenimports + distutils_hiddenimports + distutils_compiler_hiddenimports,
     hookspath=['build_hooks'],
     hooksconfig={},
-    runtime_hooks=[],  # REMOVED - runtime hooks cause numpy import failures
+    runtime_hooks=['build_hooks/hook_multiprocessing_fix.py', 'build_hooks/runtime_setuptools_distutils.py'],
     excludes=[
         # Exclude unnecessary modules for faster startup
         'tkinter',

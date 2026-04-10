@@ -5,8 +5,8 @@ This module replaces multiprocessing_manager.py with a robust,
 lock-free implementation using Queue-based job distribution.
 
 Key improvements:
-1. NO shared state or locks → Zero contention
-2. FIFO result ordering → Correct group-based scoring
+1. NO shared state or locks -> Zero contention
+2. FIFO result ordering -> Correct group-based scoring
 3. Graceful shutdown with SENTINEL pattern
 4. Per-worker exception handling
 5. Optional progress tracking (separate mechanism)

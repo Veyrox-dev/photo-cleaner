@@ -145,7 +145,9 @@ def ensure_runtime_dependencies(logger) -> RuntimeDependencySnapshot:
                     import mediapipe as mp_module
 
                     result_queue.put(("success", mp_module, drawing_disabled))
-                except (ImportError, OSError, RuntimeError, AttributeError) as error:
+                except Exception as error:
+                    # Catch all import failures (including KeyError) so the parent
+                    # thread always receives a deterministic result.
                     result_queue.put(("error", error, False))
 
             import_thread = threading.Thread(target=_import_mediapipe, daemon=True)
