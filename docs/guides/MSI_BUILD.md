@@ -82,15 +82,19 @@ Output:
    - PRO pruefen: nach Aktivierung ist die gleiche Verarbeitung ohne Bildlimit moeglich
    - Kompatibilitaet pruefen: bestehende Alt-Lizenzdaten mit Enterprise-Herkunft werden als PRO akzeptiert
 
-5. Upgrade
+5. Delete-Safety
+   - SAFE pruefen: Delete fuer Nicht-Duplikate bleibt blockiert
+   - Gesperrte Dateien pruefen: Batch-Delete ueberspringt gelockte Dateien nachvollziehbar
+
+6. Upgrade
    - Neue MSI-Version installieren
    - Pruefen: MajorUpgrade greift, alte Version wird ersetzt
 
-6. Uninstall
+7. Uninstall
    - Deinstallation ueber Windows Apps
    - Pruefen: Startmenue-Shortcut entfernt
 
-7. Log-Hinweis
+8. Log-Hinweis
    - Bei Fehlern Installer- und App-Logs in `results/` oder QA-Protokoll dokumentieren
 
 ## Hinweise

@@ -56,6 +56,9 @@ from photo_cleaner.pipeline.worker_process import analyze_image_worker
 
 logger = logging.getLogger(__name__)
 
+_WORKER_ANALYZER: Optional[QualityAnalyzer] = None
+_WORKER_ANALYZER_KEY: Optional[tuple[bool, float, float]] = None
+
 
 def _env_int(name: str, default: int, minimum: int) -> int:
     try:
@@ -63,6 +66,35 @@ def _env_int(name: str, default: int, minimum: int) -> int:
         return max(minimum, value)
     except (TypeError, ValueError):
         return default
+
+
+def _reset_worker_analyzer_cache() -> None:
+    """Reset cached worker analyzer state (used in tests and process teardown)."""
+    global _WORKER_ANALYZER, _WORKER_ANALYZER_KEY
+    _WORKER_ANALYZER = None
+    _WORKER_ANALYZER_KEY = None
+
+
+def _get_worker_quality_analyzer(config: "QualityAnalysisConfig") -> QualityAnalyzer:
+    """Reuse one QualityAnalyzer per worker process to avoid repeated TF/MTCNN setup."""
+    global _WORKER_ANALYZER, _WORKER_ANALYZER_KEY
+
+    analyzer_key = (
+        bool(config.use_face_mesh),
+        float(config.min_detection_confidence),
+        float(config.min_tracking_confidence),
+    )
+
+    if _WORKER_ANALYZER is None or _WORKER_ANALYZER_KEY != analyzer_key:
+        os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+        _WORKER_ANALYZER = QualityAnalyzer(
+            use_face_mesh=config.use_face_mesh,
+            min_detection_confidence=config.min_detection_confidence,
+            min_tracking_confidence=config.min_tracking_confidence,
+        )
+        _WORKER_ANALYZER_KEY = analyzer_key
+
+    return _WORKER_ANALYZER
 
 # Log the multiprocessing configuration at module load time
 if USE_NEW_MULTIPROCESSING:
@@ -228,7 +260,7 @@ class ParallelQualityAnalyzer:
         else:
             max_workers = min(max(1, max_workers), cpu_cores - 1)
 
-        worker_cap = _env_int("PHOTOCLEANER_PARALLEL_MAX_WORKERS", max(1, cpu_cores - 1), 1)
+        worker_cap = _env_int("PHOTOCLEANER_PARALLEL_MAX_WORKERS", min(4, max(1, cpu_cores - 1)), 1)
         if max_workers > worker_cap:
             logger.info(
                 "Parallel guardrail: capping workers from %s to %s via PHOTOCLEANER_PARALLEL_MAX_WORKERS",
@@ -567,8 +599,8 @@ def _analyze_image_for_parallel(image_path: Path, config: QualityAnalysisConfig)
     Processes a single image through the complete analysis pipeline.
     Designed to run in worker process - no shared state.
     
-    IMPORTANT: Creates a new QualityAnalyzer instance in each worker process to avoid
-    pickle issues with cv2.CascadeClassifier objects.
+    IMPORTANT: Reuses one QualityAnalyzer per worker process to avoid repeated
+    TensorFlow/MTCNN initialization and retracing overhead.
     
     Args:
         image_path: Path to image
@@ -578,13 +610,7 @@ def _analyze_image_for_parallel(image_path: Path, config: QualityAnalysisConfig)
         Dict with analysis result
     """
     try:
-        # Create a new QualityAnalyzer instance in this worker process
-        # (can't reuse from main process due to cv2.CascadeClassifier pickle issues)
-        quality_analyzer = QualityAnalyzer(
-            use_face_mesh=config.use_face_mesh,
-            min_detection_confidence=config.min_detection_confidence,
-            min_tracking_confidence=config.min_tracking_confidence,
-        )
+        quality_analyzer = _get_worker_quality_analyzer(config)
         
         # Direct call to quality analyzer's analyze_image method
         quality_result = quality_analyzer.analyze_image(image_path)

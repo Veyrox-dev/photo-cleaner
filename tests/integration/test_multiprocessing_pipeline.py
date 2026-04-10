@@ -35,6 +35,8 @@ from photo_cleaner.pipeline.scorer import GroupScorer
 from photo_cleaner.pipeline.parallel_quality_analyzer import (
     ParallelQualityAnalyzer,
     _analyze_image_for_parallel,
+    _get_worker_quality_analyzer,
+    _reset_worker_analyzer_cache,
     QualityAnalysisConfig,
 )
 
@@ -490,6 +492,74 @@ def test_parallel_guardrail_worker_cap_applied(monkeypatch):
     )
 
     assert observed["max_workers"] == 2
+
+
+def test_parallel_guardrail_default_worker_cap_is_four(monkeypatch):
+    """Without env override, the default process worker cap should be 4."""
+
+    class MockQualityAnalyzer:
+        def analyze_image(self, path: Path):
+            from photo_cleaner.pipeline.analysis import QualityResult
+
+            return QualityResult(path=path, overall_sharpness=0.42, error=None)
+
+        def analyze_batch(self, paths):
+            return [self.analyze_image(p) for p in paths]
+
+    analyzer = MockQualityAnalyzer()
+    parallel = ParallelQualityAnalyzer(analyzer)
+    monkeypatch.delenv("PHOTOCLEANER_PARALLEL_MAX_WORKERS", raising=False)
+
+    from photo_cleaner.pipeline.analysis import QualityResult
+    observed = {"max_workers": None}
+
+    def fake_v2(*args, **kwargs):
+        observed["max_workers"] = kwargs.get("max_workers")
+        paths = kwargs["image_paths"]
+        return [QualityResult(path=p, overall_sharpness=0.1, error=None) for p in paths]
+
+    monkeypatch.setattr(parallel, "_analyze_batch_parallel_v2", fake_v2)
+
+    parallel.analyze_batch_parallel(
+        [Path("a.jpg"), Path("b.jpg"), Path("c.jpg"), Path("d.jpg"), Path("e.jpg")],
+        max_workers=12,
+        use_new_implementation=True,
+    )
+
+    assert observed["max_workers"] == 4
+
+
+def test_worker_analyzer_reused_with_same_config(monkeypatch):
+    """Parallel worker helper should reuse one analyzer per worker process/config."""
+
+    class FakeQualityAnalyzer:
+        init_calls = 0
+
+        def __init__(self, use_face_mesh=True, min_detection_confidence=0.5, min_tracking_confidence=0.5):
+            type(self).init_calls += 1
+            self.use_face_mesh = use_face_mesh
+
+        def analyze_image(self, image_path: Path):
+            from photo_cleaner.pipeline.analysis import QualityResult
+
+            return QualityResult(path=image_path, overall_sharpness=0.5, error=None)
+
+    class DummyAnalyzer:
+        use_face_mesh = True
+        _min_detection_confidence = 0.5
+        _min_tracking_confidence = 0.5
+
+    _reset_worker_analyzer_cache()
+    monkeypatch.setattr("photo_cleaner.pipeline.parallel_quality_analyzer.QualityAnalyzer", FakeQualityAnalyzer)
+
+    config = QualityAnalysisConfig(DummyAnalyzer(), scorer=None)
+    first = _get_worker_quality_analyzer(config)
+    second = _get_worker_quality_analyzer(config)
+
+    assert first is second
+    assert FakeQualityAnalyzer.init_calls == 1
+
+    _reset_worker_analyzer_cache()
 
 
 # ============================================================================

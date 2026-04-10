@@ -87,8 +87,8 @@ class ExportDeleteWorkflowController:
             level="warning",
             title="Export Teilweise Fehlgeschlagen",
             message=(
-                f"{success_count} erfolgreich\\n"
-                f"{failure_count} Fehler\\n\\n"
+                f"✓ {success_count} erfolgreich\\n"
+                f"✗ {failure_count} Fehler\\n\\n"
                 f"{error_text}\\n\\nZIP: {archive_path}"
             ),
         )

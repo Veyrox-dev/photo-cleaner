@@ -32,7 +32,9 @@ def main() -> None:
     print("4) Check logs for: [INIT], [DEPS], [WARMUP]")
     print("5) FREE-Lizenzfall pruefen: >250 Bilder blockiert mit Upgrade-Hinweis")
     print("6) PRO-Lizenzfall pruefen: gleiche Bibliothek ohne Limit verarbeitbar")
-    print("7) Submit report with timestamps + any errors")
+    print("7) Delete-Safety pruefen: SAFE_MODE blockiert Delete fuer Nicht-Duplikate")
+    print("8) Delete-Safety pruefen: gesperrte Dateien werden beim Batch-Delete uebersprungen")
+    print("9) Submit report with timestamps + any errors")
     print("")
 
     if exe_path.exists():

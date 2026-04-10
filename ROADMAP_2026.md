@@ -107,8 +107,8 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 - ▶ Update-Logik Phase B und C als explizite Folgephasen in Launch-Vorbereitung aufgenommen (nicht-blockierend)
 - ✅ Week-7 Multiprocessing-Ausbau umgesetzt: produktiver Rating/Merge-Pfad nutzt ParallelQualityAnalyzer mit Guardrails (Min-Images-Schwelle, Worker-Cap, Timeout, Retry/Fallback)
 - ✅ Week-7 Regressionen ergänzt: Guardrail-Tests grün (Retry, Längenmismatch-Fallback, Min-Images, Worker-Cap)
-- ✅ A/B-Profiling auf Realdaten durchgefuehrt: Thread-Pfad 379.46s, Process-Parallel default 155.85s, Process-Parallel getuned (4 Worker Cap) 141.05s
-- ▶ Ergebnis: getunter Process-Parallel-Pfad klar besser als ungetunter Process-Parallel-Pfad, aber noch leicht ueber dem besten historischen Thread-Lauf (137.57s)
+- ✅ A/B-Profiling auf Realdaten durchgefuehrt: Thread-Pfad 379.46s, Process-Parallel default 155.85s, Process-Parallel getuned (4 Worker Cap) 141.05s, finaler Default-Lauf nach Worker-Reuse 138.63s
+- ▶ Ergebnis: fester Default mit Worker-Cap=4 + Analyzer-Reuse pro Worker schliesst fast zum besten historischen Thread-Lauf auf (138.63s vs. 137.57s, ~0.8% Differenz) bei deutlich geringerem Peak-Memory
 
 ### 1 · MSI Smoke-Test auf Virgin Windows
 Installer (`.msi`) auf einer frischen Maschine validieren: Install → Upgrade → Uninstall.
@@ -258,16 +258,15 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 ### Woche 7
 - ▶ Stabilisierung + Regressionstests auf optimiertem Analysepfad (fortlaufend)
 - ✅ Multiprocessing-Track ausgebaut: Queue/Worker-Flow gehaertet, Guardrails erweitert, Fallback-Pfade regressionssicher gemacht
-- ✅ Realdaten-Tuning abgeschlossen: Worker-Cap=4 aktuell beste Process-Parallel-Konfiguration auf dem Input-Ordner
-- Frozen-Build-Validierung und Review-Polish
-- FREE/PRO Lizenz-Sanity und Delete-Safety final prüfen
-- Optional: Progressive Results in der Analyse starten (nur wenn Week-6-Ziele stabil)
+- ✅ Realdaten-Tuning abgeschlossen: Worker-Cap=4 + Analyzer-Reuse pro Worker ist aktuell beste Process-Parallel-Konfiguration auf dem Input-Ordner
+- ▶ Frozen-Build-Validierung und Review-Polish (manueller EXE/MSI-Smoke-Test weiter offen)
+- ✅ FREE/PRO Lizenz-Sanity und Delete-Safety final geprueft (Fokus-Regressionen gruen; Smoke-Checkliste erweitert)
+- 📌 Progressive Results bleibt bewusst nach Launch im v1.1-Backlog und ist kein Week-7-/v1.0-Ziel
 - Update-Logik Phase C Entscheidungsvorlage erstellen (MSI-only vs. MSI+MSIX)
 
 ### Woche 8
 - Pilot-Release-Readiness
 - Support-Playbook für Gruppierungsprobleme
-- KPI-Tracking für Trust, Korrekturen und Durchsatz
 - Release-Entscheidung auf Basis der A/B-Benchmark-Deltas und Smoke-Test-Status
 
 ### Team-Aufteilung (Empfehlung)

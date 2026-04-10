@@ -154,7 +154,7 @@ class PhotoCleanerPipeline:
             min_detection_confidence=self.config.min_detection_confidence,
         )
         self.scorer = GroupScorer(top_n=self.config.top_n)
-        self._use_process_parallel = os.getenv("PHOTOCLEANER_USE_PROCESS_PARALLEL", "0").lower() in ("1", "true", "yes")
+        self._use_process_parallel = os.getenv("PHOTOCLEANER_USE_PROCESS_PARALLEL", "1").lower() in ("1", "true", "yes")
         self._parallel_quality_analyzer: Optional[ParallelQualityAnalyzer] = None
         if self._use_process_parallel:
             self._parallel_quality_analyzer = ParallelQualityAnalyzer(self.quality_analyzer, scorer=self.scorer)
