@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: photo-cleaner
-Version: 0.5.5
+Version: 0.8.5
 Summary: Intelligente Fotoverwaltung mit Auto-Auswahl, Online License System, Image Cache: Duplikate finden, Face Mesh Analyse, Modern UI, sichere Löschung
 Author: PhotoCleaner Team
 License: Proprietary
@@ -9,10 +9,9 @@ Classifier: Development Status :: 4 - Beta
 Classifier: Intended Audience :: End Users/Desktop
 Classifier: License :: Other/Proprietary License
 Classifier: Programming Language :: Python :: 3.12
-Classifier: Programming Language :: Python :: 3.13
 Classifier: Topic :: Multimedia :: Graphics
 Classifier: Topic :: Desktop Environment :: File Managers
-Requires-Python: >=3.12
+Requires-Python: <3.13,>=3.12
 Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: Pillow>=10.2.0
@@ -33,15 +32,13 @@ Dynamic: license-file
 
 **Intelligente Foto-Verwaltung mit Duplikaterkennung und automatischer Qualitätsbewertung**
 
-[![Version](https://img.shields.io/badge/version-0.5.6-blue.svg)](https://github.com/your-repo/photo-cleaner)
+[![Version](https://img.shields.io/badge/version-0.8.4-green.svg)](https://github.com/your-repo/photo-cleaner)
 [![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Proprietary-lightgrey.svg)](../LICENSE)
-[![Status](https://img.shields.io/badge/status-production--ready-success.svg)]()
+[![Status](https://img.shields.io/badge/status-beta--testing-yellow.svg)]()
+[![Performance](https://img.shields.io/badge/performance-9.19x_faster-brightgreen.svg)]()
 
-> Struktur-Update (2026-01-27):
-> - Alle Markdown-Dokumente liegen jetzt unter `docs/` (inkl. README & CHANGELOG).
-> - Docker-Artefakte liegen unter `Docker/`.
-> - Tests wurden zentralisiert unter `tests/` (Archivtests unter `tests/archive/cleanup_2026_01_05/`).
+> **v0.8.4 Architecture Refactoring (Apr 4, 2026)**: Slice 6 Workflow Controllers, MSI Distribution Track (WiX v4).
 
 ---
 
@@ -72,11 +69,11 @@ PhotoCleaner ist ein professionelles Werkzeug zur intelligenten Verwaltung groß
 
 ### Warum PhotoCleaner?
 
-- ✅ **Intelligent**: Gesichtserkennung bewertet Augen, Blick und Kopfhaltung
-- ✅ **Schnell**: Optimierte Pipeline verarbeitet 10.000 Bilder in 8-18 Minuten (40-50% schneller durch MTCNN-Optimierung!)
+- ✅ **Intelligent**: Gesichtserkennung bewertet Augen, Blick, Kopfhaltung und Lächeln (v0.8.3!)
+- ✅ **Schnell**: 9.19x optimierte Pipeline verarbeitet 5.000 Bilder in 2.1 Minuten (v0.7.0!)
 - ✅ **Sicher**: Dreistufiges Mode-System (SAFE/REVIEW/CLEANUP) mit Papierkorb-Integration
 - ✅ **Flexibel**: CLI, UI und Python API für alle Anwendungsfälle
-- ✅ **Production-Ready**: Battle-tested, vollständig dokumentiert, automatische File-Validierung
+- ✅ **Beta-Testing**: Stabilisierung nach Pipeline-Fixes, Feedback willkommen
 
 ### Typische Anwendungsfälle
 
@@ -101,12 +98,15 @@ PhotoCleaner ist ein professionelles Werkzeug zur intelligenten Verwaltung groß
 | **Results UI** | Interaktive Vorschau mit Thumbnails | ✅ Production |
 | **Mode System** | SAFE/REVIEW/CLEANUP für kontrollierten Ablauf | ✅ Production |
 | **File Locking** | Schutz vor versehentlichem Löschen | ✅ Production |
-| **Parallel Processing** | ProcessPoolExecutor für schnelle Indexierung | ✅ Production |
+| **Parallel Processing** | ThreadPoolExecutor & ProcessPool für schnelle Verarbeitung (v7.0.0: 9.19x speedup!) | ✅ Production |
 | **Progress Tracking** | Detaillierte Fortschrittsanzeige | ✅ Production |
 | **License System** | Online-Validierung mit Device Binding & Offline Grace Period | ✅ Production |
 | **Image Cache** | Persistentes Caching von Analyse-Ergebnissen (2-8x Speedup) | ✅ Production |
 | **Internationalization** | Deutsch & Englisch mit echtzeitlichem Sprachenwechsel | ✅ Production |
 | **Modern UI** | Moderne Qt6-Benutzeroberfläche mit Light/Dark Theme | ✅ Production |
+| **Database Migrations** | Sichere Schema-Evolution mit Rollback-Support (v0.6.0) | ✅ Production |
+| **GitHub Actions CI/CD** | Automatisierte Tests, Security Scan, Multi-Platform Build (v0.6.0) | ✅ Production |
+| **Performance Profiling** | Baseline Tracking & Regression Detection (v0.6.0) | ✅ Production |
 
 ### Technische Highlights
 
@@ -115,6 +115,8 @@ PhotoCleaner ist ein professionelles Werkzeug zur intelligenten Verwaltung groß
 - **Bucketed Comparison**: Effiziente Duplicate Detection
 - **Comprehensive Guards**: Locks, Modes, Status History
 - **OpenCV + MediaPipe**: State-of-the-art Computer Vision
+- **Database Migrations**: 4 sichere Migrationen (V001-V004) mit Checksum-Validierung
+- **CI/CD Infrastructure**: 4 GitHub Actions Workflows, 6 Test Environments, 9 Quality Tools
 
 ---
 
@@ -356,7 +358,7 @@ python -m photo_cleaner.ui.modern_window
 - 🎨 4 Themes: Dark, Light, System, High-Contrast
 - ⚡ Schnellere Navigation mit Keyboard Shortcuts
 
-📖 **Dokumentation:** `docs/MODERN_UI.md` und `docs/MODERN_UI_QUICKSTART.md`
+📖 **Dokumentation:** siehe [guides/USER_MANUAL.md](guides/USER_MANUAL.md) und [guides/FAQ.md](guides/FAQ.md)
 
 #### 🖥️ Classic UI (Legacy)
 
@@ -444,58 +446,86 @@ python run_final_pipeline.py ~/Pictures --hash-dist 3
 python run_final_pipeline.py ~/Pictures --hash-dist 8
 ```
 
+**EXE-Logs (Windows):** `%APPDATA%\\PhotoCleaner\\PhotoCleaner.log`
+
+**MTCNN/TensorFlow DLL-Fehler:**
+- Stelle sicher, dass der komplette Ordner `dist\\PhotoCleaner\\` kopiert wurde (nicht nur die EXE)
+- Logfile pruefen: `%APPDATA%\\PhotoCleaner\\PhotoCleaner.log`
+
 ---
 
 ## 📊 Versionen & Updates
 
-**Aktuelle Version:** 0.5.6 (Performance & Stability)  
-**Release:** Februar 2026  
-**Status:** Production-Ready
+**Aktuelle Version:** 0.8.4 (Architecture Refactoring + MSI Distribution)  
+**Release:** April 4, 2026  
+**Status:** Beta-Testing
 
-### Version 0.5.6 Highlights (Neuestes Update)
+### Version 0.8.4 Highlights (Latest Release)
 
-- ✅ **40-50% schneller**: MTCNN-Downscaling (6-10x Speedup bei 30MP-Bildern)
-- ✅ EXIF-Caching eliminiert redundante File-Opens
-- ✅ Triple-Layer File-Validierung (verhindert alle "File not found" Fehler)
-- ✅ Automatisches DB-Cleanup für non-existent files
-- ✅ Score-Farben (blau) visuell getrennt von Status-Farben (grün/rot)
-- ✅ Korrekte Dateizählung im Status-Bar
-- ✅ Dead-Code entfernt (3 Funktionen, 5 unreachable returns)
+- ✅ **Slice 6 Refactoring**: 4 Workflow-Controller aus `modern_window.py` extrahiert
+- ✅ **Legacy Deprecation**: `main_window.py`/`cleanup_ui.py` sichtbar markiert
+- ✅ **Website Bundles**: Gemeinsame CSS/JS-Assets konsolidiert
+- ✅ **MSI Distribution**: WiX v4 Build-Pfad, reproduzierbares Skript, Smoke-Test-Protokoll
 
 ### Version History
 
 | Version | Highlights | Datum |
 |---------|-----------|-------|
+| **0.8.4** | Architecture Refactoring (Slice 6), MSI Distribution Track | Apr 4, 2026 |
+| **0.8.3** | Stabilisierung, Pipeline Sequencing, Rating-Fixes | Feb 22, 2026 |
+| **0.8.2** | Performance Tuning (Cheap Filter, HEIC, Profiling) | Feb 7, 2026 |
+| **0.6.0** | Database Migrations, CI/CD Pipeline, Performance Profiling | Feb 15, 2026 |
 | **0.5.6** | MTCNN Performance (6-10x), File Validation, UI Polish | Feb 1, 2026 |
 | **0.5.5** | i18n System, Light-Theme Polish, Credential Fallback | Jan 30, 2026 |
 | **0.5.3** | Online License System, Cloud Validation, Device Binding | Jan 26, 2026 |
 | **0.5.2** | MediaPipe Caching (10-100x Speedup), Session Persistence | Jan 26, 2026 |
 | **0.5.0** | 6-Stage Pipeline, Face Mesh Analysis, Modern UI | Jan 2026 |
 
-Siehe [CHANGELOG.md](release/CHANGELOG.md) für Details.
+Siehe [CHANGELOG.md](CHANGELOG.md) für Details.
 
----
+## 📚 Dokumentation
 
-## 📚 Zusätzliche Dokumentation
+### Kategorisiert nach Thema
 
-- [CHANGELOG.md](release/CHANGELOG.md) - Version History
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution Guidelines
-- [INSTALL_WINDOWS.md](INSTALL_WINDOWS.md) - Windows Setup
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System-Architektur
-- [TESTING.md](TESTING.md) - Test-Infrastruktur
-- [example_pipeline.py](example_pipeline.py) - Code Examples
+**[Tech Documentation](tech/INDEX.md)** - Technische Details
+- Cache System und Optimierungen
+- Database Migrations
+- UI Theming System
+- Performance Analysis
+
+**[Standards & Quality](standards/INDEX.md)** - Qualitätssicherung
+- Code Audit Report (16 critical bugs fixed)
+- Bug Fix Quick Guide (P0-P1-P2)
+- Workflow & Datensicherheit
+
+**[Guides & How-To](guides/INDEX.md)** - Anleitungen
+- Contributing Guidelines
+- License System
+- Feedback System Setup
+
+**[Architecture](architecture/INDEX.md)** - Systemdesign
+- Pipeline Architecture
+- Module Documentation
+- Class Diagrams
+
+### Weitere Ressourcen
+
+- [INDEX.md](INDEX.md) - zentraler Dokumentations-Einstieg
+- [CHANGELOG.md](CHANGELOG.md) - Vollständige Version History
+- [feedback/README.md](../feedback/README.md) - Feedback sammeln (Offline JSON)
+- [SECURITY.md](SECURITY.md) - Security Policy
 
 ---
 
 ## 🤝 Beitragen
 
-Contributions sind willkommen! Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions sind willkommen! Siehe [guides/CONTRIBUTING.md](guides/CONTRIBUTING.md).
 
 ---
 
 ## 📄 Lizenz
 
-Proprietary License - siehe [LICENSE](LICENSE)
+Proprietary License - siehe [LICENSE](../LICENSE)
 
 ---
 

@@ -1,0 +1,66 @@
+{
+  "profiling_date": "2026-04-10T10:04:05.078743",
+  "phase": "Phase 2 Week 1",
+  "goal": "Establish baseline and identify Top 5 bottlenecks",
+  "test_runs": [
+    {
+      "stage_name": "profile_Input",
+      "folder_path": "C:\\Users\\chris\\OneDrive\\Bilder\\01_Photocleaner\\Input",
+      "image_count": 0,
+      "duplicate_groups": 11,
+      "duration_seconds": 141.05411386489868,
+      "memory_start_mb": 43.0078125,
+      "memory_peak_mb": 679.96875,
+      "memory_delta_mb": 636.9609375,
+      "top_bottlenecks": [
+        {
+          "function": "run",
+          "file": "pipeline.py",
+          "line": 174,
+          "cumulative_time_s": 138.1903154,
+          "total_time_s": 0.00011350000000000001,
+          "call_count": 1,
+          "time_per_call_ms": 138190.3154
+        },
+        {
+          "function": "_stage_quality_analysis",
+          "file": "pipeline.py",
+          "line": 469,
+          "cumulative_time_s": 100.10986480000001,
+          "total_time_s": 7.7e-05,
+          "call_count": 1,
+          "time_per_call_ms": 100109.86480000001
+        },
+        {
+          "function": "_run_quality_batch",
+          "file": "pipeline.py",
+          "line": 551,
+          "cumulative_time_s": 100.10963240000001,
+          "total_time_s": 7.54e-05,
+          "call_count": 11,
+          "time_per_call_ms": 9100.875672727274
+        },
+        {
+          "function": "analyze_batch_parallel",
+          "file": "parallel_quality_analyzer.py",
+          "line": 170,
+          "cumulative_time_s": 100.1095557,
+          "total_time_s": 0.00016820000000000002,
+          "call_count": 11,
+          "time_per_call_ms": 9100.868699999999
+        },
+        {
+          "function": "_analyze_batch_parallel_v2",
+          "file": "parallel_quality_analyzer.py",
+          "line": 324,
+          "cumulative_time_s": 91.3885302,
+          "total_time_s": 0.0003221,
+          "call_count": 8,
+          "time_per_call_ms": 11423.566275000001
+        }
+      ],
+      "profile_output": "         524433 function calls (521344 primitive calls) in 141.039 seconds\n\n   Ordered by: cumulative time\n   List reduced from 1630 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n        1    0.000    0.000  138.190  138.190 pipeline.py:174(run)\n        1    0.000    0.000  100.110  100.110 pipeline.py:469(_stage_quality_analysis)\n       11    0.000    0.000  100.110    9.101 pipeline.py:551(_run_quality_batch)\n       11    0.000    0.000  100.110    9.101 parallel_quality_analyzer.py:170(analyze_batch_parallel)\n        8    0.000    0.000   91.389   11.424 parallel_quality_analyzer.py:324(_analyze_batch_parallel_v2)\n        8    0.000    0.000   91.388   11.423 multiprocessing_improved.py:411(process_images_parallel_v2)\n        8    0.001    0.000   86.726   10.841 multiprocessing_improved.py:303(process_images)\n      114    0.001    0.000   86.717    0.761 queues.py:98(get)\n      130    0.000    0.000   86.695    0.667 connection.py:253(poll)\n      130    0.002    0.000   86.695    0.667 connection.py:342(_poll)\n      130    0.003    0.000   86.692    0.667 connection.py:844(wait)\n      130    0.002    0.000   86.683    0.667 connection.py:822(_exhaustive_wait)\n      130   86.681    0.667   86.681    0.667 {built-in method _winapi.WaitForMultipleObjects}\n     2369   45.998    0.019   45.998    0.019 {method 'acquire' of '_thread.lock' objects}\n      278    0.003    0.000   43.427    0.156 threading.py:611(wait)\n      536    0.003    0.000   43.424    0.081 threading.py:295(wait)\n      271    0.002    0.000   43.389    0.160 _base.py:199(as_completed)\n        1    0.000    0.000   20.136   20.136 pipeline.py:252(_stage_index)\n        1    0.001    0.001   20.135   20.135 indexer.py:52(index_folder)\n        1    0.001    0.001   17.690   17.690 pipeline.py:418(_stage_cheap_filter)\n\n\n",
+      "timestamp": "2026-04-10T10:06:26.179861"
+    }
+  ]
+}

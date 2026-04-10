@@ -413,6 +413,7 @@ def process_images_parallel_v2(
     worker_func: Callable,
     config: Any,
     max_workers: Optional[int] = None,
+    timeout_per_task: int = 300,
     on_progress: Optional[Callable[[ProgressSnapshot], None]] = None,
 ) -> Tuple[List[WorkerResult], Dict[str, Any]]:
     """
@@ -431,6 +432,7 @@ def process_images_parallel_v2(
         worker_func: Function to process one image (path, config) -> dict
         config: Configuration object (read-only, immutable)
         max_workers: Number of workers (None = auto-detect)
+        timeout_per_task: Timeout in seconds for result retrieval/worker tasks
         on_progress: Optional callback(progress: ProgressSnapshot)
     
     Returns:
@@ -524,6 +526,7 @@ def process_images_parallel_v2(
         worker_func=worker_func,
         num_images=len(image_paths),
         max_workers=max_workers,
+        timeout_per_task=timeout_per_task,
     ) as pool:
         results, final_progress = pool.process_images(
             image_paths, config, on_progress=on_progress

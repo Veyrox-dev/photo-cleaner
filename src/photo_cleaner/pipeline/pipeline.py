@@ -26,6 +26,7 @@ from photo_cleaner.db.schema import Database
 from photo_cleaner.duplicates.finder import DuplicateFinder
 from photo_cleaner.models.status import FileStatus
 from photo_cleaner.pipeline.cheap_filter import CheapFilter
+from photo_cleaner.pipeline.parallel_quality_analyzer import ParallelQualityAnalyzer
 from photo_cleaner.pipeline.quality_analyzer import QualityAnalyzer
 from photo_cleaner.pipeline.scorer import GroupScorer
 from photo_cleaner.repositories.file_repository import FileRepository
@@ -153,6 +154,10 @@ class PhotoCleanerPipeline:
             min_detection_confidence=self.config.min_detection_confidence,
         )
         self.scorer = GroupScorer(top_n=self.config.top_n)
+        self._use_process_parallel = os.getenv("PHOTOCLEANER_USE_PROCESS_PARALLEL", "0").lower() in ("1", "true", "yes")
+        self._parallel_quality_analyzer: Optional[ParallelQualityAnalyzer] = None
+        if self._use_process_parallel:
+            self._parallel_quality_analyzer = ParallelQualityAnalyzer(self.quality_analyzer, scorer=self.scorer)
         
         # Initialize cache manager
         self.cache_manager = ImageCacheManager(db.conn) if self.config.use_cache else None
@@ -499,7 +504,7 @@ class PhotoCleanerPipeline:
                 
                 # Analyze only uncached files
                 if uncached_paths:
-                    new_results = self.quality_analyzer.analyze_batch(uncached_paths)
+                    new_results = self._run_quality_batch(uncached_paths)
                     self.stats.analyzed_files += len(new_results)
                     
                     # Store new results in cache
@@ -530,8 +535,8 @@ class PhotoCleanerPipeline:
                 # Cache disabled or force_reanalyze enabled
                 if self.config.force_reanalyze:
                     logger.info(f"Group {group_id}: force_reanalyze enabled, skipping cache")
-                
-                results = self.quality_analyzer.analyze_batch(paths)
+
+                results = self._run_quality_batch(paths)
                 self.stats.analyzed_files += len(results)
                 
                 # Store all results in cache if cache is enabled
@@ -542,6 +547,16 @@ class PhotoCleanerPipeline:
                 analyzed_groups[group_id] = results
         
         return analyzed_groups
+
+    def _run_quality_batch(self, paths: list[Path]) -> list:
+        """Run quality analysis with optional process-parallel backend."""
+        if self._use_process_parallel and self._parallel_quality_analyzer is not None and len(paths) > 1:
+            return self._parallel_quality_analyzer.analyze_batch_parallel(
+                paths,
+                max_workers=self.config.max_workers,
+                batch_size=1,
+            )
+        return self.quality_analyzer.analyze_batch(paths)
     
     def _stage_score_and_mark(
         self, groups: dict[str, list]

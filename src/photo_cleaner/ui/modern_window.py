@@ -233,6 +233,7 @@ class RatingWorkerThread(QThread):
     def run(self):
         """Execute auto-rating in background thread."""
         from photo_cleaner.pipeline.quality_analyzer import QualityAnalyzer
+        from photo_cleaner.pipeline.parallel_quality_analyzer import ParallelQualityAnalyzer
         from photo_cleaner.pipeline.scorer import GroupScorer
         from photo_cleaner.db.schema import Database
         from photo_cleaner.repositories.file_repository import FileRepository
@@ -311,6 +312,7 @@ class RatingWorkerThread(QThread):
             init_start = time.monotonic()
             QualityAnalyzer = _get_quality_analyzer()
             analyzer = QualityAnalyzer(use_face_mesh=True)
+            parallel_analyzer = ParallelQualityAnalyzer(analyzer)
             init_time = time.monotonic() - init_start
             logger.info(f"[WORKER] QualityAnalyzer initialized in {init_time:.2f}s")
             
@@ -356,12 +358,21 @@ class RatingWorkerThread(QThread):
                     current_done = group_base_done + local_done
                     pct = 87 + int(7 * (current_done / max(1, total_images)))
                     _emit_progress(min(94, pct), f"Bilder werden bewertet... {current_done}/{total_images}")
-                
-                results = analyzer.analyze_batch(
-                    paths,
-                    progress_callback=_progress_cb,
-                    max_workers=worker_count,
-                )
+
+                use_process_parallel = os.getenv("PHOTOCLEANER_USE_PROCESS_PARALLEL", "1").lower() in ("1", "true", "yes")
+                if use_process_parallel and worker_count > 1:
+                    results = parallel_analyzer.analyze_batch_parallel(
+                        paths,
+                        max_workers=worker_count,
+                        batch_size=1,
+                        progress_callback=_progress_cb,
+                    )
+                else:
+                    results = analyzer.analyze_batch(
+                        paths,
+                        progress_callback=_progress_cb,
+                        max_workers=worker_count,
+                    )
                 quality_results[group_id] = results
                 done += len(paths)
                 
@@ -576,8 +587,10 @@ class MergeGroupRatingWorker(QThread):
 
             _emit_progress(30, 2, t("merge_progress_phase_models"), t("merge_progress_detail_models"), 0, 0, force=True)
             QualityAnalyzer = _get_quality_analyzer()
+            from photo_cleaner.pipeline.parallel_quality_analyzer import ParallelQualityAnalyzer
             GroupScorer = _get_group_scorer()
             analyzer = QualityAnalyzer(use_face_mesh=True)
+            parallel_analyzer = ParallelQualityAnalyzer(analyzer)
             scorer = GroupScorer(top_n=self.top_n)
 
             _emit_progress(
@@ -607,11 +620,20 @@ class MergeGroupRatingWorker(QThread):
                     max(1, total_local),
                 )
 
-            results = analyzer.analyze_batch(
-                paths,
-                progress_callback=_progress_cb,
-                max_workers=worker_count,
-            )
+            use_process_parallel = os.getenv("PHOTOCLEANER_USE_PROCESS_PARALLEL", "1").lower() in ("1", "true", "yes")
+            if use_process_parallel and worker_count > 1:
+                results = parallel_analyzer.analyze_batch_parallel(
+                    paths,
+                    max_workers=worker_count,
+                    batch_size=1,
+                    progress_callback=_progress_cb,
+                )
+            else:
+                results = analyzer.analyze_batch(
+                    paths,
+                    progress_callback=_progress_cb,
+                    max_workers=worker_count,
+                )
             if self._cancelled:
                 self.finished.emit(False)
                 return
@@ -1538,16 +1560,17 @@ class FolderSelectionDialog(QDialog):
         
         # Quality Panel (von main_window kopiert)
         scroll_area = QScrollArea()
-        scroll_area.setStyleSheet("""
-            QScrollArea {
+        _sc_colors = get_theme_colors()
+        scroll_area.setStyleSheet(f"""
+            QScrollArea {{
                 background-color: transparent;
                 border: none;
-            }
-            QScrollBar:vertical {
+            }}
+            QScrollBar:vertical {{
                 width: 12px;
-            }
+            }}
             QScrollBar::handle:vertical {{
-                background-color: {colors['disabled_bg']};
+                background-color: {_sc_colors['disabled_bg']};
                 border-radius: 6px;
             }}
         """)

@@ -19,7 +19,7 @@ Key features:
 import logging
 import os
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Callable
 from multiprocessing import cpu_count
 import time
 
@@ -55,6 +55,14 @@ from photo_cleaner.pipeline.quality_analyzer import (
 from photo_cleaner.pipeline.worker_process import analyze_image_worker
 
 logger = logging.getLogger(__name__)
+
+
+def _env_int(name: str, default: int, minimum: int) -> int:
+    try:
+        value = int(os.getenv(name, str(default)))
+        return max(minimum, value)
+    except (TypeError, ValueError):
+        return default
 
 # Log the multiprocessing configuration at module load time
 if USE_NEW_MULTIPROCESSING:
@@ -165,6 +173,7 @@ class ParallelQualityAnalyzer:
         max_workers: Optional[int] = None,
         batch_size: int = 1,
         use_new_implementation: Optional[bool] = None,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
     ) -> List[QualityResult]:
         """
         Analyze batch of images using multiprocessing.
@@ -180,6 +189,7 @@ class ParallelQualityAnalyzer:
                 - None: Use environment variable PHOTOCLEANER_USE_NEW_MULTIPROCESSING
                 - True: Use new queue-based implementation (fallback to old if failed)
                 - False: Use old multiprocessing_manager.py implementation
+            progress_callback: Optional callback(processed, total) for UI updates
         
         Returns:
             List of QualityResults (in same order as input)
@@ -190,7 +200,21 @@ class ParallelQualityAnalyzer:
         # Single image: no benefit from multiprocessing
         if len(image_paths) <= 1:
             logger.info(f"Single image: using single-process analysis")
+            if progress_callback is not None:
+                try:
+                    progress_callback(1, 1)
+                except Exception:
+                    logger.debug("Progress callback failed for single image", exc_info=True)
             return [self.quality_analyzer.analyze_image(image_paths[0])]
+
+        min_images_for_parallel = _env_int("PHOTOCLEANER_PARALLEL_MIN_IMAGES", 4, 2)
+        if len(image_paths) < min_images_for_parallel:
+            logger.info(
+                "Parallel guardrail: %s images < min threshold %s; using single-process batch",
+                len(image_paths),
+                min_images_for_parallel,
+            )
+            return self.analyze_batch(image_paths)
         
         # Determine which implementation to use
         should_use_new = use_new_implementation
@@ -203,6 +227,17 @@ class ParallelQualityAnalyzer:
             max_workers = max(1, cpu_cores - 1)
         else:
             max_workers = min(max(1, max_workers), cpu_cores - 1)
+
+        worker_cap = _env_int("PHOTOCLEANER_PARALLEL_MAX_WORKERS", max(1, cpu_cores - 1), 1)
+        if max_workers > worker_cap:
+            logger.info(
+                "Parallel guardrail: capping workers from %s to %s via PHOTOCLEANER_PARALLEL_MAX_WORKERS",
+                max_workers,
+                worker_cap,
+            )
+            max_workers = worker_cap
+
+        timeout_per_task = _env_int("PHOTOCLEANER_PARALLEL_TIMEOUT_SEC", 300, 10)
         
         # If only 1 worker, no benefit - use single-process
         if max_workers <= 1:
@@ -220,9 +255,11 @@ class ParallelQualityAnalyzer:
                     image_paths=image_paths,
                     max_workers=max_workers,
                     batch_size=batch_size,
+                    timeout_per_task=timeout_per_task,
+                    progress_callback=progress_callback,
                 )
                 logger.info(f"✓ New implementation succeeded ({len(results)} results)")
-                return results
+                return self._apply_parallel_guardrails(image_paths, results)
             except Exception as e:
                 logger.warning(
                     f"✗ New implementation failed, falling back to old: {e}",
@@ -251,6 +288,11 @@ class ParallelQualityAnalyzer:
                     f"Progress: {progress.processed}/{progress.total} "
                     f"({pct:.1f}%) | Failed: {progress.failed}"
                 )
+            if progress_callback is not None:
+                try:
+                    progress_callback(int(progress.processed), int(progress.total))
+                except Exception:
+                    logger.debug("Progress callback failed (old implementation)", exc_info=True)
         
         # Run parallel processing
         start_time = time.time()
@@ -261,6 +303,7 @@ class ParallelQualityAnalyzer:
                 config=config,
                 max_workers=max_workers,
                 batch_size=batch_size,
+                timeout_per_task=timeout_per_task,
                 on_progress=on_progress,
             )
         except Exception as e:
@@ -276,13 +319,15 @@ class ParallelQualityAnalyzer:
         # Convert WorkerResults back to QualityResults
         quality_results = self._convert_worker_results(worker_results, image_paths)
         
-        return quality_results
+        return self._apply_parallel_guardrails(image_paths, quality_results)
     
     def _analyze_batch_parallel_v2(
         self,
         image_paths: List[Path],
         max_workers: int,
         batch_size: int,
+        timeout_per_task: int,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
     ) -> List[QualityResult]:
         """
         Analyze batch using new queue-based implementation (multiprocessing_improved).
@@ -324,6 +369,11 @@ class ParallelQualityAnalyzer:
                     f"Progress: {progress_snapshot.processed}/{progress_snapshot.total} "
                     f"({pct:.1f}%) | Failed: {progress_snapshot.failed}"
                 )
+            if progress_callback is not None:
+                try:
+                    progress_callback(int(progress_snapshot.processed), int(progress_snapshot.total))
+                except Exception:
+                    logger.debug("Progress callback failed (new implementation)", exc_info=True)
         
         # Run new implementation
         # Note: new implementation doesn't use batch_size (each image is a task)
@@ -333,6 +383,7 @@ class ParallelQualityAnalyzer:
             worker_func=_analyze_image_for_parallel,
             config=config,
             max_workers=max_workers,
+            timeout_per_task=timeout_per_task,
             on_progress=on_progress,
         )
         elapsed_ms = (time.time() - start_time) * 1000
@@ -380,32 +431,13 @@ class ParallelQualityAnalyzer:
                 # Shouldn't happen, but handle gracefully
                 path = result.image_path if hasattr(result, 'image_path') else original_paths[0]
             
-            if result.success and result.result:
-                # Extract quality result from worker result
-                result_dict = result.result
-                qr = QualityResult(
-                    path=path,
-                    face_quality=result_dict.get('quality_result'),
-                    overall_sharpness=0.0,
-                    lighting_score=0.0,
-                    resolution_score=0.0,
-                    width=0,
-                    height=0,
-                    total_score=0.0,
-                    error=None,
-                )
+            result_payload = result.result if hasattr(result, 'result') else None
+            if hasattr(result, 'success') and result.success and result_payload:
+                qr = self._extract_quality_result(result_payload, path)
             else:
-                # Failed analysis
-                qr = QualityResult(
-                    path=path,
-                    face_quality=None,
-                    overall_sharpness=0.0,
-                    lighting_score=0.0,
-                    resolution_score=0.0,
-                    width=0,
-                    height=0,
-                    total_score=0.0,
-                    error=result.error if hasattr(result, 'error') else 'Analysis failed',
+                qr = self._build_error_result(
+                    path,
+                    result.error if hasattr(result, 'error') else 'Analysis failed',
                 )
             
             quality_results.append(qr)
@@ -450,35 +482,81 @@ class ParallelQualityAnalyzer:
             })
             
             if worker_result.get('success', False):
-                # Reconstruct from worker result dict
-                qr = QualityResult(
-                    path=path,
-                    face_quality=worker_result.get('quality_result'),
-                    overall_sharpness=0.0,
-                    lighting_score=0.0,
-                    resolution_score=0.0,
-                    width=0,
-                    height=0,
-                    total_score=0.0,
-                    error=None if not worker_result.get('disqualified') else
-                          worker_result.get('error', 'Unknown error'),
-                )
+                qr = self._extract_quality_result(worker_result, path)
+                if worker_result.get('disqualified') and not qr.error:
+                    qr.error = worker_result.get('error', 'Disqualified in parallel worker')
             else:
-                # Failed analysis
-                qr = QualityResult(
-                    path=path,
-                    face_quality=None,
-                    overall_sharpness=0.0,
-                    lighting_score=0.0,
-                    resolution_score=0.0,
-                    width=0,
-                    height=0,
-                    total_score=0.0,
-                    error=worker_result.get('error', 'Analysis failed'),
-                )
+                qr = self._build_error_result(path, worker_result.get('error', 'Analysis failed'))
             
             quality_results.append(qr)
         
+        return quality_results
+
+    def _extract_quality_result(self, payload: Any, fallback_path: Path) -> QualityResult:
+        """Extract a QualityResult from worker payload, preserving metrics when possible."""
+        if isinstance(payload, QualityResult):
+            payload.path = fallback_path
+            return payload
+
+        if isinstance(payload, dict):
+            candidate = payload.get('quality_result')
+            if isinstance(candidate, QualityResult):
+                candidate.path = fallback_path
+                return candidate
+            if isinstance(candidate, dict):
+                try:
+                    return QualityResult(path=fallback_path, **candidate)
+                except Exception:
+                    logger.debug("Failed to reconstruct QualityResult from dict payload", exc_info=True)
+
+        return self._build_error_result(fallback_path, "Parallel worker did not return a valid QualityResult")
+
+    def _build_error_result(self, path: Path, error: str) -> QualityResult:
+        return QualityResult(
+            path=path,
+            face_quality=None,
+            overall_sharpness=0.0,
+            lighting_score=0.0,
+            resolution_score=0.0,
+            width=0,
+            height=0,
+            total_score=0.0,
+            error=error,
+        )
+
+    def _apply_parallel_guardrails(
+        self,
+        original_paths: List[Path],
+        quality_results: List[QualityResult],
+    ) -> List[QualityResult]:
+        """Harden multiprocessing path: validate output and retry failed items in-process."""
+        if len(quality_results) != len(original_paths):
+            logger.warning(
+                "Parallel result length mismatch (%s != %s) - falling back to single-process batch",
+                len(quality_results),
+                len(original_paths),
+            )
+            return self.analyze_batch(original_paths)
+
+        failures = [idx for idx, result in enumerate(quality_results) if getattr(result, 'error', None)]
+        if not failures:
+            return quality_results
+
+        if len(failures) == len(original_paths):
+            logger.warning("All parallel results failed - falling back to single-process batch")
+            return self.analyze_batch(original_paths)
+
+        retry_failed = os.getenv('PHOTOCLEANER_PARALLEL_RETRY_FAILED', '1').lower() in ('1', 'true', 'yes')
+        if not retry_failed:
+            return quality_results
+
+        logger.info("Retrying %s failed parallel items in single-process mode", len(failures))
+        for idx in failures:
+            path = original_paths[idx]
+            try:
+                quality_results[idx] = self.quality_analyzer.analyze_image(path)
+            except Exception as error:
+                logger.warning("Single-process retry failed for %s: %s", path, error)
         return quality_results
 
 

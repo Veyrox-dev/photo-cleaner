@@ -337,6 +337,161 @@ def test_parallel_quality_analyzer_fallback():
     assert len(results) == 3
 
 
+def test_parallel_quality_analyzer_retries_failed_items(monkeypatch):
+    """Failed parallel items should be retried via single-process analyzer."""
+
+    class MockQualityAnalyzer:
+        def __init__(self):
+            self.retry_calls = 0
+
+        def analyze_image(self, path: Path):
+            from photo_cleaner.pipeline.analysis import QualityResult
+
+            self.retry_calls += 1
+            return QualityResult(path=path, overall_sharpness=0.77, error=None)
+
+        def analyze_batch(self, paths):
+            return [self.analyze_image(p) for p in paths]
+
+    analyzer = MockQualityAnalyzer()
+    parallel = ParallelQualityAnalyzer(analyzer)
+
+    from photo_cleaner.pipeline.analysis import QualityResult
+
+    def fake_v2(*args, **kwargs):
+        paths = kwargs["image_paths"]
+        return [
+            QualityResult(path=paths[0], overall_sharpness=0.11, error=None),
+            QualityResult(path=paths[1], overall_sharpness=0.0, error="parallel-fail"),
+        ]
+
+    monkeypatch.setattr(parallel, "_analyze_batch_parallel_v2", fake_v2)
+
+    paths = [Path("ok.jpg"), Path("retry.jpg")]
+    results = parallel.analyze_batch_parallel(
+        paths,
+        max_workers=2,
+        use_new_implementation=True,
+    )
+
+    assert len(results) == 2
+    assert results[0].error is None
+    assert results[1].error is None
+    assert analyzer.retry_calls >= 1
+
+
+def test_parallel_quality_analyzer_length_mismatch_falls_back(monkeypatch):
+    """Length mismatch from parallel path must trigger full single-process fallback."""
+
+    class MockQualityAnalyzer:
+        def __init__(self):
+            self.batch_calls = 0
+
+        def analyze_image(self, path: Path):
+            from photo_cleaner.pipeline.analysis import QualityResult
+
+            return QualityResult(path=path, overall_sharpness=0.5, error=None)
+
+        def analyze_batch(self, paths):
+            self.batch_calls += 1
+            return [self.analyze_image(p) for p in paths]
+
+    analyzer = MockQualityAnalyzer()
+    parallel = ParallelQualityAnalyzer(analyzer)
+
+    from photo_cleaner.pipeline.analysis import QualityResult
+
+    def fake_v2(*args, **kwargs):
+        paths = kwargs["image_paths"]
+        return [QualityResult(path=paths[0], overall_sharpness=0.2, error=None)]
+
+    monkeypatch.setattr(parallel, "_analyze_batch_parallel_v2", fake_v2)
+
+    paths = [Path("a.jpg"), Path("b.jpg"), Path("c.jpg")]
+    results = parallel.analyze_batch_parallel(
+        paths,
+        max_workers=2,
+        use_new_implementation=True,
+    )
+
+    assert len(results) == 3
+    assert analyzer.batch_calls >= 1
+
+
+def test_parallel_guardrail_min_images_uses_single_process(monkeypatch):
+    """When image count is below threshold, parallel path must be skipped."""
+
+    class MockQualityAnalyzer:
+        def __init__(self):
+            self.batch_calls = 0
+
+        def analyze_image(self, path: Path):
+            from photo_cleaner.pipeline.analysis import QualityResult
+
+            return QualityResult(path=path, overall_sharpness=0.42, error=None)
+
+        def analyze_batch(self, paths):
+            self.batch_calls += 1
+            return [self.analyze_image(p) for p in paths]
+
+    analyzer = MockQualityAnalyzer()
+    parallel = ParallelQualityAnalyzer(analyzer)
+    monkeypatch.setenv("PHOTOCLEANER_PARALLEL_MIN_IMAGES", "10")
+
+    called_parallel = {"value": False}
+
+    def should_not_run(*args, **kwargs):
+        called_parallel["value"] = True
+        return []
+
+    monkeypatch.setattr(parallel, "_analyze_batch_parallel_v2", should_not_run)
+
+    results = parallel.analyze_batch_parallel(
+        [Path("a.jpg"), Path("b.jpg"), Path("c.jpg")],
+        max_workers=4,
+        use_new_implementation=True,
+    )
+
+    assert len(results) == 3
+    assert analyzer.batch_calls >= 1
+    assert called_parallel["value"] is False
+
+
+def test_parallel_guardrail_worker_cap_applied(monkeypatch):
+    """Worker cap env var should reduce effective worker count passed to parallel impl."""
+
+    class MockQualityAnalyzer:
+        def analyze_image(self, path: Path):
+            from photo_cleaner.pipeline.analysis import QualityResult
+
+            return QualityResult(path=path, overall_sharpness=0.42, error=None)
+
+        def analyze_batch(self, paths):
+            return [self.analyze_image(p) for p in paths]
+
+    analyzer = MockQualityAnalyzer()
+    parallel = ParallelQualityAnalyzer(analyzer)
+    monkeypatch.setenv("PHOTOCLEANER_PARALLEL_MAX_WORKERS", "2")
+
+    from photo_cleaner.pipeline.analysis import QualityResult
+    observed = {"max_workers": None}
+
+    def fake_v2(*args, **kwargs):
+        observed["max_workers"] = kwargs.get("max_workers")
+        paths = kwargs["image_paths"]
+        return [QualityResult(path=p, overall_sharpness=0.1, error=None) for p in paths]
+
+    monkeypatch.setattr(parallel, "_analyze_batch_parallel_v2", fake_v2)
+
+    parallel.analyze_batch_parallel(
+        [Path("a.jpg"), Path("b.jpg"), Path("c.jpg"), Path("d.jpg")],
+        max_workers=8,
+        use_new_implementation=True,
+    )
+
+    assert observed["max_workers"] == 2
+
+
 # ============================================================================
 # Integration Tests
 # ============================================================================

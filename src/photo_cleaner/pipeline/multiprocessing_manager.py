@@ -391,6 +391,7 @@ def process_images_parallel(
     config: Any,
     max_workers: Optional[int] = None,
     batch_size: int = 1,
+    timeout_per_task: int = 300,
     on_progress: Optional[Callable] = None,
 ) -> Tuple[List[WorkerResult], Dict[str, Any]]:
     """
@@ -404,6 +405,7 @@ def process_images_parallel(
         config: Configuration object (read-only)
         max_workers: Number of workers (None = auto-detect)
         batch_size: Images per task
+        timeout_per_task: Timeout per task in seconds
         on_progress: Optional callback(progress: ProgressUpdate)
     
     Returns:
@@ -422,6 +424,7 @@ def process_images_parallel(
         num_images=len(image_paths),
         max_workers=max_workers,
         batch_size=batch_size,
+        timeout_per_task=timeout_per_task,
     ) as pool:
         results, final_progress = pool.process_images(image_paths, config)
     

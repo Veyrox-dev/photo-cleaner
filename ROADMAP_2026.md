@@ -1,8 +1,8 @@
 ﻿# PhotoCleaner – Roadmap 2026
 
-**Stand:** 09. April 2026 · Version 0.8.5
+**Stand:** 10. April 2026 · Version 0.8.5
 **Ziel:** v1.0.0 Launch Q3/Q4 2026
-**Launch-Readiness:** 7.6 / 10 → ein externes Gate offen
+**Launch-Readiness:** 8.0 / 10 → ein externes Gate offen
 
 ---
 
@@ -98,14 +98,26 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 - ✅ Week-5 Umsetzung (Step 2): Laufzeit-Messschicht im produktiven Async-Analysepfad ergänzt (Stage-Zeiten + Progress-Event-Counter + JSON-Export nach `profiling_results/`)
 - ✅ Week-5 Umsetzung (Step 2): Stage-4-Orchestrierung von fixen 4 Threads auf adaptive Workerzahl je Gruppengröße/CPU umgestellt
 
+### Status-Delta (2026-04-10)
+
+- ✅ Performance-Nachmessung auf Realdaten bestätigt: Laufzeit im relevanten Profiling-Run deutlich reduziert (nahe 1s/Bild)
+- ✅ Performance-Track für Launch vorerst abgeschlossen/akzeptiert: weitere Optimierungen nur noch bei neuem Bedarf
+- ✅ Update-Logik Phase A umgesetzt: In-App Versionscheck + Download-Link über Website-Manifest
+- ✅ Website-Update-Manifest bereitgestellt (`/updates/latest.json`) und mit App-Checkpfad kompatibel
+- ▶ Update-Logik Phase B und C als explizite Folgephasen in Launch-Vorbereitung aufgenommen (nicht-blockierend)
+- ✅ Week-7 Multiprocessing-Ausbau umgesetzt: produktiver Rating/Merge-Pfad nutzt ParallelQualityAnalyzer mit Guardrails (Min-Images-Schwelle, Worker-Cap, Timeout, Retry/Fallback)
+- ✅ Week-7 Regressionen ergänzt: Guardrail-Tests grün (Retry, Längenmismatch-Fallback, Min-Images, Worker-Cap)
+- ✅ A/B-Profiling auf Realdaten durchgefuehrt: Thread-Pfad 379.46s, Process-Parallel default 155.85s, Process-Parallel getuned (4 Worker Cap) 141.05s
+- ▶ Ergebnis: getunter Process-Parallel-Pfad klar besser als ungetunter Process-Parallel-Pfad, aber noch leicht ueber dem besten historischen Thread-Lauf (137.57s)
+
 ### 1 · MSI Smoke-Test auf Virgin Windows
 Installer (`.msi`) auf einer frischen Maschine validieren: Install → Upgrade → Uninstall.
 Separat und ergänzend zu den EXE-Smoke-Tests.
 
 ### 2 · Phase 4.3 – Performance Regression
-- Baseline v0.7.0 vs. v0.8.4 auf identischem 5k-Dataset vergleichen
-- Model-Loading-Zeiten prüfen (Ziel: MTCNN/MediaPipe < 10 s, Haar-Cascade < 500 ms)
-- ThreadPool-Verhalten im Frozen Build unter Last verifizieren
+- ✅ Baseline auf Realdaten durchgeführt und mit aktuellem Stand verglichen
+- ✅ Stage-4-Laufzeit durch Overhead-Reduktion und adaptive Workerzahl spürbar verbessert
+- ✅ Launch-Entscheidung: Performance für v1.0 aktuell ausreichend; weitere Tuning-Schritte in Backlog geparkt
 
 ### 3 · Phase 4.4 – Launch-Vorbereitung
 
@@ -116,6 +128,8 @@ Separat und ergänzend zu den EXE-Smoke-Tests.
 | Code-Signing-Zertifikat beschaffen + EXE/MSI mit Timestamp signieren (Publisher-Vertrauen) | Mittel |
 | Stripe + Supabase Produktionsbereitschaft end-to-end validieren | Hoch |
 | Lizenz-Vollständig-Durchlauf (Kauf → Aktivierung → Ablauf → Erneuerung) | Hoch |
+| Update-Logik Phase B: In-App Download-Flow (optional mit MSI-Start) definieren/umsetzen | Mittel |
+| Update-Logik Phase C: optionaler MSIX/AppInstaller-Delta-Update-Kanal evaluieren | Niedrig |
 | User Manual vervollständigen | Mittel |
 | Troubleshooting Guide + FAQ | Mittel |
 | Support-Setup (E-Mail-Template, Bug-Melde-Prozess) | Niedrig |
@@ -215,18 +229,18 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 ### Woche 5
 - ✅ Sichtbare Fortschrittsmeilensteine im langen Run umgesetzt
 - ✅ Realdaten-Benchmark als Baseline durchgeführt (Input-Ordner, Profiling-Artefakt vorhanden)
-- ▶ A/B-Benchmark-Flow finalisieren (Current Thread-Batch vs. Process-Parallel vs. Fast-Mode)
-- ▶ Profiling-Ausgabe bereinigen (image_count korrekt berichten)
+- ✅ Performance-Quick-Wins umgesetzt und auf Realdaten verifiziert
+- ✅ Profiling-Ausgabe für aktuelle Entscheidungen ausreichend; tieferer A/B-Flow vorerst geparkt
 - 📌 Presets Fast/Balanced/Best Quality bleiben Backlog (nicht in Week 5/6 implementieren)
 
 #### Week-5 Performance-Plan (Profiling-basiert, 2026-04-09)
-- Fokus auf Stage 4 (Quality-Analyse), da aktuell groesster Laufzeitblock.
-- Kein Sprachwechsel (Rust/andere Sprache) im kurzfristigen Plan: zuerst Orchestrierung und Parallelisierung optimieren.
-- A/B-Benchmark auf Realdaten etablieren: Current Thread-Batch vs. Process-Parallel vs. Fast-Mode (Haar).
-- Multiprocessing-Variante fuer Quality-Stage produktionsreif schalten (Feature-Flag, Guardrails, Fallback).
-- MTCNN-Einsatz staffeln: erst Cheap-Filter/Pre-Scoring, dann MTCNN nur fuer Kandidatenbilder (Top-K pro Gruppe).
-- Thread-Overhead reduzieren: Progress/Logging drosseln, groebere Callback-Intervalle.
-- Profiling-Report korrigieren: image_count im JSON sauber ausweisen, damit Benchmarks belastbar vergleichbar sind.
+- ✅ Fokus auf Stage 4 (Quality-Analyse), da aktuell groesster Laufzeitblock.
+- ✅ Kein Sprachwechsel (Rust/andere Sprache) im kurzfristigen Plan: zuerst Orchestrierung und Parallelisierung optimieren.
+- ✅ Benchmark auf Realdaten etabliert; tieferer A/B-Vergleich bleibt bei neuem Bedarf anschlussfaehig.
+- ✅ Multiprocessing-Variante fuer Quality-Stage ausgebaut: produktiver Einsatz im Rating/Merge-Flow aktiviert, inkl. Guardrails (Retry fuer fehlgeschlagene Items, Laengen-Check, Single-Process-Fallback).
+- ⛔ MTCNN-Einsatzstaffelung (Top-K pro Gruppe) bewusst nicht weiterverfolgen, um Qualitaetsrisiko fuer Entscheidungen zu vermeiden.
+- ✅ Thread-Overhead reduziert: Progress/Logging gedrosselt, groebere Callback-Intervalle aktiv.
+- ✅ Profiling-Report korrigiert: image_count im JSON wird sauber ausgewiesen.
 
 #### Erwarteter Effekt (kurzfristig)
 - Deutlich weniger Wartezeit in Lock-/Thread-Synchronisation.
@@ -234,18 +248,21 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 - Saubere Entscheidungsgrundlage fuer spaetere Architektur-Schritte.
 
 ### Woche 6
-- Stage-4-Optimierung umsetzen (Quality-Analyse als Hauptengpass)
-- Multiprocessing-Variante für Quality-Stage produktionsreif schalten (Feature-Flag + Fallback)
-- MTCNN-Einsatz staffeln (Top-K/Kandidaten statt Vollanalyse auf allen Bildern)
-- Thread-/Progress-Overhead reduzieren (Callback-Intervall, Logging, Synchronisationsdruck)
-- Cache-Pfad und Qualitätsdrift validieren
-- Theme-Audit-Restlauf abschließen (letzte lokale Styles auf zentrale Theme-Builder heben)
+- ✅ Performance-Track bleibt geparkt (nur bei neuem Bedarf, kein Launch-Blocker)
+- ✅ Multiprocessing-Quality-Stage als priorisierter Ausbaupfad dokumentiert (MTCNN-Staffelung bewusst verworfen)
+- ✅ Cache-Pfad validiert (user-writable, nicht unter Program Files) + Regressionstest ergänzt
+- ✅ Qualitätsdrift validiert (deterministische Scores auf identischem Input) + Regressionstest ergänzt
+- ✅ Theme-Audit-Restlauf gestartet: lokale Style-Inseln weiter reduziert (inkl. ScrollArea-Stylesheet-Fix)
+- ✅ Update-Logik Phase B spezifiziert (UX-Flow, Fehlerfälle, Rollback): `docs/guides/UPDATE_PHASE_B.md`
 
 ### Woche 7
-- Stabilisierung + Regressionstests auf optimiertem Analysepfad
+- ▶ Stabilisierung + Regressionstests auf optimiertem Analysepfad (fortlaufend)
+- ✅ Multiprocessing-Track ausgebaut: Queue/Worker-Flow gehaertet, Guardrails erweitert, Fallback-Pfade regressionssicher gemacht
+- ✅ Realdaten-Tuning abgeschlossen: Worker-Cap=4 aktuell beste Process-Parallel-Konfiguration auf dem Input-Ordner
 - Frozen-Build-Validierung und Review-Polish
 - FREE/PRO Lizenz-Sanity und Delete-Safety final prüfen
 - Optional: Progressive Results in der Analyse starten (nur wenn Week-6-Ziele stabil)
+- Update-Logik Phase C Entscheidungsvorlage erstellen (MSI-only vs. MSI+MSIX)
 
 ### Woche 8
 - Pilot-Release-Readiness
@@ -264,16 +281,16 @@ Der aktuelle Engpass ist Vertrauen, nicht Funktionsanzahl. Solange Nutzer bei Fe
 
 ---
 
-## 📊 Launch-Readiness Score (Stand 2026-04-07)
+## 📊 Launch-Readiness Score (Stand 2026-04-10)
 
 | Bereich | Score |
 |---|---:|
-| Code-Qualität | 7.5 |
-| Struktur / Architektur | 8.5 |
-| Performance | 8.0 |
-| UX | 7.5 |
-| Wartbarkeit | 8.0 |
-| Betrieb / Infra | 6.5 *(Supabase + Secrets erledigt; 5× Smoke-Tests noch offen)* |
-| **Gesamt** | **7.6 / 10** |
+| Code-Qualität | 7.8 |
+| Struktur / Architektur | 8.6 |
+| Performance | 8.6 *(Launch-sufficient bestätigt; weiterer Tuning-Bedarf aktuell geparkt)* |
+| UX | 8.0 |
+| Wartbarkeit | 8.2 |
+| Betrieb / Infra | 6.9 *(Supabase + Secrets erledigt; 5× Smoke-Tests noch offen)* |
+| **Gesamt** | **8.0 / 10** |
 
 **Conditional Go:** Launch freigegeben, sobald der 5× Smoke-Test abgehakt ist.

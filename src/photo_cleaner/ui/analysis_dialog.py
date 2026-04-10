@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from photo_cleaner.pipeline.pipeline import PhotoCleanerPipeline
 from photo_cleaner.i18n import t
+from photo_cleaner.ui.color_constants import get_semantic_colors
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +134,7 @@ class AnalysisDialog(QDialog):
         # Info-Text
         info = QLabel(t("analysis_wait"))
         info.setWordWrap(True)
-        info.setStyleSheet("color: gray;")
+        info.setStyleSheet(f"color: {get_semantic_colors()['neutral']};")
         layout.addWidget(info)
 
         layout.addSpacing(20)
@@ -165,13 +166,14 @@ class AnalysisDialog(QDialog):
         """Wird aufgerufen wenn Analyse fertig ist."""
         self.analysis_success = success
 
+        _sem = get_semantic_colors()
         if success:
             self.title_label.setText(t("analysis_completed"))
-            self.title_label.setStyleSheet("font-size: 14px; font-weight: bold; color: green;")
+            self.title_label.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {_sem['success']};")
             self.status_label.setText(message)
         else:
             self.title_label.setText(t("analysis_failed"))
-            self.title_label.setStyleSheet("font-size: 14px; font-weight: bold; color: red;")
+            self.title_label.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {_sem['error']};")
             self.status_label.setText(message)
 
         # UI anpassen
