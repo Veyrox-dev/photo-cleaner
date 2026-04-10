@@ -4993,11 +4993,6 @@ class ModernMainWindow(QMainWindow):
         self.help_action = menubar.addAction(t("help"))
         self.help_action.triggered.connect(self._show_help)
         self.help_action.setToolTip(t("help_tooltip"))
-
-        # Manual update check (Stage A: check + link to website download)
-        self.check_updates_action = menubar.addAction("Nach Updates suchen")
-        self.check_updates_action.triggered.connect(lambda: self._check_for_updates(show_up_to_date=True))
-        self.check_updates_action.setToolTip("Prueft auf neue Version und oeffnet bei Bedarf den Download-Link")
         
         # Quit via Ctrl+Q (no File menu)
         quit_shortcut = QShortcut(QKeySequence.Quit, self)
@@ -6647,7 +6642,11 @@ class ModernMainWindow(QMainWindow):
         action_panel = self.keep_btn.parentWidget() if hasattr(self, "keep_btn") and self.keep_btn else None
         _append_step(action_panel, "onboarding_step_actions_title", "onboarding_step_actions_body")
 
+        _append_step(self.undo_btn, "onboarding_step_undo_title", "onboarding_step_undo_body")
+        _append_step(self.status_bar_panel, "onboarding_step_status_title", "onboarding_step_status_body")
+
         _append_step(self.finalize_btn, "onboarding_step_finalize_title", "onboarding_step_finalize_body")
+        _append_step(self, "onboarding_step_settings_title", "onboarding_step_settings_body")
         return steps
 
     def _reset_first_run_onboarding(self) -> None:
@@ -8527,12 +8526,17 @@ class ModernMainWindow(QMainWindow):
         msg.setText(t("keyboard_shortcuts_detailed"))
         msg.exec()
 
+    _DEFAULT_UPDATE_MANIFEST_URL = "https://veyrox-dev.github.io/photocleaner-website/updates/latest.json"
+
     def _get_update_manifest_url(self) -> str:
-        """Resolve update manifest URL from settings or environment."""
+        """Resolve update manifest URL from settings, environment, or built-in default."""
         url = str(self._user_settings.get("update_manifest_url", "")).strip()
         if url:
             return url
-        return str(os.environ.get("PHOTOCLEANER_UPDATE_MANIFEST_URL", "")).strip()
+        url = str(os.environ.get("PHOTOCLEANER_UPDATE_MANIFEST_URL", "")).strip()
+        if url:
+            return url
+        return self._DEFAULT_UPDATE_MANIFEST_URL
 
     def _schedule_update_check(self) -> None:
         """Schedule a non-blocking startup update check."""

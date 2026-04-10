@@ -58,12 +58,13 @@ class OnboardingTourDialog(QDialog):
         self._card.setObjectName("onboarding_tour_card")
         self._card.setStyleSheet(
             "QFrame#onboarding_tour_card {"
-            "background: #ffffff;"
-            "border: 2px solid #2f6fde;"
-            "border-radius: 12px;"
+            "background: #fbfcff;"
+            "border: 1px solid #9bb8f5;"
+            "border-radius: 14px;"
             "}"
-            "QLabel#onboarding_tour_title { font-size: 16px; font-weight: 700; color: #1a1f36; }"
-            "QLabel#onboarding_tour_body { font-size: 12px; color: #2f3449; }"
+            "QLabel#onboarding_tour_step_counter { font-size: 11px; font-weight: 700; color: #2f6fde; }"
+            "QLabel#onboarding_tour_title { font-size: 18px; font-weight: 700; color: #151a2d; }"
+            "QLabel#onboarding_tour_body { font-size: 13px; color: #2b3144; line-height: 1.35; }"
             "QCheckBox { color: #1a1f36; }"
             "QPushButton {"
             "background: #2f6fde; color: white; border: none; border-radius: 8px;"
@@ -76,8 +77,13 @@ class OnboardingTourDialog(QDialog):
         )
 
         card_layout = QVBoxLayout(self._card)
-        card_layout.setContentsMargins(16, 14, 16, 14)
+        card_layout.setContentsMargins(18, 16, 18, 16)
         card_layout.setSpacing(10)
+
+        self._step_counter_label = QLabel()
+        self._step_counter_label.setObjectName("onboarding_tour_step_counter")
+        self._step_counter_label.setAlignment(Qt.AlignLeft)
+        card_layout.addWidget(self._step_counter_label)
 
         self._title_label = QLabel()
         self._title_label.setObjectName("onboarding_tour_title")
@@ -211,7 +217,7 @@ class OnboardingTourDialog(QDialog):
         return rect.adjusted(-6, -6, 6, 6)
 
     def _reposition_card(self) -> None:
-        card_w = 430
+        card_w = 500
         card_h = min(300, max(220, self._card.sizeHint().height()))
         self._card.resize(card_w, card_h)
 
@@ -291,6 +297,7 @@ class OnboardingTourDialog(QDialog):
     def _apply_step(self, index: int) -> None:
         self._step_index = index
         step = self._steps[index]
+        self._step_counter_label.setText(f"Schritt {index + 1} / {len(self._steps)}")
 
         self._title_label.setText(step.title)
         self._body_label.setText(step.body)

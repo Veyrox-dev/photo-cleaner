@@ -109,6 +109,9 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 - ✅ Week-7 Regressionen ergänzt: Guardrail-Tests grün (Retry, Längenmismatch-Fallback, Min-Images, Worker-Cap)
 - ✅ A/B-Profiling auf Realdaten durchgefuehrt: Thread-Pfad 379.46s, Process-Parallel default 155.85s, Process-Parallel getuned (4 Worker Cap) 141.05s, finaler Default-Lauf nach Worker-Reuse 138.63s
 - ▶ Ergebnis: fester Default mit Worker-Cap=4 + Analyzer-Reuse pro Worker schliesst fast zum besten historischen Thread-Lauf auf (138.63s vs. 137.57s, ~0.8% Differenz) bei deutlich geringerem Peak-Memory
+- ✅ Update-Logik Phase C Entscheidung abgeschlossen: MSI-only für v1.0, MSIX/AppInstaller Post-Launch bewertet (`docs/guides/UPDATE_PHASE_C.md`)
+- ✅ Update-Manifest-Fallback produktiv gesetzt: `https://veyrox-dev.github.io/photocleaner-website/updates/latest.json`
+- ✅ Manueller "Nach Updates suchen"-Trigger aus Menue in den Settings-Dialog (System/Wartung) verlegt
 
 ### 1 · MSI Smoke-Test auf Virgin Windows
 Installer (`.msi`) auf einer frischen Maschine validieren: Install → Upgrade → Uninstall.
@@ -129,7 +132,7 @@ Separat und ergänzend zu den EXE-Smoke-Tests.
 | Stripe + Supabase Produktionsbereitschaft end-to-end validieren | Hoch |
 | Lizenz-Vollständig-Durchlauf (Kauf → Aktivierung → Ablauf → Erneuerung) | Hoch |
 | Update-Logik Phase B: In-App Download-Flow (optional mit MSI-Start) definieren/umsetzen | Mittel |
-| Update-Logik Phase C: optionaler MSIX/AppInstaller-Delta-Update-Kanal evaluieren | Niedrig |
+| Update-Logik Phase C: optionaler MSIX/AppInstaller-Delta-Update-Kanal evaluieren | ✅ Entschieden: MSI-only für v1.0 (`docs/guides/UPDATE_PHASE_C.md`) |
 | User Manual vervollständigen | Mittel |
 | Troubleshooting Guide + FAQ | Mittel |
 | Support-Setup (E-Mail-Template, Bug-Melde-Prozess) | Niedrig |
@@ -173,13 +176,14 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 
 ### v1.0 Must-have
 
-1. Explainable Score Breakdown
-2. Confidence Badge + Needs Review
-3. Merge/Split für Gruppen
-4. Undo-Historie + Action Log
-5. Guided Onboarding + Sample Walkthrough
-6. Smart Filter im Review
-7. Quota- und Upgrade-Messaging im Workflow
+1. ✅ Explainable Score Breakdown
+2. ✅ Confidence Badge + Needs Review
+3. ✅ Merge/Split für Gruppen
+4. ✅ Undo-Historie + Action Log
+5. ✅ Guided Onboarding + Sample Walkthrough
+6. ✅ Smart Filter im Review
+7. ✅ Quota- und Upgrade-Messaging im Workflow
+8. ✅ Update-Logik Phase A (Versionscheck + Download-Link via Manifest)
 
 ### v1.1 Should-have
 
@@ -262,12 +266,18 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 - ▶ Frozen-Build-Validierung und Review-Polish (manueller EXE/MSI-Smoke-Test weiter offen)
 - ✅ FREE/PRO Lizenz-Sanity und Delete-Safety final geprueft (Fokus-Regressionen gruen; Smoke-Checkliste erweitert)
 - 📌 Progressive Results bleibt bewusst nach Launch im v1.1-Backlog und ist kein Week-7-/v1.0-Ziel
-- Update-Logik Phase C Entscheidungsvorlage erstellen (MSI-only vs. MSI+MSIX)
+- ✅ Update-Logik Phase C Entscheidungsvorlage erstellt: MSI-only für v1.0, MSIX/AppInstaller als Post-Launch-Option bewertet (`docs/guides/UPDATE_PHASE_C.md`)
 
 ### Woche 8
-- Pilot-Release-Readiness
-- Support-Playbook für Gruppierungsprobleme
-- Release-Entscheidung auf Basis der A/B-Benchmark-Deltas und Smoke-Test-Status
+    - ▶ Version auf 1.0.0-rc1 bumpen + Git-Tag setzen
+- ▶ 5× Frozen-Build Smoke-Test abschließen (EXE + MSI auf sauberen Windows-Maschinen)
+- ▶ Stripe + Supabase Produktionsbereitschaft end-to-end validieren
+- ▶ Lizenz-Vollständig-Durchlauf: Kauf → Aktivierung → Ablauf → Erneuerung
+- ▶ Code-Signing vorbereiten: EV-Zertifikat beantragen / EXE + MSI signieren
+- ▶ User Manual + Troubleshooting Guide / FAQ fertigstellen
+- ▶ Support-Setup: E-Mail-Template + Bug-Melde-Prozess
+- ▶ Support-Playbook für häufige Gruppierungsprobleme
+- ▶ Release-Entscheidung: Go/No-Go auf Basis Smoke-Test-Status + Stripe/Supabase-Validierung
 
 ### Team-Aufteilung (Empfehlung)
 

@@ -366,6 +366,10 @@ class SettingsDialog(QDialog):
         self.reset_pipeline_btn.clicked.connect(self._reset_pipeline_state)
         maintenance_layout.addWidget(self.reset_pipeline_btn)
 
+        self.check_updates_btn = QPushButton("Nach Updates suchen")
+        self.check_updates_btn.clicked.connect(self._check_updates_now)
+        maintenance_layout.addWidget(self.check_updates_btn)
+
         layout.addWidget(maintenance_group)
         layout.addStretch()
         return self._wrap_tab(content)
@@ -519,7 +523,7 @@ class SettingsDialog(QDialog):
             self.blurry_check.setChecked(True)
             self.underexposed_check.setChecked(True)
             self.overexposed_check.setChecked(False)
-            
+
             self.export_format_combo.setCurrentText("Original")
             self.export_quality_spin.setValue(90)
             self.keep_originals_check.setChecked(True)
@@ -531,6 +535,23 @@ class SettingsDialog(QDialog):
             self.group_relaxed_similarity_spin.setValue(60)
             self.show_advanced_check.setChecked(False)
             self.advanced_group.setVisible(False)
+
+    def _check_updates_now(self) -> None:
+        """Run a manual update check via parent window callback."""
+        parent = self.parent()
+        if parent and hasattr(parent, "_check_for_updates"):
+            try:
+                parent._check_for_updates(show_up_to_date=True)
+            except Exception as e:
+                logger.warning("Manual update check failed from settings dialog: %s", e, exc_info=True)
+                QMessageBox.warning(self, "Update-Check", f"Update-Check fehlgeschlagen:\n{e}")
+            return
+
+        QMessageBox.information(
+            self,
+            "Update-Check",
+            "Update-Check ist nur im Hauptfenster verfügbar.",
+        )
 
     def _clear_cache(self) -> None:
         """Clear caches for a clean pipeline re-run."""
