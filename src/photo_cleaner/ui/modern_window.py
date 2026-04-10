@@ -18,6 +18,8 @@ import json
 import re
 import sqlite3
 import time
+import urllib.request
+import urllib.error
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
@@ -34,10 +36,12 @@ from PySide6.QtCore import (
     QTimer,
     QThread,
     Signal,
+    QUrl,
 )
 from PySide6.QtGui import (
     QBrush,
     QColor,
+    QDesktopServices,
     QIcon,
     QImage,
     QKeySequence,
@@ -87,6 +91,7 @@ from PySide6.QtWidgets import (
 )
 
 from photo_cleaner.db.schema import Database
+from photo_cleaner import __version__ as APP_VERSION
 from photo_cleaner.config import AppConfig
 from photo_cleaner.models.mode import AppMode
 from photo_cleaner.models.status import FileStatus
@@ -138,6 +143,34 @@ def _get_group_scorer():
         from photo_cleaner.pipeline.scorer import GroupScorer
         _GroupScorer = GroupScorer
     return _GroupScorer
+
+
+def _compute_analysis_workers(image_count: int) -> int:
+    """Pick a conservative worker count for stage-4 quality analysis."""
+    if image_count <= 1:
+        return 1
+    cpu_total = os.cpu_count() or 4
+    cpu_budget = max(1, cpu_total - 1)
+    if image_count <= 3:
+        return min(cpu_budget, image_count)
+    if image_count <= 8:
+        return min(cpu_budget, 4, image_count)
+    return min(cpu_budget, 8, image_count)
+
+
+def _parse_version_tuple(version_str: str) -> tuple[int, int, int]:
+    """Parse semantic version string into comparable tuple."""
+    try:
+        parts = [int(p) for p in str(version_str).strip().split(".")[:3]]
+        while len(parts) < 3:
+            parts.append(0)
+        return (parts[0], parts[1], parts[2])
+    except (ValueError, TypeError):
+        return (0, 0, 0)
+
+
+def _is_newer_version(latest: str, current: str) -> bool:
+    return _parse_version_tuple(latest) > _parse_version_tuple(current)
 from photo_cleaner.i18n import t, set_language, load_language_from_settings, save_language_to_settings, get_available_languages
 from photo_cleaner.theme import (
     set_theme,
@@ -316,6 +349,7 @@ class RatingWorkerThread(QThread):
                 _emit_progress(min(94, pct), f"Bilder werden bewertet... {done}/{total_images}")
                 
                 group_base_done = done
+                worker_count = _compute_analysis_workers(len(paths))
                 def _progress_cb(local_done: int, local_total: int) -> None:
                     if self._should_cancel:
                         return
@@ -323,7 +357,11 @@ class RatingWorkerThread(QThread):
                     pct = 87 + int(7 * (current_done / max(1, total_images)))
                     _emit_progress(min(94, pct), f"Bilder werden bewertet... {current_done}/{total_images}")
                 
-                results = analyzer.analyze_batch(paths, progress_callback=_progress_cb)
+                results = analyzer.analyze_batch(
+                    paths,
+                    progress_callback=_progress_cb,
+                    max_workers=worker_count,
+                )
                 quality_results[group_id] = results
                 done += len(paths)
                 
@@ -521,6 +559,7 @@ class MergeGroupRatingWorker(QThread):
                 return
 
             total_images = len(paths)
+            worker_count = _compute_analysis_workers(total_images)
             _emit_progress(
                 15,
                 1,
@@ -568,7 +607,11 @@ class MergeGroupRatingWorker(QThread):
                     max(1, total_local),
                 )
 
-            results = analyzer.analyze_batch(paths, progress_callback=_progress_cb)
+            results = analyzer.analyze_batch(
+                paths,
+                progress_callback=_progress_cb,
+                max_workers=worker_count,
+            )
             if self._cancelled:
                 self.finished.emit(False)
                 return
@@ -3587,6 +3630,11 @@ class ModernMainWindow(QMainWindow):
         self._progress_update_ts = 0.0
         self._rating_progress_update_ts = 0.0
         self._rating_progress_last_signature: tuple[int, int, int] | None = None
+        self._analysis_stage_timings: dict[str, float] = {}
+        self._analysis_stage_started_at: dict[str, float] = {}
+        self._analysis_progress_events_total = 0
+        self._analysis_progress_events_rendered = 0
+        self._analysis_metrics_output_path: Optional[str] = None
         self._pipeline_start_ts = 0.0
         self._pipeline_last_known_total = 0
         
@@ -3726,6 +3774,9 @@ class ModernMainWindow(QMainWindow):
         # Start automatic scan only after DB/services/UI are ready
         if self._pending_scan:
             self._scan_input_folder()
+
+        # Stage A updater: lightweight online version check with website download link.
+        self._schedule_update_check()
     
     def keyPressEvent(self, event):
         """FEATURE: Keyboard Shortcuts - K/U/D for quick selection.
@@ -3888,6 +3939,56 @@ class ModernMainWindow(QMainWindow):
             return (0, 0)
         return (int(match.group(1)), int(match.group(2)))
 
+    def _mark_analysis_stage_start(self, stage_key: str) -> None:
+        self._analysis_stage_started_at[stage_key] = time.monotonic()
+
+    def _mark_analysis_stage_end(self, stage_key: str) -> None:
+        started = self._analysis_stage_started_at.get(stage_key)
+        if started is None:
+            return
+        self._analysis_stage_timings[stage_key] = max(0.0, time.monotonic() - started)
+
+    def _persist_analysis_metrics(self, rating_info: dict) -> None:
+        try:
+            output_dir = Path("profiling_results")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            ts = time.strftime("%Y%m%d_%H%M%S")
+            output_file = output_dir / f"ui_analysis_metrics_{ts}.json"
+
+            payload = {
+                "timestamp": ts,
+                "analysis_duration_seconds": round(float(self._analysis_duration or 0.0), 3),
+                "stage_timings_seconds": {
+                    "grouping": round(float(self._analysis_stage_timings.get("grouping", 0.0)), 3),
+                    "rating": round(float(self._analysis_stage_timings.get("rating", 0.0)), 3),
+                    "finalization": round(float(self._analysis_stage_timings.get("finalization", 0.0)), 3),
+                },
+                "progress_events": {
+                    "received": int(self._analysis_progress_events_total),
+                    "rendered": int(self._analysis_progress_events_rendered),
+                    "dropped": int(max(0, self._analysis_progress_events_total - self._analysis_progress_events_rendered)),
+                },
+                "groups_found": int(self._post_indexing_group_count),
+                "duplicate_images": int(self._post_indexing_duplicate_images),
+                "indexing_results": self._indexing_results or {},
+                "rating_info": rating_info or {},
+            }
+
+            output_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            self._analysis_metrics_output_path = str(output_file)
+            logger.info("[PERF] Analysis metrics saved to %s", output_file)
+            logger.info(
+                "[PERF] Stage timings: grouping=%.3fs rating=%.3fs finalization=%.3fs total=%.3fs | progress rendered=%s/%s",
+                payload["stage_timings_seconds"]["grouping"],
+                payload["stage_timings_seconds"]["rating"],
+                payload["stage_timings_seconds"]["finalization"],
+                payload["analysis_duration_seconds"],
+                payload["progress_events"]["rendered"],
+                payload["progress_events"]["received"],
+            )
+        except (OSError, ValueError, TypeError) as exc:
+            logger.warning("[PERF] Failed to persist analysis metrics: %s", exc, exc_info=True)
+
     def _on_indexing_progress(self, current: int, total: int, status: str, progress_dialog):
         """Handle progress update from indexing thread."""
         if progress_dialog is None or not progress_dialog.isVisible():
@@ -3995,6 +4096,13 @@ class ModernMainWindow(QMainWindow):
         self._rating_error_message = None
         self._post_indexing_group_count = 0
         self._post_indexing_duplicate_images = 0
+        self._analysis_duration = 0.0
+        self._analysis_stage_timings = {}
+        self._analysis_stage_started_at = {}
+        self._analysis_progress_events_total = 0
+        self._analysis_progress_events_rendered = 0
+        self._analysis_metrics_output_path = None
+        self._mark_analysis_stage_start("grouping")
 
         logger.info("[UI] Reusing unified progress dialog for post-indexing...")
         progress = self._indexing_progress_dialog
@@ -4050,6 +4158,7 @@ class ModernMainWindow(QMainWindow):
             return
 
         group_rows = group_rows or []
+        self._mark_analysis_stage_end("grouping")
         self._post_indexing_group_count = len(group_rows)
         self._post_indexing_duplicate_images = sum(row[1] for row in group_rows) if group_rows else 0
         logger.info(f"[DUPFINDER] Found {self._post_indexing_group_count} groups, {self._post_indexing_duplicate_images} duplicate images")
@@ -4082,6 +4191,7 @@ class ModernMainWindow(QMainWindow):
                 )
 
         logger.info("[DUPFINDER] Creating RatingWorkerThread...")
+        self._mark_analysis_stage_start("rating")
         thread_create_start = time.monotonic()
         self._rating_thread = self._rating_workflow.create_and_wire_rating_thread(
             self.db_path,
@@ -4115,6 +4225,7 @@ class ModernMainWindow(QMainWindow):
 
     def _on_rating_progress(self, pct: int, status: str) -> None:
         progress = self._post_indexing_progress_dialog
+        self._analysis_progress_events_total += 1
         if progress:
             clamped = max(0, min(100, int(pct)))
             mapped = 75 + int(round((clamped / 100) * 20))
@@ -4134,6 +4245,7 @@ class ModernMainWindow(QMainWindow):
                 return
             self._rating_progress_update_ts = now
             self._rating_progress_last_signature = signature
+            self._analysis_progress_events_rendered += 1
 
             if isinstance(progress, ProgressStepDialog):
                 # Phase D: Use new progress dialog with steps
@@ -4162,6 +4274,7 @@ class ModernMainWindow(QMainWindow):
         self._rating_error_message = error_msg
 
     def _on_rating_finished(self, rating_info: dict) -> None:
+        self._mark_analysis_stage_end("rating")
         self._finish_post_indexing(rating_info)
 
     def _finish_post_indexing(self, rating_info: dict) -> None:
@@ -4172,6 +4285,8 @@ class ModernMainWindow(QMainWindow):
         if self._post_indexing_cancelled:
             logger.info("[UI] Post-indexing was cancelled, skipping finish")
             return
+
+        self._mark_analysis_stage_start("finalization")
         
         # ✅ CRITICAL FIX: Now that rating is complete, resume ThumbnailLoaders for sequential flow
         logger.info("[UI] Rating complete! Resuming ThumbnailLoaders for sequential flow...")
@@ -4208,6 +4323,10 @@ class ModernMainWindow(QMainWindow):
             self._pending_rating_summary = None
             if summary is not None:
                 self._show_analysis_summary(summary)
+            self._mark_analysis_stage_end("finalization")
+            if self._pipeline_start_ts > 0:
+                self._analysis_duration = max(0.0, time.monotonic() - self._pipeline_start_ts)
+            self._persist_analysis_metrics(rating_info)
             finish_time = time.monotonic() - finish_start
             logger.info(f"[UI] _finish_post_indexing() FINISHED in {finish_time:.3f}s")
             return
@@ -4216,6 +4335,10 @@ class ModernMainWindow(QMainWindow):
             self._pending_rating_summary = None
             if summary is not None:
                 self._show_analysis_summary(summary)
+            self._mark_analysis_stage_end("finalization")
+            if self._pipeline_start_ts > 0:
+                self._analysis_duration = max(0.0, time.monotonic() - self._pipeline_start_ts)
+            self._persist_analysis_metrics(rating_info)
         
         finish_time = time.monotonic() - finish_start
         logger.info(f"[UI] _finish_post_indexing() FINISHED in {finish_time:.3f}s")
@@ -4847,6 +4970,11 @@ class ModernMainWindow(QMainWindow):
         self.help_action = menubar.addAction(t("help"))
         self.help_action.triggered.connect(self._show_help)
         self.help_action.setToolTip(t("help_tooltip"))
+
+        # Manual update check (Stage A: check + link to website download)
+        self.check_updates_action = menubar.addAction("Nach Updates suchen")
+        self.check_updates_action.triggered.connect(lambda: self._check_for_updates(show_up_to_date=True))
+        self.check_updates_action.setToolTip("Prueft auf neue Version und oeffnet bei Bedarf den Download-Link")
         
         # Quit via Ctrl+Q (no File menu)
         quit_shortcut = QShortcut(QKeySequence.Quit, self)
@@ -7051,6 +7179,10 @@ class ModernMainWindow(QMainWindow):
                     summary = self._pending_rating_summary
                     self._pending_rating_summary = None
                     self._show_analysis_summary(summary)
+                    self._mark_analysis_stage_end("finalization")
+                    if self._pipeline_start_ts > 0:
+                        self._analysis_duration = max(0.0, time.monotonic() - self._pipeline_start_ts)
+                    self._persist_analysis_metrics(summary)
     
     def _on_group_selected(self):
         """Handle group selection."""
@@ -8371,6 +8503,93 @@ class ModernMainWindow(QMainWindow):
         msg.setTextFormat(Qt.RichText)
         msg.setText(t("keyboard_shortcuts_detailed"))
         msg.exec()
+
+    def _get_update_manifest_url(self) -> str:
+        """Resolve update manifest URL from settings or environment."""
+        url = str(self._user_settings.get("update_manifest_url", "")).strip()
+        if url:
+            return url
+        return str(os.environ.get("PHOTOCLEANER_UPDATE_MANIFEST_URL", "")).strip()
+
+    def _schedule_update_check(self) -> None:
+        """Schedule a non-blocking startup update check."""
+        QTimer.singleShot(4500, lambda: self._check_for_updates(show_up_to_date=False))
+
+    def _check_for_updates(self, show_up_to_date: bool = False) -> None:
+        """Fetch update manifest and offer website download if newer version exists."""
+        manifest_url = self._get_update_manifest_url()
+        if not manifest_url:
+            if show_up_to_date:
+                QMessageBox.information(
+                    self,
+                    "Update-Check",
+                    "Kein Update-Manifest konfiguriert.\n"
+                    "Setze update_manifest_url in settings.json oder PHOTOCLEANER_UPDATE_MANIFEST_URL.",
+                )
+            return
+
+        # Avoid frequent startup requests (manual checks are always allowed).
+        now = time.time()
+        if not show_up_to_date:
+            last_check = float(self._user_settings.get("update_last_check_ts", 0.0) or 0.0)
+            if now - last_check < 12 * 60 * 60:
+                return
+
+        try:
+            with urllib.request.urlopen(manifest_url, timeout=3.0) as resp:
+                raw = resp.read().decode("utf-8")
+                manifest = json.loads(raw)
+            if not isinstance(manifest, dict):
+                raise ValueError("Update manifest must be a JSON object")
+        except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError, ValueError) as exc:
+            logger.info("Update check failed (%s): %s", manifest_url, exc)
+            if show_up_to_date:
+                QMessageBox.warning(self, "Update-Check", f"Update-Check fehlgeschlagen:\n{exc}")
+            return
+
+        self._user_settings["update_last_check_ts"] = now
+        self._save_user_settings()
+
+        latest_version = str(manifest.get("latest_version", "")).strip()
+        download_url = str(manifest.get("download_url", "")).strip()
+        if not latest_version:
+            if show_up_to_date:
+                QMessageBox.warning(self, "Update-Check", "Manifest ohne latest_version")
+            return
+
+        if not _is_newer_version(latest_version, APP_VERSION):
+            if show_up_to_date:
+                QMessageBox.information(
+                    self,
+                    "Update-Check",
+                    f"Du nutzt bereits die aktuelle Version ({APP_VERSION}).",
+                )
+            return
+
+        if not download_url:
+            if show_up_to_date:
+                QMessageBox.warning(self, "Update-Check", "Manifest ohne download_url")
+            return
+
+        dialog = QMessageBox(self)
+        dialog.setIcon(QMessageBox.Information)
+        dialog.setWindowTitle("Update verfuegbar")
+        dialog.setText(
+            f"Neue Version verfuegbar: {latest_version}\n"
+            f"Aktuell installiert: {APP_VERSION}"
+        )
+        dialog.setInformativeText("Download-Seite jetzt oeffnen?")
+        open_btn = dialog.addButton("Download oeffnen", QMessageBox.AcceptRole)
+        dialog.addButton("Spaeter", QMessageBox.RejectRole)
+        dialog.exec()
+
+        if dialog.clickedButton() == open_btn:
+            if not QDesktopServices.openUrl(QUrl(download_url)):
+                QMessageBox.warning(
+                    self,
+                    "Update",
+                    f"Download-Link konnte nicht geoeffnet werden:\n{download_url}",
+                )
     
     # Cleanup
     

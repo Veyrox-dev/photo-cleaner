@@ -9,6 +9,12 @@
 - Score-Schreibpfad auf SQLite-Batching umgestellt (`executemany` fuer Quality-Updates), statt viele einzelne `UPDATE`-Statements
 - Erwarteter Effekt: stabilere UI unter Last + weniger Overhead im langen Analyse-/Merge-Lauf
 
+### 📊 Performance-Inkrement (Step 2, Messbarkeit + Stage-4-Orchestrierung)
+- Produktiver Async-Analysepfad schreibt jetzt Laufzeit-Metriken als JSON nach `profiling_results/ui_analysis_metrics_*.json`
+- Enthaltene Metriken: Stage-Zeiten (Grouping/Rating/Finalization), Gesamtzeit, Progress-Events (received/rendered/dropped), Gruppen-/Bildzahlen
+- Stage 4 (Quality-Analyse) nutzt nun adaptive Workerzahl je Gruppengroesse und CPU-Budget statt fixer Thread-Anzahl
+- Ziel: engpassnahe Optimierung mit direkter Delta-Messbarkeit zwischen Runs
+
 ### 🔁 Merge Workflow UX (mehrstufig, nicht blockierend)
 - Merge-Neubewertung auf asynchronen Worker mit detailliertem Progress-Eventmodell umgestellt
 - Merge-Dialog zeigt jetzt sichtbare Phasen + Prozent + Detailstatus + Sub-Progress

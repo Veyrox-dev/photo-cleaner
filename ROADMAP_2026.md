@@ -95,6 +95,8 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 - ✅ Week-5-Plan präzisiert: kein kurzfristiger Sprachwechsel, erst Orchestrierung/Parallelisierung optimieren
 - ✅ Week-5 Umsetzung gestartet: Progress-Event-Throttling (Rating/Merge Worker + UI) reduziert Eventloop-Repaint-Last
 - ✅ Week-5 Umsetzung gestartet: Score-DB-Updates auf `executemany`-Batching umgestellt (weniger SQLite-Statement-Overhead)
+- ✅ Week-5 Umsetzung (Step 2): Laufzeit-Messschicht im produktiven Async-Analysepfad ergänzt (Stage-Zeiten + Progress-Event-Counter + JSON-Export nach `profiling_results/`)
+- ✅ Week-5 Umsetzung (Step 2): Stage-4-Orchestrierung von fixen 4 Threads auf adaptive Workerzahl je Gruppengröße/CPU umgestellt
 
 ### 1 · MSI Smoke-Test auf Virgin Windows
 Installer (`.msi`) auf einer frischen Maschine validieren: Install → Upgrade → Uninstall.
