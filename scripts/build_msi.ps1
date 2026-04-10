@@ -127,7 +127,7 @@ function Get-DotEnvValue {
     return $null
 }
 
-function Ensure-CloudConfigInDist {
+function Initialize-CloudConfigInDist {
     param(
         [string]$WorkspaceRoot,
         [string]$DistRoot
@@ -188,7 +188,7 @@ if (-not (Test-Path $distExe)) {
 }
 
 $distRoot = Join-Path $root "dist\PhotoCleaner"
-Ensure-CloudConfigInDist -WorkspaceRoot $root -DistRoot $distRoot
+Initialize-CloudConfigInDist -WorkspaceRoot $root -DistRoot $distRoot
 
 $wix = Get-Command wix -ErrorAction SilentlyContinue
 $wixExe = if ($wix) { $wix.Source } else { $null }

@@ -3559,7 +3559,7 @@ class VirtualScrollContainer(QWidget):
         
         self.items: List[ThumbnailCard] = []
         self.visible_items: dict[int, ThumbnailCard] = {}
-        self.item_height = 240  # Card height + spacing (was 280)
+        self.item_height = 310  # Card height + spacing (increased for larger thumbnails)
         self.items_per_row = 5  # More items per row (was 4)
         
         self._build_ui()
@@ -6348,7 +6348,7 @@ class ModernMainWindow(QMainWindow):
         if self._grid_thumb_loader:
             return
         self._grid_thumb_cache = SmartThumbnailCache(max_size_mb=200)
-        self._grid_thumb_loader = ThumbnailLoader(self._grid_thumb_cache, thumb_size=(160, 160))
+        self._grid_thumb_loader = ThumbnailLoader(self._grid_thumb_cache, thumb_size=(200, 200))
         self._grid_thumb_loader.thumbnail_loaded.connect(self._on_grid_thumb_loaded)
         # ✅ CRITICAL FIX: Start paused (only resume in _finish_post_indexing after rating complete)
         self._grid_thumb_loader.start()
