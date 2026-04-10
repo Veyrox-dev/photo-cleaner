@@ -1,6 +1,24 @@
 # PhotoCleaner - Changelog
 > Version 0.8.5 - MSI Reliability + Review UX Hotfixes (2026-04-09)
 
+## [Unreleased] - Onboarding Expansion + Update UX + Group Status Colors (2026-04-10) ✅
+
+### 🧭 Onboarding Verbesserungen
+- Onboarding-Tour optisch verbessert (klarerer Card-Look, bessere Typografie, Schrittzaehler)
+- Inhaltlich erweitert: ausfuehrlichere Hilfetexte in DE/EN mit konkreten Handlungsanweisungen
+- Zusätzliche Schritte aufgenommen (Undo/Verlauf, Status/Fortschritt, Einstellungen/Updates)
+
+### 🔄 Update UX
+- Manueller "Nach Updates suchen"-Trigger aus der Menueleiste in den Settings-Dialog verschoben (System/Wartung)
+- Default-Manifest-Fallback gesetzt: `https://veyrox-dev.github.io/photocleaner-website/updates/latest.json`
+
+### 🎨 Gruppenstatus-Farben korrigiert
+- Gruppenliste farblich konsistent auf Status-Logik gebracht:
+  - Offen = Rot
+  - Erledigt = Gruen
+  - Teilweise/neutral = Grau
+- Farbzuweisung sowohl im initialen Rendern als auch bei Visual-Refresh nach Checkbox-Interaktion angeglichen
+
 ## [Unreleased] - Merge Progress UX + Theme Unification + Stability Fixes (2026-04-09) ✅
 
 ### ⚡ Performance-Inkrement (Step 1, low risk)

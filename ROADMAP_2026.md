@@ -112,6 +112,9 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 - ✅ Update-Logik Phase C Entscheidung abgeschlossen: MSI-only für v1.0, MSIX/AppInstaller Post-Launch bewertet (`docs/guides/UPDATE_PHASE_C.md`)
 - ✅ Update-Manifest-Fallback produktiv gesetzt: `https://veyrox-dev.github.io/photocleaner-website/updates/latest.json`
 - ✅ Manueller "Nach Updates suchen"-Trigger aus Menue in den Settings-Dialog (System/Wartung) verlegt
+- ✅ Onboarding erweitert/verbessert: mehr Schrittinhalt, zusaetzliche Tour-Punkte, bessere Lesbarkeit (DE/EN)
+- ✅ Gruppenstatus-Farbcodierung korrigiert: Offen=Rot, Erledigt=Gruen, Teilweise=Grau
+- ▶ Week-8 letzter Punkt vorbereitet: Go/No-Go-Entscheidung bleibt an Frozen-Smoke + Stripe/Supabase-E2E gekoppelt
 
 ### 1 · MSI Smoke-Test auf Virgin Windows
 Installer (`.msi`) auf einer frischen Maschine validieren: Install → Upgrade → Uninstall.

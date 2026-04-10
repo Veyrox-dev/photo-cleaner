@@ -932,7 +932,7 @@ class ProgressStepDialog(QDialog):
         theme_colors = get_theme_colors()
         
         # Progress bar styling
-        bg_color = theme_colors.get("bg_secondary", "#2a2a2a")
+        bg_color = theme_colors.get("base", "#ffffff")
         progress_color = colors["info"]
         
         self.progress_bar.setStyleSheet(f"""
@@ -967,8 +967,8 @@ class ProgressStepDialog(QDialog):
         # Dialog styling
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: {theme_colors.get('bg_primary', '#1e1e1e')};
-                color: {theme_colors.get('text_primary', '#ffffff')};
+                background-color: {theme_colors.get('window', '#f5f5f5')};
+                color: {theme_colors.get('text', '#000000')};
             }}
         """)
     
@@ -1298,7 +1298,7 @@ class FinalizationResultDialog(QDialog):
     def _apply_card_styling(self, card: QWidget, accent_color: str):
         """Apply card styling with accent color."""
         colors = get_semantic_colors()
-        bg_color = get_theme_colors().get("bg_secondary", "#2a2a2a")
+        bg_color = get_theme_colors().get("base", "#ffffff")
         
         card.setStyleSheet(f"""
             QWidget {{
@@ -1314,8 +1314,8 @@ class FinalizationResultDialog(QDialog):
         theme_colors = get_theme_colors()
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: {theme_colors.get('bg_primary', '#1e1e1e')};
-                color: {theme_colors.get('text_primary', '#ffffff')};
+                background-color: {theme_colors.get('window', '#f5f5f5')};
+                color: {theme_colors.get('text', '#000000')};
             }}
             QPushButton {{
                 min-height: 36px;
@@ -7004,15 +7004,15 @@ class ModernMainWindow(QMainWindow):
             if grp.open_count == 0:
                 status_icon = t("group_status_done")
                 status_color = QColor(semantic_colors["success"])
-                bg_alpha = 60
+                bg_alpha = 72
             elif grp.open_count > 0 and grp.decided_count > 0:
                 status_icon = t("group_status_partial")
-                status_color = QColor(semantic_colors["error"])
-                bg_alpha = 65
+                status_color = QColor(semantic_colors["neutral"])
+                bg_alpha = 92
             else:
                 status_icon = t("group_status_open")
                 status_color = QColor(semantic_colors["error"])
-                bg_alpha = 85
+                bg_alpha = 96
             
             needs_review_hint = (
                 t("manual_review_hint").format(count=grp.needs_review_count)
@@ -7040,6 +7040,7 @@ class ModernMainWindow(QMainWindow):
             
             status_color.setAlpha(bg_alpha)
             item.setData(Qt.BackgroundRole, QBrush(status_color))
+            item.setBackground(QBrush(status_color))
 
             # In light theme prefer theme text color to avoid white labels on bright backgrounds.
             if get_theme() == "light":
@@ -7047,6 +7048,7 @@ class ModernMainWindow(QMainWindow):
             else:
                 text_color = QColor("#ffffff") if status_color.lightness() < 170 else QColor("#111111")
             item.setData(Qt.ForegroundRole, QBrush(text_color))
+            item.setForeground(QBrush(text_color))
 
             if grp.group_id in self._checked_group_ids:
                 self._apply_group_checked_visual(item, True)
@@ -7249,13 +7251,13 @@ class ModernMainWindow(QMainWindow):
         semantic_colors = get_semantic_colors()
         if grp.open_count == 0:
             status_color = QColor(semantic_colors["success"])
-            bg_alpha = 60
+            bg_alpha = 72
         elif grp.open_count > 0 and grp.decided_count > 0:
-            status_color = QColor(semantic_colors["error"])
-            bg_alpha = 65
+            status_color = QColor(semantic_colors["neutral"])
+            bg_alpha = 92
         else:
             status_color = QColor(semantic_colors["error"])
-            bg_alpha = 85
+            bg_alpha = 96
         status_color.setAlpha(bg_alpha)
         item.setBackground(QBrush(status_color))
         if get_theme() == "light":

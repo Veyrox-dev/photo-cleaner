@@ -366,7 +366,7 @@ class SettingsDialog(QDialog):
         self.reset_pipeline_btn.clicked.connect(self._reset_pipeline_state)
         maintenance_layout.addWidget(self.reset_pipeline_btn)
 
-        self.check_updates_btn = QPushButton("Nach Updates suchen")
+        self.check_updates_btn = QPushButton(t("check_for_updates"))
         self.check_updates_btn.clicked.connect(self._check_updates_now)
         maintenance_layout.addWidget(self.check_updates_btn)
 
@@ -544,13 +544,13 @@ class SettingsDialog(QDialog):
                 parent._check_for_updates(show_up_to_date=True)
             except Exception as e:
                 logger.warning("Manual update check failed from settings dialog: %s", e, exc_info=True)
-                QMessageBox.warning(self, "Update-Check", f"Update-Check fehlgeschlagen:\n{e}")
+                QMessageBox.warning(self, t("update_check_title"), t("update_check_failed").format(error=e))
             return
 
         QMessageBox.information(
             self,
-            "Update-Check",
-            "Update-Check ist nur im Hauptfenster verfügbar.",
+            t("update_check_title"),
+            t("update_check_main_window_only"),
         )
 
     def _clear_cache(self) -> None:
