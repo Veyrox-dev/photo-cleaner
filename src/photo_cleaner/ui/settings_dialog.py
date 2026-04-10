@@ -6,15 +6,43 @@ from pathlib import Path
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget,
     QLabel, QSpinBox, QSlider, QCheckBox, QComboBox,
-    QPushButton, QGroupBox, QScrollArea, QMessageBox, QFileDialog, QFrame
+    QPushButton, QGroupBox, QScrollArea, QMessageBox, QFileDialog, QFrame,
+    QTextBrowser
 )
 from PySide6.QtCore import Qt, QSize, QEvent, QUrl
-from PySide6.QtGui import QDesktopServices
 from photo_cleaner.i18n import t, get_available_languages, get_language
 from photo_cleaner.theme import get_theme
 from photo_cleaner.config import AppConfig
 
 logger = logging.getLogger(__name__)
+
+
+class LegalDocumentDialog(QDialog):
+    """Display legal HTML content in an in-app dialog."""
+
+    def __init__(self, title: str, html_content: str, base_url: QUrl, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.resize(900, 760)
+        self.setMinimumSize(720, 520)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+
+        browser = QTextBrowser(self)
+        browser.setOpenExternalLinks(True)
+        browser.setHtml(html_content)
+        if base_url.isValid():
+            browser.document().setBaseUrl(base_url)
+        layout.addWidget(browser)
+
+        close_btn = QPushButton(t("close"))
+        close_btn.clicked.connect(self.accept)
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        btn_row.addWidget(close_btn)
+        layout.addLayout(btn_row)
 
 
 class SettingsDialog(QDialog):
@@ -408,7 +436,7 @@ class SettingsDialog(QDialog):
         return None
 
     def _open_legal_document(self, filename: str) -> None:
-        """Open a legal HTML document in the default browser."""
+        """Open a legal HTML document in an in-app dialog."""
         document_path = self._resolve_legal_document_path(filename)
         if not document_path:
             QMessageBox.warning(
@@ -418,13 +446,25 @@ class SettingsDialog(QDialog):
             )
             return
 
-        url = QUrl.fromLocalFile(str(document_path))
-        if not QDesktopServices.openUrl(url):
+        try:
+            html_content = document_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as e:
             QMessageBox.warning(
                 self,
                 t("legal_docs_missing_title"),
-                t("legal_docs_open_failed").format(name=filename),
+                t("legal_docs_open_failed").format(name=f"{filename}\n{e}"),
             )
+            return
+
+        title_map = {
+            "impressum.html": t("open_impressum"),
+            "datenschutz.html": t("open_privacy_policy"),
+            "agb.html": t("open_terms_conditions"),
+        }
+        dialog_title = title_map.get(filename, filename)
+        base_url = QUrl.fromLocalFile(str(document_path.parent) + "/")
+        dialog = LegalDocumentDialog(dialog_title, html_content, base_url, self)
+        dialog.exec()
 
     def _wrap_tab(self, content: QWidget) -> QWidget:
         scroll = QScrollArea()
