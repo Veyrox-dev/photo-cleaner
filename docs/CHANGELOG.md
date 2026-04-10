@@ -1,11 +1,11 @@
 # PhotoCleaner - Changelog
 > Version 0.8.5 - MSI Reliability + Review UX Hotfixes (2026-04-09)
 
-## [Unreleased] - Full i18n Rollout FR/ES/NL + JSON Locale Loader (2026-04-10) ✅
+## [Unreleased] - Full i18n Rollout FR/ES/NL/IT + JSON Locale Loader (2026-04-10) ✅
 
 ### 🌍 Neue UI-Sprachen voll integriert
-- FR, ES und NL als produktive Sprachen in der Sprachauswahl aktiviert
-- Vollstaendige Schluesselabdeckung fuer FR/ES/NL (kein partieller Sprachzustand mehr)
+- FR, ES, NL und IT als produktive Sprachen in der Sprachauswahl aktiviert
+- Vollstaendige Schluesselabdeckung fuer FR/ES/NL/IT (kein partieller Sprachzustand mehr)
 - Sprachwechsel- und Fallback-Verhalten fuer neue Locales vereinheitlicht
 
 ### 🗂️ Locale-Architektur auf JSON erweitert
@@ -13,12 +13,13 @@
   - `src/photo_cleaner/i18n_locales/fr.json`
   - `src/photo_cleaner/i18n_locales/es.json`
   - `src/photo_cleaner/i18n_locales/nl.json`
+  - `src/photo_cleaner/i18n_locales/it.json`
 - `i18n.py` laedt JSON-Overrides beim Start und synchronisiert danach erneut gegen EN-Basiskeys
 - Ergebnis: externe, wartbare Locale-Dateien ohne Verlust der Laufzeitstabilitaet
 
 ### ⚙️ Translation-Workflow reproduzierbar gemacht
 - Neues Tooling: `scripts/generate_locale_translations.py`
-- Script erzeugt FR/ES/NL aus EN/DE-Basisstrings automatisiert
+- Script erzeugt FR/ES/NL/IT aus EN/DE-Basisstrings automatisiert
 - Placeholder/Format-Token-Schutz integriert (z. B. `{count}`, HTML-Tags, `%`-Token)
 
 ### ✅ Validierung

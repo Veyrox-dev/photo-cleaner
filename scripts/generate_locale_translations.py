@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate FR/ES/NL locale files from existing i18n keys.
+"""Generate FR/ES/NL/IT locale files from existing i18n keys.
 
 Uses machine translation as a bootstrap and preserves placeholders like {count}.
 """

@@ -2,12 +2,14 @@
 
 import logging
 import os
+from pathlib import Path
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget,
     QLabel, QSpinBox, QSlider, QCheckBox, QComboBox,
     QPushButton, QGroupBox, QScrollArea, QMessageBox, QFileDialog, QFrame
 )
-from PySide6.QtCore import Qt, QSize, QEvent
+from PySide6.QtCore import Qt, QSize, QEvent, QUrl
+from PySide6.QtGui import QDesktopServices
 from photo_cleaner.i18n import t, get_available_languages, get_language
 from photo_cleaner.theme import get_theme
 from photo_cleaner.config import AppConfig
@@ -371,8 +373,58 @@ class SettingsDialog(QDialog):
         maintenance_layout.addWidget(self.check_updates_btn)
 
         layout.addWidget(maintenance_group)
+
+        legal_group = QGroupBox(t("settings_legal_group"))
+        legal_layout = QVBoxLayout(legal_group)
+
+        self.open_impressum_btn = QPushButton(t("open_impressum"))
+        self.open_impressum_btn.clicked.connect(lambda: self._open_legal_document("impressum.html"))
+        legal_layout.addWidget(self.open_impressum_btn)
+
+        self.open_privacy_btn = QPushButton(t("open_privacy_policy"))
+        self.open_privacy_btn.clicked.connect(lambda: self._open_legal_document("datenschutz.html"))
+        legal_layout.addWidget(self.open_privacy_btn)
+
+        self.open_agb_btn = QPushButton(t("open_terms_conditions"))
+        self.open_agb_btn.clicked.connect(lambda: self._open_legal_document("agb.html"))
+        legal_layout.addWidget(self.open_agb_btn)
+
+        layout.addWidget(legal_group)
         layout.addStretch()
         return self._wrap_tab(content)
+
+    def _resolve_legal_document_path(self, filename: str) -> Path | None:
+        """Resolve legal document path across dev and frozen layouts."""
+        app_dir = AppConfig.get_app_dir()
+        candidates = [
+            app_dir / "website" / filename,
+            app_dir / "src" / "photo_cleaner" / "legal" / filename,
+            app_dir / "photo_cleaner" / "legal" / filename,
+        ]
+
+        for candidate in candidates:
+            if candidate.exists() and candidate.is_file():
+                return candidate
+        return None
+
+    def _open_legal_document(self, filename: str) -> None:
+        """Open a legal HTML document in the default browser."""
+        document_path = self._resolve_legal_document_path(filename)
+        if not document_path:
+            QMessageBox.warning(
+                self,
+                t("legal_docs_missing_title"),
+                t("legal_docs_missing_msg").format(name=filename),
+            )
+            return
+
+        url = QUrl.fromLocalFile(str(document_path))
+        if not QDesktopServices.openUrl(url):
+            QMessageBox.warning(
+                self,
+                t("legal_docs_missing_title"),
+                t("legal_docs_open_failed").format(name=filename),
+            )
 
     def _wrap_tab(self, content: QWidget) -> QWidget:
         scroll = QScrollArea()

@@ -1,4 +1,4 @@
-"""Translation system for PhotoCleaner (DE/EN/FR/ES/NL).
+"""Translation system for PhotoCleaner (DE/EN/FR/ES/NL/IT).
 
 Simple i18n with language switching persisted in settings.
 """
@@ -381,6 +381,13 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "clear_cache": "Cache leeren",
         "reset_pipeline_db": "Pipeline zurücksetzen (DB)",
         "check_for_updates": "Nach Updates suchen",
+        "settings_legal_group": "Rechtliches",
+        "open_impressum": "Impressum öffnen",
+        "open_privacy_policy": "Datenschutzerklärung öffnen",
+        "open_terms_conditions": "AGB öffnen",
+        "legal_docs_missing_title": "Rechtstext nicht gefunden",
+        "legal_docs_missing_msg": "Die Datei konnte nicht gefunden werden:\n{name}",
+        "legal_docs_open_failed": "Die Datei konnte nicht geöffnet werden:\n{name}",
         "update_check_title": "Update-Check",
         "update_check_failed": "Update-Check fehlgeschlagen:\n{error}",
         "update_check_main_window_only": "Update-Check ist nur im Hauptfenster verfügbar.",
@@ -1148,6 +1155,13 @@ Status: Offline-Nutzung aktiv
         "clear_cache": "Clear cache",
         "reset_pipeline_db": "Reset pipeline (DB)",
         "check_for_updates": "Check for updates",
+        "settings_legal_group": "Legal",
+        "open_impressum": "Open imprint",
+        "open_privacy_policy": "Open privacy policy",
+        "open_terms_conditions": "Open terms and conditions",
+        "legal_docs_missing_title": "Legal document not found",
+        "legal_docs_missing_msg": "The file could not be found:\n{name}",
+        "legal_docs_open_failed": "The file could not be opened:\n{name}",
         "update_check_title": "Update check",
         "update_check_failed": "Update check failed:\n{error}",
         "update_check_main_window_only": "Update check is only available in the main window.",

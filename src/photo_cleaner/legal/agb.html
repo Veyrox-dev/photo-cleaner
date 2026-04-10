@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AGB – PhotoCleaner</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --ink: #1a1a1a;
+      --ink-muted: #6b6b6b;
+      --accent: #2a52a0;
+      --accent-light: rgba(42,82,160,0.08);
+      --border: #e0ddd8;
+      --red: #c0392b;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      line-height: 1.8;
+      padding: 3rem 1.5rem 6rem;
+    }
+    .container { max-width: 740px; margin: 0 auto; }
+    .badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-light);
+      padding: 0.3rem 0.75rem;
+      border-radius: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 400;
+      line-height: 1.15;
+      margin-bottom: 0.4rem;
+    }
+    .subtitle { color: var(--ink-muted); font-size: 0.92rem; margin-bottom: 3rem; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem 2.25rem;
+      margin-bottom: 1.25rem;
+    }
+    h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.15rem;
+      font-weight: 400;
+      color: var(--accent);
+      margin-bottom: 0.9rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--ink);
+      margin: 1.1rem 0 0.4rem;
+    }
+    p { margin-bottom: 0.6rem; }
+    ul { margin: 0.4rem 0 0.6rem 1.4rem; }
+    li { margin-bottom: 0.25rem; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .placeholder {
+      color: var(--red);
+      font-weight: 500;
+      background: rgba(192,57,43,0.07);
+      padding: 0.1em 0.35em;
+      border-radius: 3px;
+    }
+    .highlight-box {
+      background: var(--accent-light);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 0.9rem 1.25rem;
+      margin: 0.75rem 0;
+      font-size: 0.92rem;
+    }
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem 2.25rem;
+      margin-bottom: 2rem;
+    }
+    .toc-title {
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin-bottom: 0.75rem;
+    }
+    .toc ol { margin-left: 1.2rem; }
+    .toc li { font-size: 0.9rem; margin-bottom: 0.2rem; }
+    footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--ink-muted);
+      margin-top: 3rem;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="badge">Rechtliches</div>
+  <h1>Allgemeine Geschäftsbedingungen</h1>
+  <p class="subtitle">PhotoCleaner – Christian Dielewicz</p>
+
+  <div class="toc">
+    <p class="toc-title">Inhalt</p>
+    <ol>
+      <li>Geltungsbereich</li>
+      <li>Vertragspartner</li>
+      <li>Produktbeschreibung und Lizenzmodelle</li>
+      <li>Vertragsschluss</li>
+      <li>Preise und Zahlung</li>
+      <li>Lizenzaktivierung und Gerätebindung</li>
+      <li>Widerrufsrecht</li>
+      <li>Nutzungsrechte</li>
+      <li>Verfügbarkeit und Updates</li>
+      <li>Haftung</li>
+      <li>Schlussbestimmungen</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>§ 1 Geltungsbereich</h2>
+    <p>
+      Diese Allgemeinen Geschäftsbedingungen (AGB) gelten für alle Verträge zwischen 
+      Christian Dielewicz, Am Stockfeld 19a, 88690 Uhldingen-Mühlhofen (nachfolgend 
+      „Anbieter") und Nutzern der Windows-Desktop-Anwendung PhotoCleaner (nachfolgend „Kunde").
+    </p>
+    <p>
+      Entgegenstehende oder abweichende Bedingungen des Kunden werden nicht anerkannt, 
+      sofern der Anbieter ihrer Geltung nicht ausdrücklich schriftlich zugestimmt hat.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>§ 2 Vertragspartner</h2>
+    <p>
+      Der Anbieter ist minderjährig und handelt auf Grundlage einer gerichtlichen 
+      Ermächtigung nach § 112 BGB.
+    </p>
+    <p>
+      PhotoCleaner richtet sich ausschließlich an volljährige Verbraucher und 
+      Unternehmer im Sinne von §§ 13, 14 BGB mit Sitz in der Europäischen Union.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>§ 3 Produktbeschreibung und Lizenzmodelle</h2>
+    <p>
+      PhotoCleaner ist eine Windows-Desktop-Anwendung zur KI-gestützten Fotoverwaltung. 
+      Die App erkennt Duplikate, bewertet die Bildqualität und unterstützt Nutzer 
+      beim Sortieren ihrer Fotosammlung. Die Verarbeitung erfolgt vollständig lokal 
+      auf dem Gerät des Nutzers.
+    </p>
+
+    <h3>Free-Tarif (kostenlos)</h3>
+    <ul>
+      <li>Einmaliger Scan von bis zu 250 Bildern ohne Zeitbegrenzung</li>
+      <li>Kein Kauf erforderlich</li>
+      <li>Kein Funktionsumfang nach Verbrauch des Kontingents ohne Upgrade</li>
+    </ul>
+
+    <h3>PRO-Lizenz (kostenpflichtig)</h3>
+    <ul>
+      <li>Unbegrenzte Nutzung aller Funktionen</li>
+      <li>Laufzeit: 12 Monate ab Aktivierung</li>
+      <li>Preis: 29,00 EUR pro Jahr (inkl. ggf. anfallender Steuern)</li>
+      <li>Keine automatische Verlängerung ohne ausdrückliche Zustimmung des Kunden</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>§ 4 Vertragsschluss</h2>
+    <p>
+      Die Darstellung von PhotoCleaner auf der Website oder in der App stellt kein 
+      verbindliches Angebot dar, sondern eine Aufforderung zur Bestellung 
+      (invitatio ad offerendum).
+    </p>
+    <p>
+      Der Kaufvertrag kommt zustande, wenn der Kunde den Bestellprozess über 
+      Stripe Checkout abschließt und eine Kaufbestätigung per E-Mail erhält. 
+      Mit dem Erhalt des Lizenzschlüssels per E-Mail gilt der Vertrag als 
+      vollständig erfüllt.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>§ 5 Preise und Zahlung</h2>
+    <p>
+      Alle angegebenen Preise verstehen sich als Endpreise. Gemäß § 19 UStG 
+      (Kleinunternehmerregelung) enthält der Preis keine Umsatzsteuer; 
+      ein gesonderter Umsatzsteuerausweis entfällt.
+    </p>
+    <p>
+      Die Zahlung erfolgt ausschließlich über den Zahlungsdienstleister Stripe. 
+      Akzeptierte Zahlungsmethoden richten sich nach den zum Kaufzeitpunkt 
+      angebotenen Optionen im Stripe-Checkout (u. a. Kreditkarte, SEPA-Lastschrift).
+    </p>
+    <p>
+      Die Zahlung ist mit Abschluss des Checkout-Vorgangs fällig. 
+      PhotoCleaner selbst speichert keinerlei Zahlungsdaten.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>§ 6 Lizenzaktivierung und Gerätebindung</h2>
+    <p>
+      Nach erfolgreichem Kauf erhält der Kunde einen Lizenzschlüssel per E-Mail. 
+      Dieser Schlüssel wird in der App eingelöst, wobei eine Serververbindung zur 
+      Aktivierung hergestellt wird.
+    </p>
+    <p>
+      Die PRO-Lizenz ist gerätgebunden. Eine Nutzung auf mehreren Geräten ist 
+      im Rahmen des dokumentierten Device-Binding-Verfahrens möglich. 
+      Der Anbieter behält sich vor, die Anzahl gleichzeitig aktiver Geräte 
+      je Lizenz zu begrenzen.
+    </p>
+    <p>
+      Eine Übertragung der Lizenz auf Dritte ist nicht gestattet.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>§ 7 Widerrufsrecht</h2>
+
+    <h3>Widerrufsbelehrung</h3>
+    <p>
+      Verbrauchern steht ein gesetzliches Widerrufsrecht zu. Sie haben das Recht, 
+      diesen Vertrag binnen 14 Tagen ohne Angabe von Gründen zu widerrufen. 
+      Die Widerrufsfrist beträgt 14 Tage ab dem Tag des Vertragsschlusses.
+    </p>
+    <p>
+      Um Ihr Widerrufsrecht auszuüben, müssen Sie uns 
+      (Christian Dielewicz, Am Stockfeld 19a, 88690 Uhldingen-Mühlhofen, 
+      E-Mail: <span class="placeholder">[E-MAIL-ADRESSE EINTRAGEN]</span>) 
+      mittels einer eindeutigen Erklärung (z. B. per E-Mail) über Ihren Entschluss, 
+      diesen Vertrag zu widerrufen, informieren.
+    </p>
+
+    <h3>Erlöschen des Widerrufsrechts bei digitalen Inhalten</h3>
+    <div class="highlight-box">
+      Das Widerrufsrecht erlischt bei einem Vertrag über die Lieferung von 
+      digitalen Inhalten vorzeitig, wenn der Anbieter mit der Ausführung des 
+      Vertrags begonnen hat, nachdem der Kunde ausdrücklich zugestimmt hat, 
+      dass der Anbieter vor Ablauf der Widerrufsfrist mit der Ausführung beginnt, 
+      und der Kunde seine Kenntnis davon bestätigt hat, dass er durch seine 
+      Zustimmung sein Widerrufsrecht verliert (§ 356 Abs. 5 BGB). 
+      Dies ist der Fall, wenn der Lizenzschlüssel nach der Aktivierungszustimmung 
+      zugestellt und eingelöst wird.
+    </div>
+
+    <h3>Folgen des Widerrufs</h3>
+    <p>
+      Wenn Sie diesen Vertrag widerrufen, erstatten wir alle von Ihnen erhaltenen 
+      Zahlungen unverzüglich, spätestens binnen 14 Tagen. 
+      Die Rückzahlung erfolgt über dasselbe Zahlungsmittel, das Sie bei der 
+      ursprünglichen Transaktion eingesetzt haben.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>§ 8 Nutzungsrechte</h2>
+    <p>
+      Mit dem Erwerb einer PRO-Lizenz erhält der Kunde ein einfaches, nicht 
+      übertragbares Recht zur Nutzung der Software PhotoCleaner für private 
+      und gewerbliche Zwecke auf den lizenzierten Geräten.
+    </p>
+    <p>Dem Kunden ist es untersagt:</p>
+    <ul>
+      <li>die Software zu dekompilieren, zu disassemblieren oder rückzuentwickeln,</li>
+      <li>Lizenzschutzmechanismen zu umgehen oder zu entfernen,</li>
+      <li>Lizenzen weiterzuverkaufen oder Dritten zur Verfügung zu stellen,</li>
+      <li>die Software in einer Weise zu nutzen, die gegen geltendes Recht verstößt.</li>
+    </ul>
+    <p>
+      Die kostenlose Nutzung des Free-Tarifs unterliegt denselben Bedingungen, 
+      soweit sie auf diese anwendbar sind.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>§ 9 Verfügbarkeit und Updates</h2>
+    <p>
+      Da PhotoCleaner als lokal installierte Anwendung betrieben wird, 
+      ist die Kernfunktionalität nicht von der dauerhaften Verfügbarkeit 
+      unserer Server abhängig. Die Server-Kommunikation (Lizenzprüfung, 
+      Kontingentvalidierung) setzt eine Internetverbindung voraus; 
+      für einen begrenzten Zeitraum ist eine Offline-Nutzung über den 
+      signierten Lizenz-Snapshot möglich.
+    </p>
+    <p>
+      Der Anbieter stellt Updates nach eigenem Ermessen zur Verfügung. 
+      Ein Anspruch auf bestimmte Funktionen oder regelmäßige Updates 
+      besteht nicht.
+    </p>
+    <p>
+      Der Anbieter behält sich vor, den Serverbetrieb für Lizenzvalidierung 
+      und Kontingentprüfung mit einer Vorankündigungsfrist von mindestens 
+      30 Tagen einzustellen.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>§ 10 Haftung</h2>
+    <p>
+      Der Anbieter haftet unbeschränkt bei Vorsatz und grober Fahrlässigkeit 
+      sowie bei schuldhafter Verletzung des Lebens, des Körpers oder der Gesundheit.
+    </p>
+    <p>
+      Bei leichter Fahrlässigkeit haftet der Anbieter nur bei Verletzung 
+      wesentlicher Vertragspflichten (Kardinalpflichten), deren Erfüllung 
+      die ordnungsgemäße Durchführung des Vertrags überhaupt erst ermöglicht 
+      und auf deren Einhaltung der Kunde regelmäßig vertrauen darf. 
+      In diesem Fall ist die Haftung auf den vorhersehbaren, vertragstypischen 
+      Schaden begrenzt.
+    </p>
+    <p>
+      PhotoCleaner analysiert und bewertet Fotos mithilfe von KI-Verfahren. 
+      Löschempfehlungen der App sind Vorschläge, keine verbindlichen Anweisungen. 
+      Der Kunde trägt die alleinige Verantwortung für die endgültige Entscheidung 
+      über das Löschen oder Behalten von Dateien.
+    </p>
+    <p>
+      Eine weitergehende Haftung ist ausgeschlossen, soweit gesetzlich zulässig.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>§ 11 Schlussbestimmungen</h2>
+
+    <h3>Anwendbares Recht</h3>
+    <p>
+      Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des 
+      UN-Kaufrechts (CISG). Für Verbraucher gilt diese Rechtswahl nur, 
+      soweit hierdurch nicht der durch zwingende Bestimmungen des Rechts 
+      des gewöhnlichen Aufenthaltsstaates des Verbrauchers gewährte Schutz 
+      entzogen wird.
+    </p>
+
+    <h3>Gerichtsstand</h3>
+    <p>
+      Soweit gesetzlich zulässig, ist Gerichtsstand für alle Streitigkeiten 
+      aus diesem Vertrag Friedrichshafen.
+    </p>
+
+    <h3>Salvatorische Klausel</h3>
+    <p>
+      Sollten einzelne Bestimmungen dieser AGB ganz oder teilweise unwirksam 
+      sein oder werden, berührt dies die Wirksamkeit der übrigen Bestimmungen nicht. 
+      An Stelle der unwirksamen Bestimmung gilt die gesetzliche Regelung.
+    </p>
+
+    <h3>Änderungen der AGB</h3>
+    <p>
+      Der Anbieter behält sich vor, diese AGB mit Wirkung für die Zukunft 
+      zu ändern. Über wesentliche Änderungen werden aktive Nutzer 
+      rechtzeitig informiert.
+    </p>
+  </div>
+
+  <footer>PhotoCleaner &nbsp;·&nbsp; Christian Dielewicz &nbsp;·&nbsp; Stand: 2025</footer>
+</div>
+</body>
+</html>

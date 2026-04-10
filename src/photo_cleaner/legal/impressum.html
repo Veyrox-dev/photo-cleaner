@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Impressum – PhotoCleaner</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --ink: #1a1a1a;
+      --ink-muted: #6b6b6b;
+      --accent: #2a52a0;
+      --border: #e0ddd8;
+      --red: #c0392b;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      line-height: 1.8;
+      padding: 3rem 1.5rem 6rem;
+    }
+    .container { max-width: 740px; margin: 0 auto; }
+    .badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(42,82,160,0.08);
+      padding: 0.3rem 0.75rem;
+      border-radius: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 400;
+      line-height: 1.15;
+      margin-bottom: 0.4rem;
+    }
+    .subtitle { color: var(--ink-muted); font-size: 0.92rem; margin-bottom: 3rem; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem 2.25rem;
+      margin-bottom: 1.25rem;
+    }
+    h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.15rem;
+      font-weight: 400;
+      color: var(--accent);
+      margin-bottom: 0.9rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    p { margin-bottom: 0.3rem; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .placeholder {
+      color: var(--red);
+      font-weight: 500;
+      background: rgba(192,57,43,0.07);
+      padding: 0.1em 0.35em;
+      border-radius: 3px;
+    }
+    .note {
+      font-size: 0.85rem;
+      color: var(--ink-muted);
+      font-style: italic;
+      margin-top: 0.9rem;
+      padding-top: 0.75rem;
+      border-top: 1px dashed var(--border);
+    }
+    footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--ink-muted);
+      margin-top: 3rem;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="badge">Rechtliches</div>
+  <h1>Impressum</h1>
+  <p class="subtitle">Angaben gemäß § 5 TMG</p>
+
+  <div class="card">
+    <h2>Anbieter</h2>
+    <p>Christian Dielewicz</p>
+    <p>Am Stockfeld 19a</p>
+    <p>88690 Uhldingen-Mühlhofen</p>
+    <p>Deutschland</p>
+    <p class="note">
+      Der Anbieter ist minderjährig und handelt auf Grundlage einer gerichtlichen Ermächtigung 
+      gemäß § 112 BGB zum selbstständigen Betrieb eines Erwerbsgeschäfts.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Kontakt</h2>
+    <p>E-Mail: <span class="placeholder">[E-MAIL-ADRESSE EINTRAGEN]</span></p>
+  </div>
+
+  <div class="card">
+    <h2>Umsatzsteuer</h2>
+    <p>
+      Gemäß § 19 UStG (Kleinunternehmerregelung) wird keine Umsatzsteuer erhoben. 
+      Eine Umsatzsteuer-Identifikationsnummer liegt derzeit nicht vor.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Online-Streitbeilegung</h2>
+    <p>
+      Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung bereit:
+      <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer">
+        https://ec.europa.eu/consumers/odr
+      </a>
+    </p>
+    <p style="margin-top:0.6rem;">
+      Wir sind weder verpflichtet noch bereit, an einem Streitbeilegungsverfahren 
+      vor einer Verbraucherschlichtungsstelle teilzunehmen.
+    </p>
+  </div>
+
+  <footer>PhotoCleaner &nbsp;·&nbsp; Christian Dielewicz &nbsp;·&nbsp; Stand: 2025</footer>
+</div>
+</body>
+</html>
