@@ -1,6 +1,30 @@
 # PhotoCleaner - Changelog
 > Version 0.8.5 - MSI Reliability + Review UX Hotfixes (2026-04-09)
 
+## [Unreleased] - Full i18n Rollout FR/ES/NL + JSON Locale Loader (2026-04-10) ✅
+
+### 🌍 Neue UI-Sprachen voll integriert
+- FR, ES und NL als produktive Sprachen in der Sprachauswahl aktiviert
+- Vollstaendige Schluesselabdeckung fuer FR/ES/NL (kein partieller Sprachzustand mehr)
+- Sprachwechsel- und Fallback-Verhalten fuer neue Locales vereinheitlicht
+
+### 🗂️ Locale-Architektur auf JSON erweitert
+- Neue Locale-Dateien eingefuehrt:
+  - `src/photo_cleaner/i18n_locales/fr.json`
+  - `src/photo_cleaner/i18n_locales/es.json`
+  - `src/photo_cleaner/i18n_locales/nl.json`
+- `i18n.py` laedt JSON-Overrides beim Start und synchronisiert danach erneut gegen EN-Basiskeys
+- Ergebnis: externe, wartbare Locale-Dateien ohne Verlust der Laufzeitstabilitaet
+
+### ⚙️ Translation-Workflow reproduzierbar gemacht
+- Neues Tooling: `scripts/generate_locale_translations.py`
+- Script erzeugt FR/ES/NL aus EN/DE-Basisstrings automatisiert
+- Placeholder/Format-Token-Schutz integriert (z. B. `{count}`, HTML-Tags, `%`-Token)
+
+### ✅ Validierung
+- `tests/ui/test_i18n_theme.py` erweitert (Sprachcodes + Coverage-Checks)
+- Fokus-Testlauf erfolgreich: `3 passed`
+
 ## [Unreleased] - Onboarding Expansion + Update UX + Group Status Colors (2026-04-10) ✅
 
 ### 🧭 Onboarding Verbesserungen

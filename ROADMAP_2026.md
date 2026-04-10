@@ -114,6 +114,10 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 - ✅ Manueller "Nach Updates suchen"-Trigger aus Menue in den Settings-Dialog (System/Wartung) verlegt
 - ✅ Onboarding erweitert/verbessert: mehr Schrittinhalt, zusaetzliche Tour-Punkte, bessere Lesbarkeit (DE/EN)
 - ✅ Gruppenstatus-Farbcodierung korrigiert: Offen=Rot, Erledigt=Gruen, Teilweise=Grau
+- ✅ i18n-Ausbau abgeschlossen: FR/ES/NL als produktive UI-Sprachen integriert (vollstaendige Key-Abdeckung)
+- ✅ Locale-Architektur erweitert: JSON-Locales (`src/photo_cleaner/i18n_locales/*.json`) werden beim Start geladen
+- ✅ Reproduzierbarer Translation-Workflow ergaenzt: `scripts/generate_locale_translations.py` erzeugt FR/ES/NL aus EN/DE-Basis mit Placeholder-Schutz
+- ✅ i18n-Regression abgesichert: `tests/ui/test_i18n_theme.py` validiert neue Sprachen und Schluesselabdeckung
 - ▶ Week-8 letzter Punkt vorbereitet: Go/No-Go-Entscheidung bleibt an Frozen-Smoke + Stripe/Supabase-E2E gekoppelt
 
 ### 1 · MSI Smoke-Test auf Virgin Windows
@@ -287,11 +291,6 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 - ▶ Infrastruktur-Fenster: Webserver/Supabase Pro geplant ab August 2026
 - ▶ Payment-Go-live: produktiver Stripe-Rollout erst nach verfügbarer Gewerbeanmeldung (ab 2026-10-01)
 - ✅ Bis dahin: technischer Release-Prep, UX/QA, MSI-Smoke und nicht-zahlungsrelevante v1.0-Gates weiter abschließen
-
-### Team-Aufteilung (Empfehlung)
-
-- Entwickler 1: Review UX, Explainability, Confidence, Merge/Split, Onboarding, Messaging
-- Entwickler 2: Scoring-Heuristik, Benchmarking, Presets, Progressive Results, Performance, Stabilität
 
 ### Warum diese Reihenfolge
 
