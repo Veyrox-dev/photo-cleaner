@@ -11,7 +11,7 @@ def test_i18n():
     """Test i18n module."""
     from photo_cleaner.i18n import (
         set_language, get_language, translate as t,
-        get_available_languages,
+        get_available_languages, TRANSLATIONS,
         load_language_from_settings, save_language_to_settings
     )
 
@@ -21,6 +21,15 @@ def test_i18n():
     set_language("en")
     assert get_language() == "en", "Language should be 'en'"
 
+    set_language("fr")
+    assert get_language() == "fr", "Language should be 'fr'"
+
+    set_language("es")
+    assert get_language() == "es", "Language should be 'es'"
+
+    set_language("nl")
+    assert get_language() == "nl", "Language should be 'nl'"
+
     result = t("import", "de")
     assert result.endswith("Import"), f"Expected translated German text, got {result}"
 
@@ -29,6 +38,19 @@ def test_i18n():
 
     langs = get_available_languages()
     assert "de" in langs and "en" in langs, "Should have de and en"
+    assert "fr" in langs and "es" in langs and "nl" in langs, "Should have fr, es and nl"
+
+    # New languages must be technically complete (auto-synced against EN).
+    en_keys = set(TRANSLATIONS["en"].keys())
+    for code in ("fr", "es", "nl"):
+        locale_keys = set(TRANSLATIONS[code].keys())
+        missing = en_keys - locale_keys
+        assert not missing, f"Missing keys in {code}: {len(missing)}"
+
+    # Fallback should still work for unknown keys.
+    result = t("import", "fr")
+    assert result == "Importer", f"Expected translated fr text, got {result}"
+    assert t("__does_not_exist__", "fr") == "__does_not_exist__"
 
     with tempfile.TemporaryDirectory() as tmpdir:
         settings_file = Path(tmpdir) / "test_settings.json"

@@ -1,4 +1,4 @@
-"""Translation system for PhotoCleaner (DE/EN).
+"""Translation system for PhotoCleaner (DE/EN/FR/ES/NL).
 
 Simple i18n with language switching persisted in settings.
 """
@@ -271,6 +271,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         # Language names
         "language_de": "Deutsch",
         "language_en": "English",
+        "language_fr": "Franzoesisch",
+        "language_es": "Spanisch",
+        "language_nl": "Niederlaendisch",
         
         # Theme names
         "theme_dark": "Dunkel",
@@ -1035,6 +1038,9 @@ Status: Offline-Nutzung aktiv
         # Language names
         "language_de": "Deutsch",
         "language_en": "English",
+        "language_fr": "French",
+        "language_es": "Spanish",
+        "language_nl": "Dutch",
         
         # Theme names
         "theme_dark": "Dark",
@@ -1663,15 +1669,167 @@ Status: Offline usage active
         "phase_f_mode_indicator": "🧪 In test mode (decisions are recorded)",
         "phase_f_export_success": "KPI report exported successfully: {path}",
         "phase_f_export_failed": "KPI export failed: {error}",
+    },
+    "fr": {
+        "language_de": "Allemand",
+        "language_en": "Anglais",
+        "language_fr": "Francais",
+        "language_es": "Espagnol",
+        "language_nl": "Neerlandais",
+    },
+    "es": {
+        "language_de": "Aleman",
+        "language_en": "Ingles",
+        "language_fr": "Frances",
+        "language_es": "Espanol",
+        "language_nl": "Neerlandes",
+    },
+    "nl": {
+        "language_de": "Duits",
+        "language_en": "Engels",
+        "language_fr": "Frans",
+        "language_es": "Spaans",
+        "language_nl": "Nederlands",
     }
 }
+
+# Core user-facing strings translated for newly added locales.
+# All remaining keys are auto-completed from EN to keep every locale technically complete.
+CORE_UI_TRANSLATIONS: Dict[str, Dict[str, str]] = {
+    "fr": {
+        "import": "Importer",
+        "settings": "Parametres",
+        "license": "Licence",
+        "help": "Aide",
+        "language": "Langue",
+        "apply": "Appliquer",
+        "theme": "Theme",
+        "browse": "Parcourir...",
+        "duplicate_groups": "Groupes de doublons",
+        "search_placeholder": "Rechercher...",
+        "start_analysis": "Demarrer l'analyse",
+        "cancel": "Annuler",
+        "analyze": "Analyser",
+        "analyzing": "Analyse des images...",
+        "ready": "Pret",
+        "processing": "Traitement",
+        "complete": "Termine",
+        "groups": "Groupes",
+        "details": "Details",
+        "finalize_export": "Finaliser et exporter",
+        "close": "Fermer",
+        "ok": "OK",
+        "error": "Erreur",
+        "warning": "Avertissement",
+        "success": "Succes",
+        "check_for_updates": "Verifier les mises a jour",
+        "update_check_title": "Verification des mises a jour",
+    },
+    "es": {
+        "import": "Importar",
+        "settings": "Configuracion",
+        "license": "Licencia",
+        "help": "Ayuda",
+        "language": "Idioma",
+        "apply": "Aplicar",
+        "theme": "Tema",
+        "browse": "Examinar...",
+        "duplicate_groups": "Grupos duplicados",
+        "search_placeholder": "Buscar...",
+        "start_analysis": "Iniciar analisis",
+        "cancel": "Cancelar",
+        "analyze": "Analizar",
+        "analyzing": "Analizando imagenes...",
+        "ready": "Listo",
+        "processing": "Procesando",
+        "complete": "Completado",
+        "groups": "Grupos",
+        "details": "Detalles",
+        "finalize_export": "Finalizar y exportar",
+        "close": "Cerrar",
+        "ok": "OK",
+        "error": "Error",
+        "warning": "Advertencia",
+        "success": "Exito",
+        "check_for_updates": "Buscar actualizaciones",
+        "update_check_title": "Comprobacion de actualizaciones",
+    },
+    "nl": {
+        "import": "Importeren",
+        "settings": "Instellingen",
+        "license": "Licentie",
+        "help": "Help",
+        "language": "Taal",
+        "apply": "Toepassen",
+        "theme": "Thema",
+        "browse": "Bladeren...",
+        "duplicate_groups": "Dubbele groepen",
+        "search_placeholder": "Zoeken...",
+        "start_analysis": "Analyse starten",
+        "cancel": "Annuleren",
+        "analyze": "Analyseren",
+        "analyzing": "Afbeeldingen analyseren...",
+        "ready": "Gereed",
+        "processing": "Verwerken",
+        "complete": "Voltooid",
+        "groups": "Groepen",
+        "details": "Details",
+        "finalize_export": "Afronden en exporteren",
+        "close": "Sluiten",
+        "ok": "OK",
+        "error": "Fout",
+        "warning": "Waarschuwing",
+        "success": "Succes",
+        "check_for_updates": "Controleren op updates",
+        "update_check_title": "Updatecontrole",
+    },
+}
+
+
+def _synchronize_translations() -> None:
+    """Ensure all locales have complete key coverage using EN as baseline."""
+    base = TRANSLATIONS.get("en", {})
+    for lang, translation_dict in TRANSLATIONS.items():
+        if lang == "en":
+            continue
+        for key, value in base.items():
+            translation_dict.setdefault(key, value)
+
+    for lang, overrides in CORE_UI_TRANSLATIONS.items():
+        if lang in TRANSLATIONS:
+            TRANSLATIONS[lang].update(overrides)
+
+
+def _load_external_locale_overrides() -> None:
+    """Load locale overrides from JSON files in i18n_locales/."""
+    locale_dir = Path(__file__).resolve().parent / "i18n_locales"
+    if not locale_dir.exists():
+        return
+
+    for lang in ("fr", "es", "nl"):
+        locale_file = locale_dir / f"{lang}.json"
+        if not locale_file.exists():
+            continue
+        try:
+            with open(locale_file, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            if isinstance(loaded, dict):
+                normalized = {str(k): str(v) for k, v in loaded.items()}
+                TRANSLATIONS.setdefault(lang, {}).update(normalized)
+        except Exception as e:
+            logger.warning(f"Could not load locale overrides for {lang}: {e}")
+
+
+_synchronize_translations()
+_load_external_locale_overrides()
+_synchronize_translations()
 
 # Current language
 _current_language: str = "de"
 
 
 def set_language(lang: str) -> None:
-    """Set current language (de or en)."""
+    """Set current language if supported."""
     global _current_language
     if lang in TRANSLATIONS:
         _current_language = lang
@@ -1699,9 +1857,17 @@ def translate(key: str, language: Optional[str] = None) -> str:
     
     if lang not in TRANSLATIONS:
         lang = "de"
-    
-    translation_dict = TRANSLATIONS[lang]
-    return translation_dict.get(key, key)
+
+    translation_dict = TRANSLATIONS.get(lang, {})
+    if key in translation_dict:
+        return translation_dict[key]
+
+    # Robust fallback chain for partially translated languages.
+    if key in TRANSLATIONS.get("en", {}):
+        return TRANSLATIONS["en"][key]
+    if key in TRANSLATIONS.get("de", {}):
+        return TRANSLATIONS["de"][key]
+    return key
 
 
 def t(key: str, language: Optional[str] = None) -> str:
@@ -1713,7 +1879,7 @@ def load_language_from_settings(settings_path: Path) -> str:
     """Load language preference from settings file.
     
     Returns:
-        Language code (de or en), or "de" if not found
+        Language code, or "de" if not found
     """
     try:
         if settings_path.exists():
@@ -1762,4 +1928,7 @@ def get_available_languages() -> Dict[str, str]:
     return {
         "de": translate("language_de"),
         "en": translate("language_en"),
+        "fr": translate("language_fr"),
+        "es": translate("language_es"),
+        "nl": translate("language_nl"),
     }

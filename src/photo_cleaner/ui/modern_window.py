@@ -182,7 +182,6 @@ from photo_cleaner.theme import (
     get_theme_colors,
     build_panel_style,
     build_progress_bar_style,
-    build_checkbox_style,
     build_list_widget_style,
 )
 from photo_cleaner.ui.color_constants import (
@@ -2684,6 +2683,7 @@ class ThumbnailCard(QWidget):
         self._selected = False
         self._pixmap = None  # Track pixmap for explicit cleanup
         self._syncing_checkbox = False
+        self.setObjectName("thumbnail_card")
         
         self.setFixedSize(180, 220)
         self.setCursor(Qt.PointingHandCursor)
@@ -2805,33 +2805,39 @@ class ThumbnailCard(QWidget):
             score_label.setToolTip(explanation.tooltip_text)
             layout.addWidget(score_label)
         
-        # Card styling
+        # Card styling: align with group-list interaction style (subtle bg + clear highlight border)
         bg = colors["base"]
         bg_hover = colors["alternate_base"]
         border = colors["border"]
-        border_info = get_semantic_colors()["info"]
+        hover_border = colors["highlight"]
         self.setStyleSheet(f"""
-            QWidget {{
+            QWidget#thumbnail_card {{
                 background-color: {bg};
                 border-radius: 12px;
                 border: 2px solid {border};
             }}
-            QWidget:hover {{
+            QWidget#thumbnail_card:hover {{
                 background-color: {bg_hover};
-                border-color: {border_info};
+                border-color: {hover_border};
             }}
         """)
     
     def mousePressEvent(self, event):
         """Emit clicked signal."""
         if event.button() == Qt.LeftButton:
+            # Checkbox clicks should only toggle selection and must not open detail view.
+            checkbox_rect = self.select_checkbox.geometry().translated(self.thumbnail.pos())
+            if checkbox_rect.adjusted(-4, -4, 4, 4).contains(event.pos()):
+                event.accept()
+                return
             self.clicked.emit(self.index)
         super().mousePressEvent(event)
 
     def _on_checkbox_state_changed(self, state: int) -> None:
         if self._syncing_checkbox:
             return
-        checked = state == int(Qt.CheckState.Checked)
+        # PySide can deliver either int-like values or Qt.CheckState enums.
+        checked = Qt.CheckState(state) == Qt.CheckState.Checked
         self._selected = checked
         self._update_selection_style()
         self.selection_toggled.emit(self.index, checked)
@@ -2851,29 +2857,29 @@ class ThumbnailCard(QWidget):
     def _update_selection_style(self):
         """Update card style based on selection state."""
         colors = get_theme_colors()
-        card_colors = get_card_colors()
+        bg = colors["base"]
+        bg_hover = colors["alternate_base"]
+        border = colors["border"]
+        hover_border = colors["highlight"]
+        selected_bg = to_rgba(colors["highlight"], 0.14)
         if self._selected:
-            sel_bg = card_colors['bg_selected']
             self.setStyleSheet(f"""
-                QWidget {{
-                    background-color: {sel_bg};
+                QWidget#thumbnail_card {{
+                    background-color: {selected_bg};
                     border-radius: 12px;
-                    border: 3px solid {colors['highlight']};
+                    border: 2px solid {colors['highlight']};
                 }}
             """)
         else:
-            bg = card_colors['bg']
-            bg_hover = card_colors['bg_hover']
-            border = card_colors['border']
             self.setStyleSheet(f"""
-                QWidget {{
+                QWidget#thumbnail_card {{
                     background-color: {bg};
                     border-radius: 12px;
                     border: 2px solid {border};
                 }}
-                QWidget:hover {{
+                QWidget#thumbnail_card:hover {{
                     background-color: {bg_hover};
-                    border-color: {colors['highlight']};
+                    border-color: {hover_border};
                 }}
             """)
             if hasattr(self, '_selection_overlay'):
@@ -2905,9 +2911,36 @@ class ThumbnailCard(QWidget):
         """)
 
     def _apply_checkbox_theme(self) -> None:
-        """Apply central checkbox style with strong contrast."""
+        """Apply minimalist checkbox style (indicator-only, no outer box)."""
+        colors = get_theme_colors()
         self.select_checkbox.setStyleSheet(
-            build_checkbox_style(indicator_size=14, background_color=to_rgba(get_theme_colors()["base"], 0.85))
+            f"""
+            QCheckBox {{
+                background: transparent;
+                border: none;
+                padding: 0px;
+                margin: 0px;
+            }}
+            QCheckBox::indicator {{
+                width: 14px;
+                height: 14px;
+                border: 1px solid {colors['input_border']};
+                border-radius: 3px;
+                background: {colors['base']};
+            }}
+            QCheckBox::indicator:checked {{
+                background: {colors['highlight']};
+                border: 1px solid {colors['highlight']};
+            }}
+            QCheckBox::indicator:hover {{
+                border: 1px solid {colors['highlight']};
+                background: {colors['alternate_base']};
+            }}
+            QCheckBox::indicator:checked:hover {{
+                background: {colors['highlight']};
+                border: 1px solid {colors['highlight']};
+            }}
+            """
         )
     
     def cleanup(self):
@@ -6434,12 +6467,13 @@ class ModernMainWindow(QMainWindow):
         self.action_header_label.setStyleSheet("font-weight: bold; font-size: 11px;")
         layout.addWidget(self.action_header_label)
         
-        # Row 1: Compare & Merge (collaborative actions)
-        row1_layout = QHBoxLayout()
+        # Compare/Split stacked to avoid text clipping on smaller panel widths.
+        row1_layout = QVBoxLayout()
         row1_layout.setSpacing(8)
         
         self.compare_btn = QPushButton(t("compare_two"))
         self.compare_btn.setEnabled(False)
+        self.compare_btn.setMinimumHeight(36)
         self.compare_btn.setStyleSheet(
             _build_button_style(get_semantic_colors()["warning"], padding="10px 12px", font_size=11)
         )
@@ -6448,6 +6482,7 @@ class ModernMainWindow(QMainWindow):
         
         self.split_group_btn = QPushButton(f"{t('split_group')} (S)")
         self.split_group_btn.setEnabled(False)
+        self.split_group_btn.setMinimumHeight(36)
         self.split_group_btn.setStyleSheet(
             _build_button_style(get_semantic_colors()["info"], padding="10px 12px", font_size=11)
         )

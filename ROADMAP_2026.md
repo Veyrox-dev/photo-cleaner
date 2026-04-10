@@ -274,13 +274,19 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 ### Woche 8
     - ▶ Version auf 1.0.0-rc1 bumpen + Git-Tag setzen
 - ▶ 5× Frozen-Build Smoke-Test abschließen (EXE + MSI auf sauberen Windows-Maschinen)
-- ▶ Stripe + Supabase Produktionsbereitschaft end-to-end validieren
+- ▶ Stripe + Supabase Produktionsbereitschaft end-to-end validieren (Business-Gate: productive Stripe erst nach Gewerbeanmeldung am/ab 2026-10-01)
 - ▶ Lizenz-Vollständig-Durchlauf: Kauf → Aktivierung → Ablauf → Erneuerung
 - ▶ Code-Signing vorbereiten: EV-Zertifikat beantragen / EXE + MSI signieren
 - ▶ User Manual + Troubleshooting Guide / FAQ fertigstellen
 - ▶ Support-Setup: E-Mail-Template + Bug-Melde-Prozess
 - ▶ Support-Playbook für häufige Gruppierungsprobleme
-- ▶ Release-Entscheidung: Go/No-Go auf Basis Smoke-Test-Status + Stripe/Supabase-Validierung
+- ▶ Release-Entscheidung: Go/No-Go auf Basis Smoke-Test-Status + Stripe/Supabase-Validierung (mit externem Business-Dependency-Hold)
+
+### Externe Abhängigkeiten (Timeline-Hold)
+
+- ▶ Infrastruktur-Fenster: Webserver/Supabase Pro geplant ab August 2026
+- ▶ Payment-Go-live: produktiver Stripe-Rollout erst nach verfügbarer Gewerbeanmeldung (ab 2026-10-01)
+- ✅ Bis dahin: technischer Release-Prep, UX/QA, MSI-Smoke und nicht-zahlungsrelevante v1.0-Gates weiter abschließen
 
 ### Team-Aufteilung (Empfehlung)
 
