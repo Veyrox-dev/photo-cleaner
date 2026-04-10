@@ -1690,6 +1690,14 @@ Status: Offline usage active
         "language_fr": "Frans",
         "language_es": "Spaans",
         "language_nl": "Nederlands",
+    },
+    "it": {
+        "language_de": "Tedesco",
+        "language_en": "Inglese",
+        "language_fr": "Francese",
+        "language_es": "Spagnolo",
+        "language_nl": "Olandese",
+        "language_it": "Italiano",
     }
 }
 
@@ -1783,6 +1791,35 @@ CORE_UI_TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "check_for_updates": "Controleren op updates",
         "update_check_title": "Updatecontrole",
     },
+    "it": {
+        "import": "Importa",
+        "settings": "Impostazioni",
+        "license": "Licenza",
+        "help": "Aiuto",
+        "language": "Lingua",
+        "apply": "Applica",
+        "theme": "Tema",
+        "browse": "Sfoglia...",
+        "duplicate_groups": "Gruppi duplicati",
+        "search_placeholder": "Cerca...",
+        "start_analysis": "Avvia analisi",
+        "cancel": "Annulla",
+        "analyze": "Analizza",
+        "analyzing": "Analisi immagini in corso...",
+        "ready": "Pronto",
+        "processing": "Elaborazione",
+        "complete": "Completato",
+        "groups": "Gruppi",
+        "details": "Dettagli",
+        "finalize_export": "Finalizza ed esporta",
+        "close": "Chiudi",
+        "ok": "OK",
+        "error": "Errore",
+        "warning": "Avvertenza",
+        "success": "Successo",
+        "check_for_updates": "Verifica aggiornamenti",
+        "update_check_title": "Controllo aggiornamenti",
+    },
 }
 
 
@@ -1806,7 +1843,7 @@ def _load_external_locale_overrides() -> None:
     if not locale_dir.exists():
         return
 
-    for lang in ("fr", "es", "nl"):
+    for lang in ("fr", "es", "nl", "it"):
         locale_file = locale_dir / f"{lang}.json"
         if not locale_file.exists():
             continue
@@ -1931,4 +1968,5 @@ def get_available_languages() -> Dict[str, str]:
         "fr": translate("language_fr"),
         "es": translate("language_es"),
         "nl": translate("language_nl"),
+        "it": translate("language_it"),
     }

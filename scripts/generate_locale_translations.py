@@ -21,6 +21,7 @@ TARGETS = {
     "fr": "french",
     "es": "spanish",
     "nl": "dutch",
+    "it": "italian",
 }
 
 PLACEHOLDER_RE = re.compile(r"(\{[^{}]+\}|<[^>]+>|%p%|%\([^)]+\)[a-zA-Z])")
@@ -121,6 +122,15 @@ def generate() -> None:
                 "language_fr": "Frans",
                 "language_es": "Spaans",
                 "language_nl": "Nederlands",
+            })
+        elif lang_code == "it":
+            current.update({
+                "language_de": "Tedesco",
+                "language_en": "Inglese",
+                "language_fr": "Francese",
+                "language_es": "Spagnolo",
+                "language_nl": "Olandese",
+                "language_it": "Italiano",
             })
 
         out_path = OUT_DIR / f"{lang_code}.json"

@@ -30,6 +30,9 @@ def test_i18n():
     set_language("nl")
     assert get_language() == "nl", "Language should be 'nl'"
 
+    set_language("it")
+    assert get_language() == "it", "Language should be 'it'"
+
     result = t("import", "de")
     assert result.endswith("Import"), f"Expected translated German text, got {result}"
 
@@ -39,10 +42,11 @@ def test_i18n():
     langs = get_available_languages()
     assert "de" in langs and "en" in langs, "Should have de and en"
     assert "fr" in langs and "es" in langs and "nl" in langs, "Should have fr, es and nl"
+    assert "it" in langs, "Should have it (Italian)"
 
     # New languages must be technically complete (auto-synced against EN).
     en_keys = set(TRANSLATIONS["en"].keys())
-    for code in ("fr", "es", "nl"):
+    for code in ("fr", "es", "nl", "it"):
         locale_keys = set(TRANSLATIONS[code].keys())
         missing = en_keys - locale_keys
         assert not missing, f"Missing keys in {code}: {len(missing)}"
@@ -109,9 +113,26 @@ if __name__ == "__main__":
     print()
     
     results = []
-    results.append(("i18n", test_i18n()))
-    results.append(("theme", test_theme()))
-    results.append(("modern_window", test_imports_in_modern_window()))
+    try:
+        test_i18n()
+        results.append(("i18n", True))
+    except Exception as e:
+        print(f"i18n test failed: {e}")
+        results.append(("i18n", False))
+    
+    try:
+        test_theme()
+        results.append(("theme", True))
+    except Exception as e:
+        print(f"theme test failed: {e}")
+        results.append(("theme", False))
+    
+    try:
+        test_imports_in_modern_window()
+        results.append(("modern_window", True))
+    except Exception as e:
+        print(f"modern_window test failed: {e}")
+        results.append(("modern_window", False))
     
     print("=" * 60)
     print("Test Summary")

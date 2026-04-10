@@ -112,12 +112,8 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 - ✅ Update-Logik Phase C Entscheidung abgeschlossen: MSI-only für v1.0, MSIX/AppInstaller Post-Launch bewertet (`docs/guides/UPDATE_PHASE_C.md`)
 - ✅ Update-Manifest-Fallback produktiv gesetzt: `https://veyrox-dev.github.io/photocleaner-website/updates/latest.json`
 - ✅ Manueller "Nach Updates suchen"-Trigger aus Menue in den Settings-Dialog (System/Wartung) verlegt
-- ✅ Onboarding erweitert/verbessert: mehr Schrittinhalt, zusaetzliche Tour-Punkte, bessere Lesbarkeit (DE/EN)
-- ✅ Gruppenstatus-Farbcodierung korrigiert: Offen=Rot, Erledigt=Gruen, Teilweise=Grau
-- ✅ i18n-Ausbau abgeschlossen: FR/ES/NL als produktive UI-Sprachen integriert (vollstaendige Key-Abdeckung)
-- ✅ Locale-Architektur erweitert: JSON-Locales (`src/photo_cleaner/i18n_locales/*.json`) werden beim Start geladen
-- ✅ Reproduzierbarer Translation-Workflow ergaenzt: `scripts/generate_locale_translations.py` erzeugt FR/ES/NL aus EN/DE-Basis mit Placeholder-Schutz
-- ✅ i18n-Regression abgesichert: `tests/ui/test_i18n_theme.py` validiert neue Sprachen und Schluesselabdeckung
+ ✅ i18n erweitert: Italienisch (IT) hinzugefuegt als vollstaendige UI-Sprache (564+ Keys)
+ ✅ Reproduzierbarer Translation-Workflow erweitert: `scripts/generate_locale_translations.py` erzeugt jetzt auch IT
 - ▶ Week-8 letzter Punkt vorbereitet: Go/No-Go-Entscheidung bleibt an Frozen-Smoke + Stripe/Supabase-E2E gekoppelt
 
 ### 1 · MSI Smoke-Test auf Virgin Windows
