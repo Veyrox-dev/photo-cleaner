@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Strict preflight checks for Windows freeze builds.
 
 Exit code:
@@ -148,7 +148,17 @@ def main() -> int:
     else:
         text = spec_path.read_text(encoding="utf-8", errors="ignore")
         _check("spec_onedir", "COLLECT(" in text and "exclude_binaries=True" in text, "onedir markers", results)
-        _check("spec_no_runtime_hooks", "runtime_hooks=[]" in text.replace(" ", ""), "runtime_hooks empty", results)
+        expected_runtime_hooks = (
+            "build_hooks/hook_multiprocessing_fix.py",
+            "build_hooks/runtime_setuptools_distutils.py",
+        )
+        hooks_ok = all(hook in text for hook in expected_runtime_hooks)
+        _check(
+            "spec_runtime_hooks",
+            hooks_ok,
+            f"expected hooks present={hooks_ok}",
+            results,
+        )
 
     # Report
     print("\nPreflight report:\n")
