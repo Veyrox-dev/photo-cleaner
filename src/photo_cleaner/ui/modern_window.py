@@ -20,6 +20,7 @@ import sqlite3
 import time
 import urllib.request
 import urllib.error
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
@@ -837,6 +838,8 @@ class ProgressStepDialog(QDialog):
         self.start_time = time.time()
         self.last_update_time = 0
         self.last_percentage = 0
+        self._eta_points: deque[tuple[float, int]] = deque(maxlen=24)
+        self._smoothed_eta_seconds: float | None = None
         self._setup_ui()
         self._apply_styling()
     
@@ -1066,21 +1069,63 @@ class ProgressStepDialog(QDialog):
         self.sub_progress_bar.setFormat("%p%")
     
     def _update_eta(self, percentage: int):
-        """Calculate and display ETA based on progress rate."""
-        elapsed = time.time() - self.start_time
-        if percentage > 5 and elapsed > 2:  # Only estimate after 5% and 2s have passed
-            rate = percentage / elapsed  # percent per second
-            remaining_percent = 100 - percentage
-            estimated_remaining_seconds = remaining_percent / rate if rate > 0 else 0
-            
-            # Format ETA as MM:SS
-            minutes = int(estimated_remaining_seconds // 60)
-            seconds = int(estimated_remaining_seconds % 60)
-            eta_text = f"{t('progress_eta').format(eta=f'{minutes}:{seconds:02d}')}"
+        """Calculate and display a stable ETA based on smoothed progress speed."""
+        now = time.time()
+        elapsed = now - self.start_time
+
+        # Reset ETA state when progress restarts or jumps backwards.
+        if percentage < self.last_percentage:
+            self._eta_points.clear()
+            self._smoothed_eta_seconds = None
+
+        if not self._eta_points or percentage != self._eta_points[-1][1]:
+            self._eta_points.append((now, percentage))
+
+        # Keep only recent points to avoid stale early-slow samples dominating ETA.
+        while self._eta_points and (now - self._eta_points[0][0]) > 18.0:
+            self._eta_points.popleft()
+
+        # Require enough signal before showing ETA.
+        if percentage < 8 or elapsed < 4.0 or len(self._eta_points) < 3:
+            self.eta_label.setText(t("progress_eta_calculating"))
+            QApplication.processEvents()
+            return
+
+        window_start_t, window_start_p = self._eta_points[0]
+        dt = now - window_start_t
+        dp = percentage - window_start_p
+        if dt <= 0.0 or dp <= 0:
+            self.eta_label.setText(t("progress_eta_calculating"))
+            QApplication.processEvents()
+            return
+
+        # Blend short-window and overall rate for smoother but still responsive ETA.
+        window_rate = dp / dt
+        overall_rate = percentage / max(elapsed, 1e-6)
+        blended_rate = (0.7 * window_rate) + (0.3 * overall_rate)
+        if blended_rate <= 0.0:
+            self.eta_label.setText(t("progress_eta_calculating"))
+            QApplication.processEvents()
+            return
+
+        remaining_percent = max(0, 100 - percentage)
+        eta_seconds = remaining_percent / blended_rate
+
+        # Exponential smoothing prevents visible jumping in the label.
+        if self._smoothed_eta_seconds is None:
+            self._smoothed_eta_seconds = eta_seconds
         else:
-            eta_text = t("progress_eta_calculating")
-        
-        self.eta_label.setText(eta_text)
+            self._smoothed_eta_seconds = (0.75 * self._smoothed_eta_seconds) + (0.25 * eta_seconds)
+
+        stable_eta = max(0.0, self._smoothed_eta_seconds)
+        if stable_eta < 1.0:
+            self.eta_label.setText("")
+            QApplication.processEvents()
+            return
+
+        minutes = int(stable_eta // 60)
+        seconds = int(stable_eta % 60)
+        self.eta_label.setText(t("progress_eta").format(eta=f"{minutes}:{seconds:02d}"))
         QApplication.processEvents()
     
     # QProgressDialog API compatibility methods
@@ -3947,7 +3992,12 @@ class ModernMainWindow(QMainWindow):
     def _format_eta(self, elapsed_sec: float, done: int, total: int) -> str:
         if total <= 0 or done <= 0 or done >= total:
             return ""
+        # Guard against early, noisy estimates in the first moments.
+        if elapsed_sec < 3.0 or done < max(3, int(total * 0.03)):
+            return ""
         remaining = max(0.0, elapsed_sec * ((total - done) / done))
+        if remaining > 8 * 60 * 60:  # Ignore clearly unstable outliers (>8h).
+            return ""
         if remaining < 1.0:
             return ""
         if remaining < 60.0:
