@@ -1329,12 +1329,15 @@ class FinalizationResultDialog(QDialog):
             layout.addWidget(time_label)
         
         card.setLayout(layout)
-        bg_color = get_theme_colors().get("bg_secondary", "#2a2a2a")
+        theme_colors = get_theme_colors()
+        bg_color = theme_colors.get("alternate_base", theme_colors.get("base", "#f5f5f5"))
+        text_color = theme_colors.get("text", "#000000")
         card.setStyleSheet(f"""
             QWidget {{
                 background-color: {bg_color};
                 border: 1px solid {colors['neutral']};
                 border-radius: 6px;
+                color: {text_color};
             }}
         """)
         

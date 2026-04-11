@@ -8,6 +8,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 from datetime import datetime
+import os
 from unittest import TestCase, mock
 
 import pytest
@@ -97,6 +98,7 @@ class TestStreamingExporter(TestCase):
             assert failure == 0
             with zipfile.ZipFile(archive_path) as zf:
                 assert len(zf.namelist()) == 3
+                assert all(name.count("/") == 3 for name in zf.namelist())
         finally:
             for f in files:
                 f.unlink(missing_ok=True)
@@ -149,6 +151,31 @@ class TestStreamingExporter(TestCase):
                 # Should contain the file (filename preserved)
                 assert len(names) == 1
                 assert original_name in names[0]
+        finally:
+            source.unlink(missing_ok=True)
+
+    def test_streaming_exporter_uses_dated_zip_structure(self):
+        """Test that streaming ZIP exports files into YYYY/MM/DD folders."""
+        exporter = StreamingExporter(self.output_base, archive_name="dated.zip")
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as f:
+            f.write(b"test")
+            f.flush()
+            source = Path(f.name)
+
+        try:
+            target_dt = datetime(2024, 7, 13, 9, 30, 0)
+            timestamp = target_dt.timestamp()
+            os.utime(source, (timestamp, timestamp))
+
+            success, failure, errors, archive_path, cancelled = exporter.export_files_streaming([source])
+
+            assert success == 1
+            assert failure == 0
+            assert errors == []
+            with zipfile.ZipFile(archive_path) as zf:
+                names = zf.namelist()
+                assert names == [f"2024/07/13/{source.name}"]
         finally:
             source.unlink(missing_ok=True)
 

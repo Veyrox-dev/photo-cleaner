@@ -1,5 +1,6 @@
 import os
 import zipfile
+from datetime import datetime
 from pathlib import Path
 
 from photo_cleaner.exporter import StreamingExporter
@@ -35,7 +36,9 @@ def test_streaming_exporter_writes_zip(tmp_path):
     assert archive_path.exists()
     with zipfile.ZipFile(archive_path, "r") as zf:
         names = zf.namelist()
-        assert sorted(names) == [f"dummy_{i}.bin" for i in range(1, 4)]
+        assert len(names) == 3
+        assert sorted(name.split("/")[-1] for name in names) == [f"dummy_{i}.bin" for i in range(1, 4)]
+        assert all(len(name.split("/")) == 4 for name in names)
         for name in names:
             with zf.open(name) as zf_file:
                 assert len(zf_file.read()) > 0
@@ -66,4 +69,24 @@ def test_streaming_exporter_can_cancel_mid_run(tmp_path):
     assert errors == []
     with zipfile.ZipFile(archive_path, "r") as zf:
         names = zf.namelist()
-        assert names == ["dummy_1.bin"]
+        assert len(names) == 1
+        assert names[0].endswith("/dummy_1.bin")
+        assert len(names[0].split("/")) == 4
+
+
+def test_streaming_exporter_uses_file_mtime_for_archive_path(tmp_path):
+    source_dir = tmp_path / "src"
+    output_dir = tmp_path / "out"
+    files = _make_dummy_files(source_dir, [0.1])
+    target_dt = datetime(2023, 11, 5, 12, 0, 0)
+    timestamp = target_dt.timestamp()
+    os.utime(files[0], (timestamp, timestamp))
+
+    exporter = StreamingExporter(output_dir)
+    success, failure, errors, archive_path, cancelled = exporter.export_files_streaming(files)
+
+    assert success == 1
+    assert failure == 0
+    assert errors == []
+    with zipfile.ZipFile(archive_path, "r") as zf:
+        assert zf.namelist() == ["2023/11/05/dummy_1.bin"]

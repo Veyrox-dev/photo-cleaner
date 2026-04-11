@@ -6,6 +6,7 @@ v0.5.3: StreamingExporter zum speicherschonenden ZIP-Export (50k+ Dateien).
 """
 
 import logging
+import os
 import shutil
 import zipfile
 from datetime import datetime
@@ -22,6 +23,51 @@ except ImportError:
     TAGS = None
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_date_from_path(image_path: Path) -> datetime:
+    """Extract a best-effort capture date from EXIF or filesystem metadata."""
+    if PIL_AVAILABLE and Image:
+        try:
+            with Image.open(image_path) as img:
+                exif = img._getexif()
+                if exif:
+                    for tag_id, value in exif.items():
+                        tag_name = TAGS.get(tag_id, tag_id)
+                        if tag_name in ["DateTimeOriginal", "DateTime", "DateTimeDigitized"]:
+                            try:
+                                date = datetime.strptime(value, "%Y:%m:%d %H:%M:%S")
+                                logger.debug(f"EXIF date for {image_path.name}: {date} (from {tag_name})")
+                                return date
+                            except ValueError:
+                                continue
+        except Exception as e:
+            logger.debug(f"EXIF extraction failed for {image_path.name}: {e}")
+
+    mtime = image_path.stat().st_mtime
+    date = datetime.fromtimestamp(mtime)
+    logger.debug(f"Fallback date for {image_path.name}: {date} (from mtime)")
+    return date
+
+
+def _build_dated_relative_path(source: Path, date: datetime, used_paths: set[str] | None = None) -> str:
+    """Build a YYYY/MM/DD relative export path with collision avoidance."""
+    year = f"{date.year:04d}"
+    month = f"{date.month:02d}"
+    day = f"{date.day:02d}"
+    base_dir = Path(year) / month / day
+    candidate = base_dir / source.name
+
+    if used_paths is None:
+        return candidate.as_posix()
+
+    counter = 1
+    while candidate.as_posix() in used_paths:
+        candidate = base_dir / f"{source.stem}_{counter}{source.suffix}"
+        counter += 1
+
+    used_paths.add(candidate.as_posix())
+    return candidate.as_posix()
 
 
 class Exporter:
@@ -109,31 +155,7 @@ class Exporter:
         Returns:
             datetime-Objekt
         """
-        # Versuche EXIF-Daten zu lesen
-        if PIL_AVAILABLE and Image:
-            try:
-                with Image.open(image_path) as img:
-                    exif = img._getexif()
-                    if exif:
-                        # Suche nach DateTimeOriginal (Tag 36867)
-                        for tag_id, value in exif.items():
-                            tag_name = TAGS.get(tag_id, tag_id)
-                            if tag_name in ['DateTimeOriginal', 'DateTime', 'DateTimeDigitized']:
-                                # Format: "YYYY:MM:DD HH:MM:SS"
-                                try:
-                                    date = datetime.strptime(value, "%Y:%m:%d %H:%M:%S")
-                                    logger.debug(f"EXIF date for {image_path.name}: {date} (from {tag_name})")
-                                    return date
-                                except ValueError:
-                                    continue
-            except Exception as e:
-                logger.debug(f"EXIF extraction failed for {image_path.name}: {e}")
-
-        # Fallback: Dateisystem mtime
-        mtime = image_path.stat().st_mtime
-        date = datetime.fromtimestamp(mtime)
-        logger.debug(f"Fallback date for {image_path.name}: {date} (from mtime)")
-        return date
+        return _extract_date_from_path(image_path)
 
     def export_files(self, sources: List[Path]) -> Tuple[int, int, List[str]]:
         """
@@ -196,6 +218,7 @@ class StreamingExporter:
         errors: List[str] = []
 
         try:
+            used_archive_paths: set[str] = set()
             with zipfile.ZipFile(self.archive_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
                 total = len(sources)
                 for idx, source in enumerate(sources):
@@ -206,9 +229,11 @@ class StreamingExporter:
                     try:
                         # Lese-Check (Datei offen/barrierefrei?)
                         with open(source, "rb") as fsrc:
-                            info = zipfile.ZipInfo(filename=source.name)
+                            export_date = _extract_date_from_path(source)
+                            archive_name = _build_dated_relative_path(source, export_date, used_archive_paths)
+                            info = zipfile.ZipInfo(filename=archive_name)
                             info.compress_type = zipfile.ZIP_DEFLATED
-                            info.date_time = datetime.now().timetuple()[:6]
+                            info.date_time = export_date.timetuple()[:6]
                             with zf.open(info, "w") as zdest:
                                 for chunk in iter(lambda: fsrc.read(1024 * 1024), b""):
                                     zdest.write(chunk)

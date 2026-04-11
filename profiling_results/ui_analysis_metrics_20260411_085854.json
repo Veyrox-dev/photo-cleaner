@@ -1,0 +1,30 @@
+{
+  "timestamp": "20260411_085854",
+  "analysis_duration_seconds": 506.375,
+  "stage_timings_seconds": {
+    "grouping": 0.234,
+    "rating": 112.594,
+    "finalization": 351.875
+  },
+  "progress_events": {
+    "received": 43,
+    "rendered": 40,
+    "dropped": 3
+  },
+  "groups_found": 6,
+  "duplicate_images": 135,
+  "indexing_results": {
+    "cached_files": 0,
+    "duplicates_found": 28,
+    "hashed_files": 136,
+    "new_files": 136,
+    "speedup_factor": 1.0,
+    "time_elapsed": 41.60787606239319,
+    "time_saved": 0.0,
+    "total_files": 136
+  },
+  "rating_info": {
+    "rated": true,
+    "warn": false
+  }
+}
