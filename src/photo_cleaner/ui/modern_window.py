@@ -329,6 +329,7 @@ class RatingWorkerThread(QThread):
             
             quality_results: dict[str, list] = {}
             done = 0
+            total_scored_images = 0
             
             # NOW emit progress - models are ready
             total_init_time = time.monotonic() - start_time
@@ -352,13 +353,29 @@ class RatingWorkerThread(QThread):
                 _emit_progress(min(94, pct), f"Bilder werden bewertet... {done}/{total_images}")
                 
                 group_base_done = done
+                last_reported_local_done = 0
                 worker_count = _compute_analysis_workers(len(paths))
                 def _progress_cb(local_done: int, local_total: int) -> None:
+                    nonlocal last_reported_local_done
                     if self._should_cancel:
                         return
                     current_done = group_base_done + local_done
                     pct = 87 + int(7 * (current_done / max(1, total_images)))
                     _emit_progress(min(94, pct), f"Bilder werden bewertet... {current_done}/{total_images}")
+
+                    # Emit one user-facing line per newly analyzed image.
+                    capped_local_done = max(0, min(local_done, len(paths)))
+                    if capped_local_done <= last_reported_local_done:
+                        return
+                    for image_idx in range(last_reported_local_done + 1, capped_local_done + 1):
+                        global_idx = group_base_done + image_idx
+                        image_name = paths[image_idx - 1].name
+                        _emit_progress(
+                            min(94, pct),
+                            f"Bild bewertet {global_idx}/{total_images}: {image_name}",
+                            force=True,
+                        )
+                    last_reported_local_done = capped_local_done
 
                 use_process_parallel = os.getenv("PHOTOCLEANER_USE_PROCESS_PARALLEL", "1").lower() in ("1", "true", "yes")
                 if use_process_parallel and worker_count > 1:
@@ -380,6 +397,8 @@ class RatingWorkerThread(QThread):
                 # Update progress after analysis
                 pct = 87 + int(7 * (done / max(1, total_images)))
                 _emit_progress(min(94, pct), f"Bilder werden bewertet... {done}/{total_images}", force=(done >= total_images))
+
+            total_scored_images = sum(len(group_results) for group_results in quality_results.values())
             
             if self._should_cancel:
                 logger.info("Rating cancelled by user")
@@ -393,6 +412,7 @@ class RatingWorkerThread(QThread):
             logger.info("Scores applied successfully")
             
             logger.info("Applying auto-selection for each group...")
+            scored_done = 0
             for group_id, results in quality_results.items():
                 if self._should_cancel:
                     break
@@ -432,6 +452,25 @@ class RatingWorkerThread(QThread):
                         else:
                             path, score, disqualified = item
                             score_updates_basic.append((score, str(path)))
+
+                        scored_done += 1
+                        score_value = float(score)
+                        score_display = f"{score_value:.1f}" if score_value > 1.0 else f"{score_value * 100:.0f}%"
+                        if best_path and path == best_path:
+                            decision = "EMPFOHLEN"
+                        elif second_path and path == second_path:
+                            decision = "ZWEITWAHL"
+                        elif disqualified:
+                            decision = "AUSSORTIERT"
+                        else:
+                            decision = "BEWERTET"
+
+                        score_pct = 94 + int(round((scored_done / max(1, total_scored_images)) * 5))
+                        _emit_progress(
+                            min(99, score_pct),
+                            f"Ergebnis {scored_done}/{max(1, total_scored_images)}: {Path(path).name} -> {decision} ({score_display})",
+                            force=True,
+                        )
 
                     if score_updates_with_components:
                         conn.executemany(
@@ -840,6 +879,7 @@ class ProgressStepDialog(QDialog):
         self.last_percentage = 0
         self._eta_points: deque[tuple[float, int]] = deque(maxlen=24)
         self._smoothed_eta_seconds: float | None = None
+        self._last_activity_entry: str = ""
         self._setup_ui()
         self._apply_styling()
     
@@ -917,6 +957,18 @@ class ProgressStepDialog(QDialog):
         info_layout.addStretch()
         info_layout.addWidget(self.eta_label)
         layout.addLayout(info_layout)
+
+        # User-facing activity log under progress bars for transparent live feedback.
+        self.activity_label = QLabel(t("analysis_activity_title"))
+        self.activity_label.setStyleSheet("font-size: 11px; font-weight: 600;")
+        layout.addWidget(self.activity_label)
+
+        self.activity_log = QTextEdit()
+        self.activity_log.setReadOnly(True)
+        self.activity_log.setMinimumHeight(90)
+        self.activity_log.setMaximumHeight(140)
+        self.activity_log.setStyleSheet("QTextEdit { font-size: 11px; }")
+        layout.addWidget(self.activity_log)
         
         # Cancel button
         button_layout = QHBoxLayout()
@@ -928,6 +980,7 @@ class ProgressStepDialog(QDialog):
         
         self.setLayout(layout)
         self._update_step_visuals()
+        self.append_activity_log(t("analysis_activity_ready"))
     
     def _apply_styling(self):
         """Apply Phase C consistent styling."""
@@ -1040,9 +1093,23 @@ class ProgressStepDialog(QDialog):
         else:
             status_text = status
         self.status_label.setText(status_text)
+
+        if status_text:
+            self.append_activity_log(status_text)
         
         # Calculate and update ETA
         self._update_eta(value)
+
+    def append_activity_log(self, message: str) -> None:
+        """Append one deduplicated line to the activity log panel."""
+        entry = (message or "").strip()
+        if not entry or entry == self._last_activity_entry:
+            return
+        self._last_activity_entry = entry
+        timestamp = time.strftime("%H:%M:%S")
+        self.activity_log.append(f"[{timestamp}] {entry}")
+        scrollbar = self.activity_log.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
 
     def set_sub_progress(self, status: str = "", current: int = 0, total: int = 0) -> None:
         """Update optional sub-progress details for the active phase."""
@@ -3791,6 +3858,8 @@ class ModernMainWindow(QMainWindow):
         self._group_thumb_done = 0
         self._grid_thumb_total = 0
         self._grid_thumb_done = 0
+        self._group_thumb_pending_indices: set[int] = set()
+        self._grid_thumb_pending_indices: set[int] = set()
         self._thumb_loading_active = False
         self._pending_rating_summary: Optional[dict] = None
         self._grid_thumb_cache: Optional[SmartThumbnailCache] = None
@@ -6669,6 +6738,8 @@ class ModernMainWindow(QMainWindow):
         self._group_thumb_done = 0
         self._grid_thumb_total = 0
         self._grid_thumb_done = 0
+        self._group_thumb_pending_indices.clear()
+        self._grid_thumb_pending_indices.clear()
         self._thumb_loading_active = False
 
     def _resume_thumbnail_loaders_if_idle(self) -> None:
@@ -7060,6 +7131,7 @@ class ModernMainWindow(QMainWindow):
 
         self._group_thumb_total = 0
         self._group_thumb_done = 0
+        self._group_thumb_pending_indices.clear()
         
         render_count = 0
         queued_count = 0
@@ -7188,7 +7260,8 @@ class ModernMainWindow(QMainWindow):
             if thumb_path_str:
                 from pathlib import Path
                 self._group_thumb_loader.enqueue(i, Path(thumb_path_str))
-                self._group_thumb_total += 1
+                self._group_thumb_pending_indices.add(i)
+        self._group_thumb_total = len(self._group_thumb_pending_indices)
         logger.info(f"[UI] Thumbnail loading queued")
         self._resume_thumbnail_loaders_if_idle()
         self._update_thumbnail_progress()
@@ -7208,12 +7281,21 @@ class ModernMainWindow(QMainWindow):
             qimg: QImage from ThumbnailLoader worker thread
         """
         logger.debug(f"[UI] Group thumbnail slot received index={list_index}")
+        if list_index not in self._group_thumb_pending_indices:
+            logger.debug(f"[UI] Group thumbnail callback: stale/untracked index {list_index}")
+            return
+
+        self._group_thumb_pending_indices.discard(list_index)
+        self._group_thumb_done += 1
+
         if list_index < 0 or list_index >= self.group_list.count():
             logger.warning(f"[UI] Thumbnail callback: invalid index {list_index}")
+            self._update_thumbnail_progress()
             return
         
         if qimg.isNull():
             logger.debug(f"[UI] Thumbnail callback: null image for index {list_index}, skipping")
+            self._update_thumbnail_progress()
             return
         
         # Convert QImage → QPixmap in UI thread (SAFE, only here!)
@@ -7226,35 +7308,45 @@ class ModernMainWindow(QMainWindow):
             item.setIcon(QIcon(pixmap))
             path_str = item.data(Qt.UserRole + 1)
             logger.debug(f"[UI] Thumbnail icon set for list item {list_index} path={path_str}")
-            self._group_thumb_done += 1
-            self._update_thumbnail_progress()
+        self._update_thumbnail_progress()
 
     def _on_grid_thumb_loaded(self, list_index: int, qimg: QImage) -> None:
         """Callback when grid thumbnail loaded by ThumbnailLoader thread."""
         logger.debug(f"[UI] Grid thumbnail slot received index={list_index}")
+        if list_index not in self._grid_thumb_pending_indices:
+            logger.debug(f"[UI] Grid thumbnail callback: stale/untracked index {list_index}")
+            return
+
+        self._grid_thumb_pending_indices.discard(list_index)
+        self._grid_thumb_done += 1
+
         card = self._grid_thumb_index_map.get(list_index)
         if not card:
             logger.debug(f"[UI] Grid thumbnail callback: stale index {list_index}")
+            self._update_thumbnail_progress()
             return
         if card not in self.thumbnail_cards:
             logger.debug(f"[UI] Grid thumbnail callback: index {list_index} not in current page cards")
             self._grid_thumb_index_map.pop(list_index, None)
+            self._update_thumbnail_progress()
             return
         if not _is_qobject_alive(card) or not _is_qobject_alive(getattr(card, "thumbnail", None)):
             logger.debug(f"[UI] Grid thumbnail callback: card {list_index} already deleted")
             self._grid_thumb_index_map.pop(list_index, None)
+            self._update_thumbnail_progress()
             return
         if qimg.isNull():
             logger.debug(f"[UI] Grid thumbnail callback: null image index {list_index}")
+            self._update_thumbnail_progress()
             return
         try:
             card.set_thumbnail_image(qimg)
         except RuntimeError:
             logger.debug(f"[UI] Grid thumbnail callback: runtime error for stale card {list_index}")
             self._grid_thumb_index_map.pop(list_index, None)
+            self._update_thumbnail_progress()
             return
         logger.debug(f"[UI] Grid thumbnail set for index {list_index} path={card.file_row.path}")
-        self._grid_thumb_done += 1
         self._update_thumbnail_progress()
 
     def _update_thumbnail_progress(self) -> None:
@@ -7514,6 +7606,7 @@ class ModernMainWindow(QMainWindow):
         self._grid_thumb_index_map = {}
         self._grid_thumb_total = 0
         self._grid_thumb_done = 0
+        self._grid_thumb_pending_indices.clear()
         
         # FIX (Feb 23, 2026): Clear old grid thumbnail requests to prevent race condition
         if self._grid_thumb_loader:
@@ -7558,7 +7651,9 @@ class ModernMainWindow(QMainWindow):
             if self._grid_thumb_loader:
                 self._grid_thumb_index_map[idx] = card
                 self._grid_thumb_loader.enqueue(idx, file_row.path)
-                self._grid_thumb_total += 1
+                self._grid_thumb_pending_indices.add(idx)
+
+        self._grid_thumb_total = len(self._grid_thumb_pending_indices)
         
         # CRITICAL: Use items_per_row from VirtualScrollContainer if available, else default to 4
         cols = getattr(self, 'items_per_row', 4) if hasattr(self, 'items_per_row') else 4

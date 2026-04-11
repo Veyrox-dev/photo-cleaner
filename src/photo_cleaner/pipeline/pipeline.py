@@ -17,7 +17,7 @@ import os
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from photo_cleaner.cache.image_cache_manager import ImageCacheManager
 from photo_cleaner.core.hasher import hamming_distance
@@ -171,7 +171,11 @@ class PhotoCleanerPipeline:
         # Statistics
         self.stats = PipelineStats()
     
-    def run(self, folder_path: Path) -> PipelineStats:
+    def run(
+        self,
+        folder_path: Path,
+        status_callback: Optional[Callable[[str], None]] = None,
+    ) -> PipelineStats:
         """
         Run complete pipeline on a folder.
         
@@ -181,11 +185,22 @@ class PhotoCleanerPipeline:
         Returns:
             Pipeline statistics
         """
+        def _emit_status(message: str) -> None:
+            if status_callback is None:
+                return
+            try:
+                status_callback(message)
+            except Exception:
+                logger.debug("Status callback failed", exc_info=True)
+
         logger.info(f"Starting pipeline on {folder_path}")
+        _emit_status("Analyse gestartet")
+        _emit_status(f"Ordner: {folder_path}")
 
         # Enforce FREE quota before indexing (server-backed usage)
         if os.environ.get("PHOTOCLEANER_SKIP_FREE_QUOTA", "0").lower() in ("1", "true", "yes"):
             logger.warning("FREE quota check bypassed via PHOTOCLEANER_SKIP_FREE_QUOTA (profiling/test mode)")
+            _emit_status("Lizenzpruefung uebersprungen (Profiling/Test-Modus)")
         else:
             try:
                 from photo_cleaner.license import get_license_manager
@@ -193,24 +208,37 @@ class PhotoCleanerPipeline:
 
                 license_mgr = get_license_manager()
                 total_files = FileScanner(folder_path).count_files()
+                _emit_status(f"Lizenzpruefung: {total_files} Dateien erkannt")
                 allowed, reason = license_mgr.check_and_consume_free_images(total_files)
                 if not allowed:
                     raise ValueError(reason or "Free-Limit erreicht. Bitte Upgrade auf PRO.")
+                _emit_status("Lizenzpruefung erfolgreich")
             except (ImportError, AttributeError) as e:
                 logger.warning("License check skipped: %s", e)
+                _emit_status("Lizenzpruefung nicht verfuegbar, Analyse laeuft lokal weiter")
         
         # Stage 1: Index
+        _emit_status("Schritt 1/5: Dateien werden indexiert")
         logger.info("Stage 1: Indexing files...")
         index_stats = self._stage_index(folder_path)
         self.stats.indexed_files = index_stats["processed"]
         self.stats.skipped_files = index_stats["skipped"]
         self.stats.failed_index = index_stats["failed"]
+        _emit_status(
+            f"Index abgeschlossen: {self.stats.indexed_files} Dateien verarbeitet"
+        )
+        if self.stats.skipped_files > 0:
+            _emit_status(f"Hinweis: {self.stats.skipped_files} Dateien uebersprungen")
+        if self.stats.failed_index > 0:
+            _emit_status(f"Hinweis: {self.stats.failed_index} Dateien konnten nicht indexiert werden")
         
         if self.stats.indexed_files == 0 and self.stats.skipped_files == 0:
             logger.warning("No files indexed, aborting pipeline")
+            _emit_status("Keine kompatiblen Dateien gefunden")
             return self.stats
         
         # Stage 2: Find duplicates
+        _emit_status("Schritt 2/5: Aehnliche Bilder werden gruppiert")
         logger.info("Stage 2: Finding duplicate groups...")
         duplicate_groups = self._stage_find_duplicates()
         self.stats.duplicate_groups = len(duplicate_groups)
@@ -221,30 +249,50 @@ class PhotoCleanerPipeline:
         
         if not duplicate_groups:
             logger.info("No duplicates found, pipeline complete")
+            _emit_status("Keine Duplikate gefunden - Analyse ist abgeschlossen")
             return self.stats
         
+        _emit_status(
+            f"Duplikatsuche fertig: {self.stats.duplicate_groups} Gruppen gefunden"
+        )
+        _emit_status(f"In Duplikat-Gruppen: {self.stats.total_duplicates} Bilder")
         logger.info(
             f"Found {self.stats.duplicate_groups} groups with "
             f"{self.stats.total_duplicates} total images"
         )
         
         # Stage 3: Cheap filter
+        _emit_status("Schritt 3/5: Schnelle Qualitaetsfilter werden angewendet")
         logger.info("Stage 3: Applying cheap filters...")
         filtered_groups = self._stage_cheap_filter(duplicate_groups)
+        filtered_group_count = len(filtered_groups)
+        filtered_image_count = sum(len(group) for group in filtered_groups.values())
+        _emit_status(
+            f"Filter fertig: {filtered_group_count} Gruppen mit {filtered_image_count} Bildern fuer Detailanalyse"
+        )
         
         # Stage 4: Quality analysis (only on filtered groups)
+        _emit_status("Schritt 4/5: Detailanalyse der Gruppen laeuft")
         logger.info("Stage 4: Analyzing quality with Face Mesh...")
         analyzed_groups = self._stage_quality_analysis(filtered_groups)
         self.stats.analyzed_files = sum(len(results) for results in analyzed_groups.values())
+        _emit_status(f"Detailanalyse fertig: {self.stats.analyzed_files} Bilder bewertet")
         
         # Stage 5: Score and mark
+        _emit_status("Schritt 5/5: Beste Bilder werden markiert")
         logger.info("Stage 5: Scoring and marking images...")
         score_stats = self._stage_score_and_mark(analyzed_groups)
         self.stats.marked_keep = score_stats["marked_keep"]
         self.stats.marked_delete = score_stats["marked_delete"]
         self.stats.skipped_locked = score_stats["skipped_locked"]
+        _emit_status(
+            f"Markierung abgeschlossen: {self.stats.marked_keep} behalten, {self.stats.marked_delete} aussortiert"
+        )
+        if self.stats.skipped_locked > 0:
+            _emit_status(f"Hinweis: {self.stats.skipped_locked} gesperrte Dateien unveraendert")
         
         logger.info("Pipeline complete!")
+        _emit_status("Analyse abgeschlossen")
         self._log_stats()
         
         return self.stats

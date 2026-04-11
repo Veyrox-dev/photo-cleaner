@@ -4,6 +4,7 @@ Führt Pipeline im Hintergrund aus und zeigt Fortschritt an.
 """
 
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -14,6 +15,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QProgressBar,
     QPushButton,
+    QTextEdit,
 )
 
 from photo_cleaner.pipeline.pipeline import PhotoCleanerPipeline
@@ -27,6 +29,7 @@ class PipelineWorker(QThread):
     """Worker-Thread für Pipeline-Ausführung."""
 
     progress = Signal(int, str)  # (percent, status_text)
+    activity = Signal(str)  # user-facing activity log line
     finished = Signal(bool, str)  # (success, message)
 
     def __init__(self, input_path: Path, db_path: Path):
@@ -43,6 +46,7 @@ class PipelineWorker(QThread):
             from pathlib import Path
             
             self.progress.emit(0, t("initializing"))
+            self.activity.emit("Initialisierung gestartet")
 
             # WICHTIG: Lösche alte Datenbank falls sie existiert
             # Das erzwingt einen frischen Index und verhindert Pfad-Konflikte
@@ -50,6 +54,7 @@ class PipelineWorker(QThread):
                 try:
                     self.db_path.unlink()
                     logger.info(f"Alte Datenbank gelöscht: {self.db_path}")
+                    self.activity.emit("Vorherige Analyse-Daten wurden zurückgesetzt")
                 except Exception as e:
                     logger.warning(f"Konnte alte Datenbank nicht löschen: {e}")
 
@@ -69,9 +74,10 @@ class PipelineWorker(QThread):
                 return
             
             self.progress.emit(10, t("analyzing"))
+            self.activity.emit("Analysepipeline wird gestartet")
             
             # Führe Pipeline aus (ruft alle Stages auf)
-            stats = self.pipeline.run(self.input_path)
+            stats = self.pipeline.run(self.input_path, status_callback=self._on_pipeline_status)
             
             # Fortschritt simulieren (run() führt alles intern aus)
             self.progress.emit(100, t("analysis_completed"))
@@ -93,6 +99,28 @@ class PipelineWorker(QThread):
         """Bricht Pipeline ab."""
         self._should_cancel = True
 
+    def _on_pipeline_status(self, message: str) -> None:
+        """Forward pipeline status to user activity and progress UI."""
+        progress_map = {
+            "Schritt 1/5": 20,
+            "Index abgeschlossen": 30,
+            "Schritt 2/5": 35,
+            "Duplikatsuche fertig": 45,
+            "Schritt 3/5": 55,
+            "Schritt 4/5": 75,
+            "Detailanalyse fertig": 85,
+            "Schritt 5/5": 90,
+            "Markierung abgeschlossen": 95,
+            "Keine Duplikate gefunden": 100,
+            "Keine kompatiblen Dateien gefunden": 100,
+            "Analyse abgeschlossen": 100,
+        }
+        for marker, percent in progress_map.items():
+            if marker in message:
+                self.progress.emit(percent, message)
+                break
+        self.activity.emit(message)
+
 
 class AnalysisDialog(QDialog):
     """Dialog für Analyse-Phase mit Fortschrittsanzeige."""
@@ -107,6 +135,7 @@ class AnalysisDialog(QDialog):
         self.db_path = db_path
         self.worker: Optional[PipelineWorker] = None
         self.analysis_success = False
+        self._last_activity_line = ""
 
         self._setup_ui()
         self._start_analysis()
@@ -137,6 +166,21 @@ class AnalysisDialog(QDialog):
         info.setStyleSheet(f"color: {get_semantic_colors()['neutral']};")
         layout.addWidget(info)
 
+        # Nutzerfreundliches Aktivitaetsprotokoll (separat vom Debug-Log)
+        activity_label = QLabel("Analyse-Aktivitaet (Detailansicht)")
+        activity_label.setStyleSheet("font-weight: 600;")
+        layout.addWidget(activity_label)
+
+        self.activity_log = QTextEdit()
+        self.activity_log.setReadOnly(True)
+        self.activity_log.setMinimumHeight(140)
+        self.activity_log.setStyleSheet(
+            "QTextEdit { background-color: #111827; color: #e5e7eb; border-radius: 6px; padding: 6px; }"
+        )
+        layout.addWidget(self.activity_log)
+
+        self._append_activity("Bereit - Analyse wird vorbereitet")
+
         layout.addSpacing(20)
 
         # Abbrechen-Button (nur während Analyse)
@@ -154,6 +198,7 @@ class AnalysisDialog(QDialog):
         """Startet Pipeline im Hintergrund."""
         self.worker = PipelineWorker(self.input_path, self.db_path)
         self.worker.progress.connect(self._update_progress)
+        self.worker.activity.connect(self._append_activity)
         self.worker.finished.connect(self._analysis_finished)
         self.worker.start()
 
@@ -171,10 +216,12 @@ class AnalysisDialog(QDialog):
             self.title_label.setText(t("analysis_completed"))
             self.title_label.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {_sem['success']};")
             self.status_label.setText(message)
+            self._append_activity("Analyse erfolgreich abgeschlossen")
         else:
             self.title_label.setText(t("analysis_failed"))
             self.title_label.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {_sem['error']};")
             self.status_label.setText(message)
+            self._append_activity("Analyse mit Fehler beendet")
 
         # UI anpassen
         self.cancel_btn.setVisible(False)
@@ -190,9 +237,22 @@ class AnalysisDialog(QDialog):
         if self.worker and self.worker.isRunning():
             self.status_label.setText(t("cancel"))
             self.cancel_btn.setEnabled(False)
+            self._append_activity("Abbruch angefordert")
             self.worker.cancel()
             return
         self.reject()
+
+    def _append_activity(self, line: str) -> None:
+        """Append one deduplicated, timestamped line to the user activity feed."""
+        clean_line = (line or "").strip()
+        if not clean_line or clean_line == self._last_activity_line:
+            return
+        self._last_activity_line = clean_line
+        ts = datetime.now().strftime("%H:%M:%S")
+        self.activity_log.append(f"[{ts}] {clean_line}")
+        self.activity_log.verticalScrollBar().setValue(
+            self.activity_log.verticalScrollBar().maximum()
+        )
 
     def closeEvent(self, event):
         """Verhindert Schließen während Analyse läuft."""
