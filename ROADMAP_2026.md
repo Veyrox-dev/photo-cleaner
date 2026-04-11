@@ -120,6 +120,12 @@ Nicht nur Baseline erfüllt, sondern massiv erweitert:
 - ✅ i18n-Regression abgesichert: `tests/ui/test_i18n_theme.py` validiert neue Sprachen und Schluesselabdeckung
 - ▶ Week-8 letzter Punkt vorbereitet: Go/No-Go-Entscheidung bleibt an Frozen-Smoke + Stripe/Supabase-E2E gekoppelt
 
+### Status-Delta (2026-04-11)
+
+- ✅ Feature-Roadmap erweitert und priorisiert (Phase A/B/C) basierend auf aktuellem Produktfokus
+- ✅ Phase A/B/C bewusst als Post-Launch-Roadmap eingeordnet, damit v1.0 fokussiert bleibt
+- ✅ Neue Pre-Release-Workflow- und UX-Fixes fuer den Launch-Scope aufgenommen
+
 ### 1 · MSI Smoke-Test auf Virgin Windows
 Installer (`.msi`) auf einer frischen Maschine validieren: Install → Upgrade → Uninstall.
 Separat und ergänzend zu den EXE-Smoke-Tests.
@@ -192,6 +198,33 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 7. ✅ Quota- und Upgrade-Messaging im Workflow
 8. ✅ Update-Logik Phase A (Versionscheck + Download-Link via Manifest)
 
+### Zusätzlich vor Release umsetzen
+
+1. ✅ **Import-Tab / Keep-Verhalten konfigurierbar machen**
+    - Feste Logik "Top-N-Bilder pro Gruppe" aus dem Import-Flow entfernen
+    - Aktuelle Anzahl der Keep-Bilder sichtbar machen
+    - Keep-Verhalten in die Einstellungen auslagern
+    - Nutzer kann das Verhalten selbst konfigurieren (3 konfigurierbare Stufen: Klein/Mittel/Groß)
+2. ✅ **Einzeldurchsicht (Review) verbessern**
+    - Status-Buttons direkt in der Einzelansicht verfügbar machen (Keep / Delete / Unsure / ggf. Locked)
+    - Keine Umwege über andere UI-Bereiche notwendig
+    - Einzelbildansicht so groß wie sinnvoll möglich darstellen
+3. ✅ **UI-Verhalten bei Gruppenwechsel fixen**
+    - Beim Wechsel auf eine neue Gruppe Scrollposition immer nach oben zurücksetzen
+    - Alte Scrollposition nicht übernehmen
+4. ✅ **Zeitliche Sortierung vereinheitlichen**
+    - Gruppen zentral nach Zeit sortieren
+    - Einzelbilder innerhalb der Gruppen nach Zeit sortieren
+    - Bilder dürfen bei zeitlicher Passung zwischen Gruppen erscheinen
+    - Ziel: natürlichere Reihenfolge und einfacheres manuelles Zusammenführen
+5. ✅ **Export-System konfigurierbar machen**
+    - Benutzerdefinierte Exportstruktur unterstützen
+    - Beispiele: nach Datum, nach Gruppen, flach, verschachtelt
+    - Exportpfad-Logik als Nutzeroption statt fester Vorgabe
+6. ✅ **Status-Änderung Verhalten fixen**
+    - Wenn Bilder von Delete auf Keep geändert werden, Position beibehalten
+    - Nicht mehr an den Anfang springen
+
 ### v1.1 Should-have
 
 1. Warum nicht gruppiert? Diagnose
@@ -200,6 +233,38 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 4. Presets Fast / Balanced / Best Quality
 5. Progressive Results während Analyse
 6. Benchmark- und Diagnostics Center
+
+### Post-Launch-Feature-Roadmap ab v1.1 (priorisiert)
+
+Diese Reihenfolge gilt fuer die Zeit nach dem Launch. Vor v1.0 liegt der Fokus auf den oben definierten Workflow-, Review- und Export-Fixes.
+
+#### Phase A · Start nach Launch (höchste Priorität)
+
+1. **RAW-Format Support**
+    - Formate: CR2, NEF, ARW (optional erweitert: RAF, DNG)
+    - Ziel: Vorschau, Metadaten, Analyse-Teilnahme in bestehendem Flow
+2. **Blur-Ursachen-Differenzierung**
+    - Trennung: Bewegungsunschärfe vs. Fokusfehler vs. Verwacklung
+    - Ziel: aussagekräftigerer Score-Breakdown + bessere Review-Entscheidungen
+3. **UX-Verbesserungen (Paket)**
+    - Regret Protection im Abschlussdialog (zeitlich begrenztes Undo)
+    - Vergleichsmodus mit Referenzbild (Pin/Benchmark je Gruppe)
+    - Vorher/Nachher-Speicherplatz-Preview vor Löschen
+4. **Statistik-Dashboard (PRO-Mehrwert)**
+    - Fotos/Monat, Kamera-Verteilung, Qualitäts- und Duplikat-Trends
+    - Ziel: sichtbarer Mehrwert für PRO und bessere Nutzungseinblicke
+
+#### Phase B · Danach (mittlere Komplexität)
+
+1. **Best-of-Day Automatik** (Top-N pro Tag nach Qualitätslogik)
+2. **Batch-Rename nach EXIF-Schema** (Preview + Konfliktauflösung + Rollback)
+3. **Folder-Watcher / Auto-Import** (Ordner beobachten, neue Bilder auto-analysieren)
+
+#### Phase C · Danach (höhere Komplexität)
+
+1. **Personen-Clustering** (Identity Grouping über Fotosets)
+2. **GPS-Kartenansicht** (Ortscluster, Geofilter, Mapping-Integration)
+3. **Video-Duplikaterkennung** (Keyframe-Extraktion + Hash-Matching)
 
 ### Later Nice-to-have
 
@@ -294,7 +359,9 @@ Primäres Ziel ist jetzt nicht mehr Feature-Breite, sondern Vertrauen in die Aut
 
 ### Warum diese Reihenfolge
 
-Der aktuelle Engpass ist Vertrauen, nicht Funktionsanzahl. Solange Nutzer bei Fehlgruppierung keinen klaren Korrekturpfad haben und lange Läufe intransparent wirken, liefern zusätzliche Features wenig Netto-Wert. Deshalb zuerst Vertrauen und Recovery, danach Geschwindigkeit und Power-Features.
+Der aktuelle Engpass ist Vertrauen, nicht Funktionsanzahl. Solange Nutzer bei Fehlgruppierung keinen klaren Korrekturpfad haben und lange Läufe intransparent wirken, liefern zusätzliche Features wenig Netto-Wert.
+
+Deshalb vor dem Launch zuerst: stabile Review-, Sortier-, Import- und Export-Flows. Danach folgen post-launch **RAW + Blur-Differenzierung + UX-Paket + Statistik**, anschließend die komplexeren Plattform-Features (Personen-Clustering, GPS-Karte, Video-Duplikate).
 
 ---
 
@@ -310,4 +377,4 @@ Der aktuelle Engpass ist Vertrauen, nicht Funktionsanzahl. Solange Nutzer bei Fe
 | Betrieb / Infra | 6.9 *(Supabase + Secrets erledigt; 5× Smoke-Tests noch offen)* |
 | **Gesamt** | **8.0 / 10** |
 
-**Conditional Go:** Launch freigegeben, sobald der 5× Smoke-Test abgehakt ist.
+**Conditional Go:** Launch freigegeben, sobald der 5× Smoke-Test abgehakt ist. Feature-Priorisierung fuer v1.1+ ist beschlossen.

@@ -1453,7 +1453,7 @@ class FinalizationResultDialog(QDialog):
 
 
 class FolderSelectionDialog(QDialog):
-    """Dialog zur Auswahl von Eingabe- und Ausgabeordnern + Top-N."""
+    """Dialog zur Auswahl von Eingabe- und Ausgabeordnern."""
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1464,7 +1464,7 @@ class FolderSelectionDialog(QDialog):
         
         self.input_folder: Optional[Path] = None
         self.output_folder: Optional[Path] = None
-        self.top_n: int = 3
+        self.top_n: int = 3  # legacy param; GroupScorer reads tiers from AppConfig directly
 
         self.setStyleSheet(f"QDialog {{ background-color: {get_theme_colors()['window']}; }}")
         
@@ -1614,34 +1614,6 @@ class FolderSelectionDialog(QDialog):
         output_layout.addLayout(output_row)
         layout.addWidget(output_group)
 
-        # Top-N Auswahl
-        topn_group = QWidget()
-        topn_group.setStyleSheet(_build_surface_style())
-        topn_layout = QVBoxLayout(topn_group)
-        topn_layout.setSpacing(8)
-        topn_layout.setContentsMargins(16, 16, 16, 16)
-
-        topn_label = QLabel(t("select_topn_label"))
-        topn_layout.addWidget(topn_label)
-
-        topn_hint = QLabel(f"<i>{t('import_topn_card_hint')}</i>")
-        hint_color = get_text_hint_color()
-        topn_hint.setStyleSheet(f"color: {hint_color}; font-size: 11px;")
-        topn_layout.addWidget(topn_hint)
-
-        topn_row = QHBoxLayout()
-        self.topn_spin = QSpinBox()
-        self.topn_spin.setRange(1, 10)
-        self.topn_spin.setValue(self.top_n)
-        self.topn_spin.setFixedWidth(80)
-        self.topn_spin.setStyleSheet(_build_input_style())
-        self.topn_spin.valueChanged.connect(self._on_topn_changed)
-        topn_row.addWidget(self.topn_spin)
-        topn_row.addStretch()
-        topn_layout.addLayout(topn_row)
-
-        layout.addWidget(topn_group)
-        
         layout.addStretch()
         return container
     
@@ -1993,17 +1965,6 @@ class FolderSelectionDialog(QDialog):
         except (KeyError, ValueError, OSError) as e:
             logger.warning(f"Could not save recent folders: {e}")
 
-    def _on_topn_changed(self, value: int):
-        """Top-N Auswahl speichern.
-        
-        BUG #10 FIX: Validate top_n value range.
-        """
-        # Ensure value is within reasonable bounds (1-1000)
-        validated_value = max(1, min(int(value), 1000))
-        if validated_value != value:
-            logger.warning(f"Top-N value {value} out of range, clamped to {validated_value}")
-        self.top_n = validated_value
-    
     def _validate(self):
         """Ordnerauswahl validieren."""
         # Ausgabeordner ist erforderlich
@@ -3083,10 +3044,10 @@ class ImageDetailWindow(QMainWindow):
     def _build_ui(self):
         """Erstelle Detailansicht-UI."""
         layout = self._main_layout
-        layout.setSpacing(12)
-        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(4)  # Minimale Abstände
+        layout.setContentsMargins(6, 6, 6, 6)  # Minimale Ränder
         
-        # Info Header
+        # Info Header – ultra-kompakt
         status_colors = get_status_colors()
         status_color = status_colors.get(self.file_row.status.value, status_colors['UNDECIDED'])
         status_text = f"<span style='color: {status_color};'>{self.file_row.status.value}</span>"
@@ -3096,23 +3057,29 @@ class ImageDetailWindow(QMainWindow):
             status_text = f"{t('detail_badge_locked')} " + status_text
         
         header_row = QHBoxLayout()
-        header = QLabel(f"<h3>{self.file_row.path.name}</h3><p>Status: {status_text}</p>")
+        header_row.setSpacing(4)
+        header_row.setContentsMargins(0, 0, 0, 0)
+        header = QLabel(f"<b style='font-size: 11px;'>{self.file_row.path.name}</b><br/><span style='font-size: 10px;'>Status: {status_text}</span>")
+        header.setMaximumHeight(40)
+        self.header_label = header  # Store for later update
         header_row.addWidget(header)
         header_row.addStretch()
 
         badge_text = self._detail_status_badge_text()
         badge_fg = _best_text_color_for_bg(status_color)
         status_badge = QLabel(badge_text)
+        self.status_badge = status_badge  # Store for later update
         status_badge.setStyleSheet(
             f"background-color: {status_color}; color: {badge_fg};"
-            "font-weight: bold; padding: 6px 10px; border-radius: 10px;"
-            "font-size: 11px;"
+            "font-weight: bold; padding: 3px 6px; border-radius: 4px;"
+            "font-size: 9px;"
         )
         status_badge.setAlignment(Qt.AlignCenter)
+        status_badge.setMaximumHeight(25)
         header_row.addWidget(status_badge, alignment=Qt.AlignTop | Qt.AlignRight)
         layout.addLayout(header_row)
         
-        # Quality Score Display (compact banner like side-by-side)
+        # Quality Score Display – ultra-compact
         colors = get_theme_colors()
         explanation = build_score_explanation(
             quality_score=self.file_row.quality_score,
@@ -3135,16 +3102,17 @@ class ImageDetailWindow(QMainWindow):
             ]
 
             score_label = QLabel(" | ".join(parts) if parts else t("no_quality_data_available"))
-            score_label.setWordWrap(True)
+            score_label.setWordWrap(False)
+            score_label.setMaximumHeight(20)
             score_label.setToolTip(explanation.tooltip_text)
             score_label.setStyleSheet(
-                f"font-size: 11px; color: {colors['text']}; padding: 6px; background-color: {colors['base']}; border: 1px solid {colors['border']}; border-radius: 6px;"
+                f"font-size: 9px; color: {colors['text']}; padding: 2px 3px; background-color: {colors['base']}; border: 1px solid {colors['border']}; border-radius: 3px;"
             )
             layout.addWidget(score_label)
         
-        # Image view
+        # Image view – full stretch for detail view
         image_view = ZoomableImageView()
-        layout.addWidget(image_view)
+        layout.addWidget(image_view, stretch=1)
         
         # Load image
         try:
@@ -3167,10 +3135,11 @@ class ImageDetailWindow(QMainWindow):
             layout.addWidget(error_label)
         
         # P2 FIX #16: EXIF Info - load in background to avoid blocking UI
-        # Create placeholder label
+        # Create placeholder label (ultra-compact)
         info_label = QLabel(t("exif_loading"))
+        info_label.setMaximumHeight(18)
         hint_color = get_text_hint_color()
-        info_label.setStyleSheet(f"color: {hint_color}; font-size: 12px; padding: 8px;")
+        info_label.setStyleSheet(f"color: {hint_color}; font-size: 9px; padding: 2px 3px;")
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
         
@@ -3181,32 +3150,73 @@ class ImageDetailWindow(QMainWindow):
         self._exif_thread.error.connect(lambda err: self._on_image_exif_error(err))
         self._exif_thread.start()
         
-        # Control bar
+        # Control bar – ultra-compact
         control_bar = QHBoxLayout()
-        
-        # Navigation buttons (NEW Feature 2!)
+        control_bar.setSpacing(3)
+        control_bar.setContentsMargins(0, 0, 0, 0)
+
+        # Navigation buttons – compact
         if self.all_files and len(self.all_files) > 1:
-            prev_btn = QPushButton("◄ " + t("previous_image"))
+            prev_btn = QPushButton("◄")
+            prev_btn.setMaximumWidth(30)
+            prev_btn.setMaximumHeight(24)
+            prev_btn.setToolTip(t("previous_image"))
             prev_btn.setEnabled(self.current_index > 0)
             prev_btn.clicked.connect(self._navigate_previous)
             control_bar.addWidget(prev_btn)
-            
-            nav_info = QLabel(f"{self.current_index + 1} / {len(self.all_files)}")
-            hint_color = get_text_hint_color()
-            nav_info.setStyleSheet(f"color: {hint_color}; font-size: 14px; padding: 0 12px;")
+
+            nav_info = QLabel(f"{self.current_index + 1}/{len(self.all_files)}")
+            nav_info.setStyleSheet(f"color: {get_text_hint_color()}; font-size: 9px; padding: 0 4px;")
+            nav_info.setMaximumWidth(40)
+            nav_info.setMaximumHeight(24)
             control_bar.addWidget(nav_info)
-            
-            next_btn = QPushButton(t("next_image") + " ►")
+
+            next_btn = QPushButton("►")
+            next_btn.setMaximumWidth(30)
+            next_btn.setMaximumHeight(24)
+            next_btn.setToolTip(t("next_image"))
             next_btn.setEnabled(self.current_index < len(self.all_files) - 1)
             next_btn.clicked.connect(self._navigate_next)
             control_bar.addWidget(next_btn)
-        
+
         control_bar.addStretch()
-        
+
+        # Status action buttons – only functional when a parent window is available
+        if self.parent_window:
+            status_colors = get_status_colors()
+            keep_btn = QPushButton(t("keep"))
+            keep_btn.setMaximumWidth(65)
+            keep_btn.setMaximumHeight(24)
+            keep_btn.setShortcut(QKeySequence(Qt.Key_K))
+            keep_btn.setToolTip(f"{t('keep')} (K)")
+            keep_btn.setStyleSheet(_build_button_style(status_colors["KEEP"], padding="4px 8px", font_size=10))
+            keep_btn.clicked.connect(lambda: self._set_status(FileStatus.KEEP))
+            control_bar.addWidget(keep_btn)
+
+            del_btn = QPushButton(t("delete"))
+            del_btn.setMaximumWidth(65)
+            del_btn.setMaximumHeight(24)
+            del_btn.setShortcut(QKeySequence(Qt.Key_D))
+            del_btn.setToolTip(f"{t('delete')} (D)")
+            del_btn.setStyleSheet(_build_button_style(status_colors["DELETE"], padding="4px 8px", font_size=10))
+            del_btn.clicked.connect(lambda: self._set_status(FileStatus.DELETE))
+            control_bar.addWidget(del_btn)
+
+            unsure_btn = QPushButton(t("unsure"))
+            unsure_btn.setMaximumWidth(65)
+            unsure_btn.setMaximumHeight(24)
+            unsure_btn.setShortcut(QKeySequence(Qt.Key_U))
+            unsure_btn.setToolTip(f"{t('unsure')} (U)")
+            unsure_btn.setStyleSheet(_build_button_style(status_colors["UNSURE"], padding="4px 8px", font_size=10))
+            unsure_btn.clicked.connect(lambda: self._set_status(FileStatus.UNSURE))
+            control_bar.addWidget(unsure_btn)
+
         close_btn = QPushButton(t("close_button"))
+        close_btn.setMaximumWidth(65)
+        close_btn.setMaximumHeight(24)
         close_btn.clicked.connect(self.close)
         control_bar.addWidget(close_btn)
-        
+
         layout.addLayout(control_bar)
     
     def _on_image_exif_ready(self, exif_data: dict):
@@ -3239,7 +3249,7 @@ class ImageDetailWindow(QMainWindow):
             
             hint_color = get_text_hint_color()
             self._exif_label.setText(text)
-            self._exif_label.setStyleSheet(f"color: {hint_color}; font-size: 12px; padding: 8px;")
+            self._exif_label.setStyleSheet(f"color: {hint_color}; font-size: 9px; padding: 2px 3px;")
             logger.debug(f"EXIF display updated for {self.file_row.path.name}")
         except Exception as e:
             logger.error(f"Failed to format EXIF data: {e}", exc_info=True)
@@ -3273,6 +3283,20 @@ class ImageDetailWindow(QMainWindow):
         self._main_layout = QVBoxLayout(central_widget)
         self._build_ui()
 
+    def _set_status(self, status: FileStatus) -> None:
+        """Set status for the current image and refresh parent grid + this window."""
+        if not self.parent_window:
+            return
+        res = self.parent_window.actions.ui_batch_set_status([self.file_row.path], status)
+        if res.get("ok"):
+            self.file_row.status = status
+            # Refresh main window grid WITHOUT rebuilding detail window
+            self.parent_window._reload_after_action()
+            # Update only the header/badge in this window (not full rebuild!)
+            self._update_header_and_badge()
+        else:
+            logger.error(f"_set_status failed: {res.get('message')}")
+
     def _detail_status_badge_text(self) -> str:
         """Return concise, localized status label for top-right badge."""
         if self.file_row.status == FileStatus.KEEP:
@@ -3290,6 +3314,31 @@ class ImageDetailWindow(QMainWindow):
         if self.file_row.locked:
             parts.append(t("detail_badge_locked"))
         return " • ".join(parts)
+
+    def _update_header_and_badge(self) -> None:
+        """Update header and status badge after status change (no full rebuild)."""
+        status_colors = get_status_colors()
+        status_color = status_colors.get(self.file_row.status.value, status_colors['UNDECIDED'])
+        status_text = f"<span style='color: {status_color};'>{self.file_row.status.value}</span>"
+        if self.file_row.is_recommended:
+            status_text = f"{t('detail_badge_recommended')} " + status_text
+        if self.file_row.locked:
+            status_text = f"{t('detail_badge_locked')} " + status_text
+        
+        # Update header label only (keep compact style)
+        if hasattr(self, 'header_label'):
+            self.header_label.setText(f"<b style='font-size: 11px;'>{self.file_row.path.name}</b><br/><span style='font-size: 10px;'>Status: {status_text}</span>")
+        
+        # Update status badge (keep compact style)
+        if hasattr(self, 'status_badge'):
+            badge_text = self._detail_status_badge_text()
+            badge_fg = _best_text_color_for_bg(status_color)
+            self.status_badge.setText(badge_text)
+            self.status_badge.setStyleSheet(
+                f"background-color: {status_color}; color: {badge_fg};"
+                "font-weight: bold; padding: 3px 6px; border-radius: 4px;"
+                "font-size: 9px;"
+            )
 
 
 class SideBySideComparisonWindow(QMainWindow):
@@ -3735,8 +3784,8 @@ class ModernMainWindow(QMainWindow):
         default_output = output_path or (AppConfig.get_user_data_dir() / "exports")
         self.output_path: Optional[Path] = Path(default_output).resolve()
         self.output_path.mkdir(parents=True, exist_ok=True)
-        self.top_n = 3
-        
+        self.top_n = 3  # legacy param; GroupScorer reads tiers from AppConfig directly
+
         # Ensure main window becomes visible immediately (main menu accessible without import)
         try:
             self.show()
@@ -6949,7 +6998,7 @@ class ModernMainWindow(QMainWindow):
             JOIN files f ON f.file_id = d.file_id
             WHERE f.is_deleted = 0
             GROUP BY d.group_id
-            ORDER BY (open_cnt > 0) DESC, open_cnt DESC, d.group_id
+            ORDER BY (open_cnt > 0) DESC, open_cnt DESC, MIN(COALESCE(f.capture_time, f.modified_time, 0)) ASC, d.group_id
             """
         )
         
@@ -7547,7 +7596,7 @@ class ModernMainWindow(QMainWindow):
             ORDER BY 
                 COALESCE(f.is_recommended, 0) DESC,
                 COALESCE(f.quality_score, 0) DESC,
-                f.file_status = 'KEEP' DESC,
+                COALESCE(f.capture_time, f.modified_time, 0) ASC,
                 f.path
             """,
             (group_id,),
@@ -7595,10 +7644,13 @@ class ModernMainWindow(QMainWindow):
         
         logger.debug(
             f"Gruppe {group_id}: {len(self.files_in_group)} Bilder geladen "
-            f"(sortiert nach Score/Empfehlung)"
+            f"(sortiert nach Score/Empfehlung/Zeit)"
         )
         self.current_page = 0
         self._render_grid()
+        # Punkt 3: Scroll-Position bei Gruppenwechsel immer auf Anfang setzen
+        if hasattr(self, 'grid_scroll'):
+            self.grid_scroll.verticalScrollBar().setValue(0)
     
     def _render_grid(self):
         """Render thumbnail grid with virtual scrolling if needed."""
@@ -8006,13 +8058,21 @@ class ModernMainWindow(QMainWindow):
             self._show_status_message(t("merge_failed"), error=True)
     
     def _reload_after_action(self):
-        """Reload current group after action, preserving selection."""
+        """Reload current group after action, preserving selection and scroll position."""
         if self.current_group:
-            # Save selection (already saved in _group_selection_state)
+            # Punkt 6: Scroll-Position vor dem Relaod sichern
+            saved_scroll = 0
+            if hasattr(self, 'grid_scroll'):
+                saved_scroll = self.grid_scroll.verticalScrollBar().value()
+
             saved_selection, saved_last = self._get_group_selection_state(self.current_group)
             
             self._load_group_files(self.current_group)
             
+            # Punkt 6: Scroll-Position nach dem Reload wiederherstellen
+            if hasattr(self, 'grid_scroll') and saved_scroll > 0:
+                self.grid_scroll.verticalScrollBar().setValue(saved_scroll)
+
             # Restore selection
             page_start = self.current_page * self.page_size
             for idx in saved_selection:
@@ -8672,7 +8732,7 @@ class ModernMainWindow(QMainWindow):
             progress.setMinimumDuration(0)
             progress.setValue(0)
 
-            exporter = Exporter(self.output_path)
+            exporter = Exporter(self.output_path, mode=AppConfig.get_export_structure())
             total = len(keep_paths)
             success_count = 0
             failure_count = 0

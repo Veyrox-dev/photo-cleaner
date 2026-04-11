@@ -71,14 +71,25 @@ def _build_dated_relative_path(source: Path, date: datetime, used_paths: set[str
 
 
 class Exporter:
-    """Exportiert ausgewählte Bilder in strukturierte Ordner."""
+    """Exportiert ausgewählte Bilder in strukturierte Ordner.
 
-    def __init__(self, output_base: Path):
+    ``mode`` steuert die Zielstruktur:
+    - ``"date"``  (Standard): Output/YYYY/MM/DD/bild.jpg
+    - ``"flat"``          : Output/bild.jpg  (keine Unterordner)
+    - ``"year_month"``    : Output/YYYY/MM/bild.jpg
+    - ``"year"``          : Output/YYYY/bild.jpg
+    """
+
+    MODES = ("date", "flat", "year_month", "year")
+
+    def __init__(self, output_base: Path, mode: str = "date"):
         """
         Args:
             output_base: Basis-Ordner für Export (z.B. /Output)
+            mode: Export-Strukturmodus (date | flat | year_month | year)
         """
         self.output_base = output_base
+        self.mode = mode if mode in self.MODES else "date"
         self.output_base.mkdir(parents=True, exist_ok=True)
 
     def export_file(self, source: Path) -> Tuple[bool, Optional[Path], Optional[str]]:
@@ -105,11 +116,18 @@ class Exporter:
             # Datum ermitteln
             date = self._extract_date(source)
 
-            # Zielordner erstellen
-            year = f"{date.year:04d}"
-            month = f"{date.month:02d}"
-            day = f"{date.day:02d}"
-            target_dir = self.output_base / year / month / day
+            # Zielordner je nach gewähltem Modus
+            if self.mode == "flat":
+                target_dir = self.output_base
+            elif self.mode == "year":
+                target_dir = self.output_base / f"{date.year:04d}"
+            elif self.mode == "year_month":
+                target_dir = self.output_base / f"{date.year:04d}" / f"{date.month:02d}"
+            else:  # "date" (default)
+                year = f"{date.year:04d}"
+                month = f"{date.month:02d}"
+                day = f"{date.day:02d}"
+                target_dir = self.output_base / year / month / day
             target_dir.mkdir(parents=True, exist_ok=True)
 
             # Zieldatei

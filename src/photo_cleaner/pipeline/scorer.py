@@ -56,22 +56,21 @@ class GroupScorer:
         self.auto_selector = AutoSelector()
 
     def _effective_top_n_for_group(self, group_size: int) -> int:
-        """Return dynamic keep count based on group size.
+        """Return the configured keep count for the given group size.
 
-        Policy:
-        - <6 images: keep 1
-        - 6-11 images: keep 2
-        - >=12 images: keep 3
-
-        The configured `top_n` acts as an upper cap.
+        Reads tier settings from AppConfig (user-configurable via Settings dialog):
+        - Tier 1: group_size < tier1_threshold  → keep tier1_keep
+        - Tier 2: group_size < tier2_threshold  → keep tier2_keep
+        - Tier 3: group_size >= tier2_threshold → keep tier3_keep
         """
-        if group_size >= 12:
-            dynamic_top_n = 3
-        elif group_size >= 6:
-            dynamic_top_n = 2
+        from photo_cleaner.config import AppConfig
+        t1, k1, t2, k2, k3 = AppConfig.get_auto_keep_tiers()
+        if group_size >= t2:
+            return max(1, k3)
+        elif group_size >= t1:
+            return max(1, k2)
         else:
-            dynamic_top_n = 1
-        return max(1, min(self.top_n, dynamic_top_n))
+            return max(1, k1)
     
     def score_group(
         self,

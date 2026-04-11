@@ -24,7 +24,14 @@ class AppMode(Enum):
 
 class AppConfig:
     """Centralized application configuration."""
-    
+
+    # Auto-keep tier defaults: (threshold1, keep1, threshold2, keep2, keep3)
+    DEFAULT_TIER1_THRESHOLD = 6   # groups with fewer than this → keep DEFAULT_TIER1_KEEP
+    DEFAULT_TIER1_KEEP = 1
+    DEFAULT_TIER2_THRESHOLD = 12  # groups with fewer than this → keep DEFAULT_TIER2_KEEP
+    DEFAULT_TIER2_KEEP = 2
+    DEFAULT_TIER3_KEEP = 3        # groups >= DEFAULT_TIER2_THRESHOLD → keep this many
+
     # === APP MODE ===
     _mode: Optional[AppMode] = None
     
@@ -144,7 +151,65 @@ class AppConfig:
                 json.dump(settings, f, indent=2, ensure_ascii=False)
         except Exception as e:
             logging.error(f"Failed to save settings: {e}")
-    
+
+    @classmethod
+    def get_auto_keep_tiers(cls) -> tuple:
+        """Return (tier1_threshold, tier1_keep, tier2_threshold, tier2_keep, tier3_keep)."""
+        settings = cls.get_user_settings()
+        d = settings.get("settings_dialog", {})
+
+        def _clamp(val, lo, hi, default):
+            try:
+                return max(lo, min(int(val), hi))
+            except (TypeError, ValueError):
+                return default
+
+        return (
+            _clamp(d.get("tier1_threshold"), 1, 200, cls.DEFAULT_TIER1_THRESHOLD),
+            _clamp(d.get("tier1_keep"),      0, 20,  cls.DEFAULT_TIER1_KEEP),
+            _clamp(d.get("tier2_threshold"), 1, 200, cls.DEFAULT_TIER2_THRESHOLD),
+            _clamp(d.get("tier2_keep"),      0, 20,  cls.DEFAULT_TIER2_KEEP),
+            _clamp(d.get("tier3_keep"),      0, 20,  cls.DEFAULT_TIER3_KEEP),
+        )
+
+    @classmethod
+    def set_auto_keep_tiers(
+        cls,
+        tier1_threshold: int,
+        tier1_keep: int,
+        tier2_threshold: int,
+        tier2_keep: int,
+        tier3_keep: int,
+    ) -> None:
+        """Persist the auto-keep tier configuration."""
+        settings = cls.get_user_settings()
+        d = settings.setdefault("settings_dialog", {})
+        d["tier1_threshold"] = max(1, min(int(tier1_threshold), 200))
+        d["tier1_keep"]      = max(0, min(int(tier1_keep),      20))
+        d["tier2_threshold"] = max(1, min(int(tier2_threshold), 200))
+        d["tier2_keep"]      = max(0, min(int(tier2_keep),      20))
+        d["tier3_keep"]      = max(0, min(int(tier3_keep),      20))
+        cls.set_user_settings(settings)
+
+    # --- Export mode ---
+
+    DEFAULT_EXPORT_STRUCTURE = "date"
+    _VALID_EXPORT_STRUCTURES = ("date", "year_month", "year", "flat")
+
+    @classmethod
+    def get_export_structure(cls) -> str:
+        settings = cls.get_user_settings()
+        d = settings.get("settings_dialog", {})
+        mode = d.get("export_structure", cls.DEFAULT_EXPORT_STRUCTURE)
+        return mode if mode in cls._VALID_EXPORT_STRUCTURES else cls.DEFAULT_EXPORT_STRUCTURE
+
+    @classmethod
+    def set_export_structure(cls, mode: str) -> None:
+        settings = cls.get_user_settings()
+        d = settings.setdefault("settings_dialog", {})
+        d["export_structure"] = mode if mode in cls._VALID_EXPORT_STRUCTURES else cls.DEFAULT_EXPORT_STRUCTURE
+        cls.set_user_settings(settings)
+
     # === LOGGING ===
     
     _logger_configured = False

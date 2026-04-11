@@ -315,6 +315,68 @@ class SettingsDialog(QDialog):
         self._install_no_wheel(self.export_format_combo)
         self.export_format_combo.addItems(["Original", "JPG", "PNG", "WebP"])
         export_layout.addWidget(self.export_format_combo)
+
+        # Export structure (folder layout)
+        export_layout.addWidget(self._make_label(t("export_structure_label")))
+        self.export_structure_combo = QComboBox()
+        self._install_no_wheel(self.export_structure_combo)
+        self._export_structure_codes = ("date", "year_month", "year", "flat")
+        self.export_structure_combo.addItem(t("export_structure_date"),      "date")
+        self.export_structure_combo.addItem(t("export_structure_year_month"), "year_month")
+        self.export_structure_combo.addItem(t("export_structure_year"),       "year")
+        self.export_structure_combo.addItem(t("export_structure_flat"),       "flat")
+        export_layout.addWidget(self.export_structure_combo)
+
+        auto_keep_group = QGroupBox(t("auto_keep_tiers_title"))
+        auto_keep_layout = QVBoxLayout(auto_keep_group)
+        auto_keep_layout.setSpacing(6)
+
+        # Tier 1: small groups
+        tier1_row = QHBoxLayout()
+        tier1_row.addWidget(self._make_field_label(t("auto_keep_tiers_row_prefix")))
+        self.tier1_threshold_spin = QSpinBox()
+        self._install_no_wheel(self.tier1_threshold_spin)
+        self.tier1_threshold_spin.setMinimum(1)
+        self.tier1_threshold_spin.setMaximum(200)
+        tier1_row.addWidget(self.tier1_threshold_spin)
+        tier1_row.addWidget(self._make_field_label(t("auto_keep_tiers_row_middle")))
+        self.tier1_keep_spin = QSpinBox()
+        self._install_no_wheel(self.tier1_keep_spin)
+        self.tier1_keep_spin.setMinimum(0)
+        self.tier1_keep_spin.setMaximum(20)
+        tier1_row.addWidget(self.tier1_keep_spin)
+        tier1_row.addStretch()
+        auto_keep_layout.addLayout(tier1_row)
+
+        # Tier 2: medium groups
+        tier2_row = QHBoxLayout()
+        tier2_row.addWidget(self._make_field_label(t("auto_keep_tiers_row_prefix")))
+        self.tier2_threshold_spin = QSpinBox()
+        self._install_no_wheel(self.tier2_threshold_spin)
+        self.tier2_threshold_spin.setMinimum(1)
+        self.tier2_threshold_spin.setMaximum(200)
+        tier2_row.addWidget(self.tier2_threshold_spin)
+        tier2_row.addWidget(self._make_field_label(t("auto_keep_tiers_row_middle")))
+        self.tier2_keep_spin = QSpinBox()
+        self._install_no_wheel(self.tier2_keep_spin)
+        self.tier2_keep_spin.setMinimum(0)
+        self.tier2_keep_spin.setMaximum(20)
+        tier2_row.addWidget(self.tier2_keep_spin)
+        tier2_row.addStretch()
+        auto_keep_layout.addLayout(tier2_row)
+
+        # Tier 3: large groups
+        tier3_row = QHBoxLayout()
+        tier3_row.addWidget(self._make_field_label(t("auto_keep_tiers_large_prefix")))
+        self.tier3_keep_spin = QSpinBox()
+        self._install_no_wheel(self.tier3_keep_spin)
+        self.tier3_keep_spin.setMinimum(0)
+        self.tier3_keep_spin.setMaximum(20)
+        tier3_row.addWidget(self.tier3_keep_spin)
+        tier3_row.addStretch()
+        auto_keep_layout.addLayout(tier3_row)
+
+        export_layout.addWidget(auto_keep_group)
         
         # Quality for conversion
         quality_row = QHBoxLayout()
@@ -545,6 +607,15 @@ class SettingsDialog(QDialog):
 
         self.export_format_combo.setCurrentText(dialog_settings.get("export_format", "Original"))
         self.export_quality_spin.setValue(int(dialog_settings.get("export_quality", 90)))
+        current_structure = AppConfig.get_export_structure()
+        idx = self.export_structure_combo.findData(current_structure)
+        self.export_structure_combo.setCurrentIndex(max(0, idx))
+        t1, k1, t2, k2, k3 = AppConfig.get_auto_keep_tiers()
+        self.tier1_threshold_spin.setValue(t1)
+        self.tier1_keep_spin.setValue(k1)
+        self.tier2_threshold_spin.setValue(t2)
+        self.tier2_keep_spin.setValue(k2)
+        self.tier3_keep_spin.setValue(k3)
         self.keep_originals_check.setChecked(bool(dialog_settings.get("keep_originals", True)))
         self.auto_backup_check.setChecked(bool(dialog_settings.get("auto_backup", True)))
         self.confirm_delete_check.setChecked(bool(dialog_settings.get("confirm_delete", True)))
@@ -618,6 +689,13 @@ class SettingsDialog(QDialog):
 
             self.export_format_combo.setCurrentText("Original")
             self.export_quality_spin.setValue(90)
+            default_idx = self.export_structure_combo.findData(AppConfig.DEFAULT_EXPORT_STRUCTURE)
+            self.export_structure_combo.setCurrentIndex(max(0, default_idx))
+            self.tier1_threshold_spin.setValue(AppConfig.DEFAULT_TIER1_THRESHOLD)
+            self.tier1_keep_spin.setValue(AppConfig.DEFAULT_TIER1_KEEP)
+            self.tier2_threshold_spin.setValue(AppConfig.DEFAULT_TIER2_THRESHOLD)
+            self.tier2_keep_spin.setValue(AppConfig.DEFAULT_TIER2_KEEP)
+            self.tier3_keep_spin.setValue(AppConfig.DEFAULT_TIER3_KEEP)
             self.keep_originals_check.setChecked(True)
             self.auto_backup_check.setChecked(True)
             self.confirm_delete_check.setChecked(True)
@@ -750,6 +828,12 @@ class SettingsDialog(QDialog):
             settings["settings_dialog"] = {
                 "export_format": self.export_format_combo.currentText(),
                 "export_quality": self.export_quality_spin.value(),
+                "export_structure": self.export_structure_combo.currentData() or "date",
+                "tier1_threshold": self.tier1_threshold_spin.value(),
+                "tier1_keep": self.tier1_keep_spin.value(),
+                "tier2_threshold": self.tier2_threshold_spin.value(),
+                "tier2_keep": self.tier2_keep_spin.value(),
+                "tier3_keep": self.tier3_keep_spin.value(),
                 "keep_originals": self.keep_originals_check.isChecked(),
                 "auto_backup": self.auto_backup_check.isChecked(),
                 "confirm_delete": self.confirm_delete_check.isChecked(),
@@ -759,6 +843,14 @@ class SettingsDialog(QDialog):
                 "show_advanced": self.show_advanced_check.isChecked(),
             }
             AppConfig.set_user_settings(settings)
+            AppConfig.set_export_structure(self.export_structure_combo.currentData() or "date")
+            AppConfig.set_auto_keep_tiers(
+                self.tier1_threshold_spin.value(),
+                self.tier1_keep_spin.value(),
+                self.tier2_threshold_spin.value(),
+                self.tier2_keep_spin.value(),
+                self.tier3_keep_spin.value(),
+            )
 
             # Apply grouping env values immediately for current session.
             os.environ["PHOTOCLEANER_GROUP_TIME_WINDOW_SEC"] = str(self.group_time_window_spin.value())
