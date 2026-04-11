@@ -6610,6 +6610,12 @@ class ModernMainWindow(QMainWindow):
         
         query_start = time.monotonic()
         self.groups = self._query_groups()
+        current_group_ids = {grp.group_id for grp in self.groups}
+        self._group_selection_state = {
+            group_id: state
+            for group_id, state in self._group_selection_state.items()
+            if group_id in current_group_ids
+        }
         self._group_display_index_map = {
             grp.group_id: idx
             for idx, grp in enumerate((g for g in self.groups if not g.group_id.startswith("SINGLE_")), start=1)
@@ -8033,6 +8039,48 @@ class ModernMainWindow(QMainWindow):
             logger.error(f"Error setting recommendation: {e}", exc_info=True)
     
     # UI update methods
+
+    def _loaded_group_progress(self) -> tuple[int, int]:
+        """Return progress counts for the currently loaded group model."""
+        groups = getattr(self, "groups", []) or []
+        groups_total = len(groups)
+        groups_done = sum(1 for grp in groups if getattr(grp, "open_count", 0) == 0)
+        return groups_total, groups_done
+
+    def _sum_file_sizes_for_ids(self, file_ids: list[int]) -> int:
+        """Return summed file size for the given file ids."""
+        if not file_ids:
+            return 0
+        placeholders = ",".join("?" for _ in file_ids)
+        cur = self.conn.execute(
+            f"SELECT COALESCE(SUM(file_size), 0) FROM files WHERE file_id IN ({placeholders})",
+            file_ids,
+        )
+        row = cur.fetchone()
+        return int((row[0] if row else 0) or 0)
+
+    def _sum_file_sizes_for_paths(self, paths: list[Path]) -> int:
+        """Return summed file size for the given file paths."""
+        if not paths:
+            return 0
+        placeholders = ",".join("?" for _ in paths)
+        cur = self.conn.execute(
+            f"SELECT COALESCE(SUM(file_size), 0) FROM files WHERE path IN ({placeholders})",
+            [str(path) for path in paths],
+        )
+        row = cur.fetchone()
+        return int((row[0] if row else 0) or 0)
+
+    def _flush_session_state(self, description: str) -> None:
+        """Persist the current UI selection state immediately."""
+        image_groups = {}
+        for group_id, (selected_indices, last_selected) in self._group_selection_state.items():
+            image_groups[group_id] = {
+                "selected_indices": list(selected_indices),
+                "last_selected_index": last_selected,
+            }
+        if not self.session_manager.save_auto(image_groups, self.db_path):
+            logger.warning("Session flush failed: %s", description)
     
     def _update_progress(self):
         """Update progress bar with detailed breakdown.
@@ -8047,6 +8095,9 @@ class ModernMainWindow(QMainWindow):
         keep_count = int(res.get("files_keep", 0) or 0)
         decided = int(res.get("files_decided", 0) or 0)
         open_files = int(res.get("files_open", 0) or 0)
+        loaded_groups_total, loaded_groups_done = self._loaded_group_progress()
+        groups_total = loaded_groups_total or int(res.get("groups_total", 0) or 0)
+        groups_done = loaded_groups_done if loaded_groups_total else int(res.get("groups_done", 0) or 0)
         
         pct = int((decided / total) * 100) if total else 0
         
@@ -8058,10 +8109,12 @@ class ModernMainWindow(QMainWindow):
         
         # Compact status (no action messages, no icons)
         if total > 0:
+            status_parts = [f"{decided}/{total}"]
             if open_files > 0:
-                self.status_label.setText(f"{decided}/{total} • offen {open_files}")
-            else:
-                self.status_label.setText(f"{decided}/{total}")
+                status_parts.append(f"offen {open_files}")
+            if groups_total > 0:
+                status_parts.append(f"Gruppen {groups_done}/{groups_total}")
+            self.status_label.setText(" • ".join(status_parts))
         else:
             self.status_label.setText("0/0")
         
@@ -8442,8 +8495,16 @@ class ModernMainWindow(QMainWindow):
             "SELECT COUNT(*) FROM files WHERE file_status = 'KEEP' AND is_deleted = 0"
         )
         keep_count = cur.fetchone()[0]
+        delete_paths = self.files.list_by_status([FileStatus.DELETE])
+        planned_reclaimable_bytes = self._sum_file_sizes_for_paths(delete_paths)
 
-        decision = self._export_delete_workflow.build_export_decision(self.output_path, keep_count, t)
+        decision = self._export_delete_workflow.build_export_decision(
+            self.output_path,
+            keep_count,
+            len(delete_paths),
+            planned_reclaimable_bytes,
+            t,
+        )
         if not decision.can_continue:
             if decision.level == "warning":
                 QMessageBox.warning(self, decision.title, decision.message)
@@ -8461,6 +8522,8 @@ class ModernMainWindow(QMainWindow):
         
         if reply != QMessageBox.Yes:
             return
+
+        self._flush_session_state("Finalize export requested")
         
         try:
             cur = self.conn.execute(
@@ -8498,19 +8561,21 @@ class ModernMainWindow(QMainWindow):
 
             progress.close()
 
-            delete_summary = ""
+            delete_applied_count = 0
+            reclaimable_bytes = 0
+            skipped_locked_count = 0
+            delete_failed_message = None
             if not cancelled:
-                delete_paths = self.files.list_by_status([FileStatus.DELETE])
                 if delete_paths:
                     delete_result = self.actions.ui_batch_delete(delete_paths)
                     if delete_result.get("ok"):
                         deleted_ids = delete_result.get("deleted_ids", [])
                         skipped_locked = delete_result.get("skipped_locked", [])
-                        delete_summary = f"\nLoeschen angewendet: {len(deleted_ids)} Datei(en)."
-                        if skipped_locked:
-                            delete_summary += f" Uebersprungen (gesperrt): {len(skipped_locked)}."
+                        delete_applied_count = len(deleted_ids)
+                        skipped_locked_count = len(skipped_locked)
+                        reclaimable_bytes = self._sum_file_sizes_for_ids(deleted_ids)
                     else:
-                        delete_summary = f"\nLoeschen fehlgeschlagen: {delete_result.get('message', 'Unbekannter Fehler')}"
+                        delete_failed_message = delete_result.get("message", "Unbekannter Fehler")
 
             result_message = self._export_delete_workflow.build_export_result_message(
                 success_count,
@@ -8518,18 +8583,17 @@ class ModernMainWindow(QMainWindow):
                 errors,
                 archive_path,
                 cancelled,
+                delete_applied_count=delete_applied_count,
+                reclaimable_bytes=reclaimable_bytes,
+                skipped_locked_count=skipped_locked_count,
+                delete_failed_message=delete_failed_message,
             )
-            if delete_summary:
-                result_message = type(result_message)(
-                    level=result_message.level,
-                    title=result_message.title,
-                    message=result_message.message + delete_summary,
-                )
             if result_message.level == "warning":
                 QMessageBox.warning(self, result_message.title, result_message.message)
             else:
                 QMessageBox.information(self, result_message.title, result_message.message)
             self.refresh_groups()
+            self._flush_session_state("Finalize export completed")
             self._update_progress()
         except (OSError, IOError, ValueError) as e:
             logger.error(f"Export failed: {e}", exc_info=True)
@@ -8538,7 +8602,12 @@ class ModernMainWindow(QMainWindow):
     def _confirm_delete_marked(self):
         """Bestätige und lösche alle als DELETE markierten Dateien (DB-Markierung)."""
         delete_paths = self.files.list_by_status([FileStatus.DELETE])
-        decision = self._export_delete_workflow.build_delete_decision(len(delete_paths), t)
+        planned_reclaimable_bytes = self._sum_file_sizes_for_paths(delete_paths)
+        decision = self._export_delete_workflow.build_delete_decision(
+            len(delete_paths),
+            planned_reclaimable_bytes,
+            t,
+        )
         if not decision.can_continue:
             QMessageBox.information(self, decision.title, decision.message)
             return
@@ -8554,14 +8623,17 @@ class ModernMainWindow(QMainWindow):
         if reply != QMessageBox.Yes:
             return
 
+        self._flush_session_state("Delete marked requested")
         result = self.actions.ui_batch_delete(delete_paths)
-        result_message = self._export_delete_workflow.build_delete_result_message(result, t)
+        reclaimable_bytes = self._sum_file_sizes_for_ids(result.get("deleted_ids", [])) if result.get("ok") else 0
+        result_message = self._export_delete_workflow.build_delete_result_message(result, t, reclaimable_bytes=reclaimable_bytes)
         if result_message.level == "warning":
             QMessageBox.warning(self, result_message.title, result_message.message)
         else:
             QMessageBox.information(self, result_message.title, result_message.message)
 
         self.refresh_groups()
+        self._flush_session_state("Delete marked completed")
         self._update_progress()
     
     # Shortcuts
@@ -8709,6 +8781,17 @@ class ModernMainWindow(QMainWindow):
     
     def closeEvent(self, event):
         """Handle window close - cleanup threads before exit."""
+        try:
+            if self._auto_save_timer is not None:
+                self._auto_save_timer.stop()
+        except (RuntimeError, AttributeError):
+            logger.debug("Could not stop auto-save timer", exc_info=True)
+
+        try:
+            self._flush_session_state("Window close")
+        except Exception:
+            logger.warning("Failed to flush session during close", exc_info=True)
+
         # FIX (Feb 22, 2026): Stop thumbnail loader thread properly
         try:
             if hasattr(self, '_group_thumb_loader'):

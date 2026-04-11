@@ -401,6 +401,57 @@ class FileRepository:
         groups_done = cur.fetchone()[0] or 0
         return {"groups_total": groups_total, "groups_done": groups_done}
 
+    def active_group_progress(self) -> Dict[str, int]:
+        """Compute progress for the active UI group model.
+
+        Mirrors the main review model more closely than the raw duplicates table by:
+        - ignoring deleted files
+        - counting duplicate groups with active members
+        - treating undecided standalone files as synthetic single groups when duplicate groups exist
+        """
+        cur = self.conn.execute(
+            """
+            SELECT COUNT(DISTINCT d.group_id)
+            FROM duplicates d
+            JOIN files f ON f.file_id = d.file_id
+            WHERE f.is_deleted = 0
+            """
+        )
+        duplicate_groups_total = cur.fetchone()[0] or 0
+
+        cur = self.conn.execute(
+            """
+            SELECT COUNT(*) FROM (
+              SELECT d.group_id
+              FROM duplicates d
+              JOIN files f ON f.file_id = d.file_id
+              WHERE f.is_deleted = 0
+              GROUP BY d.group_id
+              HAVING SUM(CASE WHEN UPPER(COALESCE(f.file_status,'UNDECIDED')) IN ('UNDECIDED','UNSURE') THEN 1 ELSE 0 END) = 0
+            )
+            """
+        )
+        duplicate_groups_done = cur.fetchone()[0] or 0
+
+        single_groups_total = 0
+        if duplicate_groups_total > 0:
+            cur = self.conn.execute(
+                """
+                SELECT COUNT(*)
+                FROM files f
+                LEFT JOIN duplicates d ON f.file_id = d.file_id
+                WHERE f.is_deleted = 0
+                  AND d.file_id IS NULL
+                  AND UPPER(COALESCE(f.file_status,'UNDECIDED')) IN ('UNDECIDED','UNSURE')
+                """
+            )
+            single_groups_total = cur.fetchone()[0] or 0
+
+        return {
+            "groups_total": int(duplicate_groups_total + single_groups_total),
+            "groups_done": int(duplicate_groups_done),
+        }
+
     def _path_for_file_id(self, file_id: int) -> str:
         cur = self.conn.execute("SELECT path FROM files WHERE file_id = ?", (file_id,))
         row = cur.fetchone()

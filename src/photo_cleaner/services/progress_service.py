@@ -40,7 +40,7 @@ class ProgressService:
         decided = (cur.fetchone() or [0])[0]
 
         open_files = total - decided
-        groups = self.files.group_progress()
+        groups = self.files.active_group_progress()
         return {
             "files_total": total,
             "files_decided": decided,

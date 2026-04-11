@@ -8,7 +8,7 @@ from photo_cleaner.ui.workflows.export_delete_workflow_controller import ExportD
 def test_build_export_decision_without_output_path_returns_warning() -> None:
     controller = ExportDeleteWorkflowController()
 
-    decision = controller.build_export_decision(None, 3, lambda key: key)
+    decision = controller.build_export_decision(None, 3, 1, 1024, lambda key: key)
 
     assert decision.can_continue is False
     assert decision.level == "warning"
@@ -18,7 +18,7 @@ def test_build_export_decision_without_output_path_returns_warning() -> None:
 def test_build_export_decision_without_keep_returns_info() -> None:
     controller = ExportDeleteWorkflowController()
 
-    decision = controller.build_export_decision(Path("C:/out"), 0, lambda key: key)
+    decision = controller.build_export_decision(Path("C:/out"), 0, 1, 1024, lambda key: key)
 
     assert decision.can_continue is False
     assert decision.level == "info"
@@ -28,12 +28,14 @@ def test_build_export_decision_without_keep_returns_info() -> None:
 def test_build_export_decision_with_valid_input_returns_question() -> None:
     controller = ExportDeleteWorkflowController()
 
-    decision = controller.build_export_decision(Path("C:/out"), 4, lambda key: key)
+    decision = controller.build_export_decision(Path("C:/out"), 4, 3, 5 * 1024 * 1024, lambda key: key)
 
     assert decision.can_continue is True
     assert decision.level == "question"
-    assert decision.title == "Finalisieren?"
+    assert decision.title == "Export & Bereinigung abschließen"
     assert "4 Bild(er)" in decision.message
+    assert "Du sparst damit aktuell 5.0 MB." in decision.message
+    assert "nicht physisch gelöscht" in decision.message
     assert str(Path("C:/out")) in decision.message
 
 
@@ -50,7 +52,7 @@ def test_build_export_result_message_for_partial_failures_is_warning() -> None:
 
     assert message.level == "warning"
     assert message.title == "Export Teilweise Fehlgeschlagen"
-    assert "✗ 1 Fehler" in message.message
+    assert "Fehler: 1" in message.message
 
 
 def test_build_export_result_message_cancelled_returns_info() -> None:
@@ -69,6 +71,26 @@ def test_build_export_result_message_cancelled_returns_info() -> None:
     assert "abgebrochen" in message.message
 
 
+def test_build_export_result_message_includes_reclaimable_size_summary() -> None:
+    controller = ExportDeleteWorkflowController()
+
+    message = controller.build_export_result_message(
+        success_count=5,
+        failure_count=0,
+        errors=[],
+        archive_path=Path("C:/out/export.zip"),
+        cancelled=False,
+        delete_applied_count=3,
+        reclaimable_bytes=5 * 1024 * 1024,
+        skipped_locked_count=1,
+    )
+
+    assert message.level == "info"
+    assert "3 Bild(er) aus aktiver Sitzung entfernt." in message.message
+    assert "Du hast aktuell 5.0 MB eingespart." in message.message
+    assert "Übersprungen (gesperrt): 1." in message.message
+
+
 def test_build_export_result_message_limits_error_preview_to_five() -> None:
     controller = ExportDeleteWorkflowController()
 
@@ -83,14 +105,14 @@ def test_build_export_result_message_limits_error_preview_to_five() -> None:
     assert message.level == "warning"
     assert "e1" in message.message
     assert "e5" in message.message
-    assert "e6" not in message.message
+    assert "<div>e6</div>" not in message.message
     assert "... und 2 weitere" in message.message
 
 
 def test_build_delete_decision_without_marked_paths_returns_info() -> None:
     controller = ExportDeleteWorkflowController()
 
-    decision = controller.build_delete_decision(0, lambda key: key)
+    decision = controller.build_delete_decision(0, 0, lambda key: key)
 
     assert decision.can_continue is False
     assert decision.level == "info"
@@ -100,12 +122,14 @@ def test_build_delete_decision_without_marked_paths_returns_info() -> None:
 def test_build_delete_decision_with_marked_paths_returns_question() -> None:
     controller = ExportDeleteWorkflowController()
 
-    decision = controller.build_delete_decision(5, lambda key: key)
+    decision = controller.build_delete_decision(5, 8 * 1024 * 1024, lambda key: key)
 
     assert decision.can_continue is True
     assert decision.level == "question"
-    assert decision.title == "Löschen bestätigen"
+    assert decision.title == "Bereinigung bestätigen"
     assert "5 Bild(er)" in decision.message
+    assert "Du sparst damit aktuell 8.0 MB." in decision.message
+    assert "nicht physisch gelöscht" in decision.message
 
 
 def test_build_delete_result_message_ok_with_locked_files() -> None:
@@ -114,11 +138,13 @@ def test_build_delete_result_message_ok_with_locked_files() -> None:
     message = controller.build_delete_result_message(
         {"ok": True, "deleted_ids": [1, 2], "skipped_locked": [3]},
         lambda key: key,
+        reclaimable_bytes=3 * 1024 * 1024,
     )
 
     assert message.level == "info"
     assert message.title == "delete_completed"
-    assert "2 Bild(er) gelöscht" in message.message
+    assert "2 Bild(er) aus aktiver Sitzung entfernt" in message.message
+    assert "Potenziell freigebbarer Speicher: 3.0 MB." in message.message
     assert "1 Datei(en) wurden übersprungen" in message.message
 
 
