@@ -1,6 +1,6 @@
 ﻿# PhotoCleaner – Roadmap 2026
 
-**Stand:** 10. April 2026 · Version 0.8.5
+**Stand:** 11. April 2026 · Version 0.8.6
 **Ziel:** v1.0.0 Launch Q3/Q4 2026
 **Launch-Readiness:** 8.0 / 10 → ein externes Gate offen
 

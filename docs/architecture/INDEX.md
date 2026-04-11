@@ -157,8 +157,8 @@ photo_cleaner/
 
 ## Versioning
 
-Current version: **0.8.5**
-- v0.8.5: MSI reliability, review UX hotfixes, cloud-config packaging
+Current version: **0.8.6**
+- v0.8.6: MSI reliability, review UX hotfixes, cloud-config packaging
 - v0.8.2: Algorithm improvements (eye quality, gaze, head pose)
 - v0.7.0: Performance speedup (9.19x faster)
 - v0.6.0: Data-driven foundation (migrations, CI/CD)

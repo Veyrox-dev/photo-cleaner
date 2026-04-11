@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "photo-cleaner"
-version = "0.8.5"
+version = "0.8.6"
 description = "Intelligente Fotoverwaltung mit Auto-Auswahl, Online License System, Image Cache: Duplikate finden, Face Mesh Analyse, Modern UI, sichere Löschung"
 readme = "docs/README.md"
 requires-python = ">=3.12,<3.13"

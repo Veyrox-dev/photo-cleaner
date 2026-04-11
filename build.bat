@@ -6,7 +6,7 @@ setlocal enabledelayedexpansion
 
 echo.
 echo ====================================
-echo PhotoCleaner v0.8.5 Build Script
+echo PhotoCleaner v0.8.6 Build Script
 echo ====================================
 echo.
 

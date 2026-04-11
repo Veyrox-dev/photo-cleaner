@@ -46,7 +46,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 from photo_cleaner.config import AppConfig, AppMode
 
 # Project version constant for UI/logging
-VERSION = "0.8.5"
+VERSION = "0.8.6"
 from photo_cleaner import get_logger
 from photo_cleaner.i18n import t, load_language_from_settings
 

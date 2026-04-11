@@ -54,7 +54,7 @@ Hinweis:
 Optional mit expliziter Version und Clean-Output:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/build_msi.ps1 -Version 0.8.4 -Clean
+powershell -ExecutionPolicy Bypass -File scripts/build_msi.ps1 -Version 0.8.6 -Clean
 ```
 
 Output:

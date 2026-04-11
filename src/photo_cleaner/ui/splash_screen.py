@@ -87,7 +87,7 @@ class PhotoCleanerSplashScreen(QSplashScreen):
         painter.drawText(
             0, 130, width, 30, 
             Qt.AlignmentFlag.AlignCenter, 
-            f"{t('splash_version')} 0.8.5"
+            f"{t('splash_version')} 0.8.6"
         )
         
         # Accent-Linie
