@@ -274,6 +274,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "language_fr": "Franzoesisch",
         "language_es": "Spanisch",
         "language_nl": "Niederlaendisch",
+        "language_it": "Italienisch",
         
         # Theme names
         "theme_dark": "Dunkel",
@@ -1067,6 +1068,7 @@ Status: Offline-Nutzung aktiv
         "language_fr": "French",
         "language_es": "Spanish",
         "language_nl": "Dutch",
+        "language_it": "Italian",
         
         # Theme names
         "theme_dark": "Dark",
