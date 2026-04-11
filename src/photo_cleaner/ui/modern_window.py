@@ -121,6 +121,7 @@ from photo_cleaner.ui.workflows.indexing_workflow_controller import IndexingWork
 from photo_cleaner.ui.workflows.rating_workflow_controller import RatingWorkflowController
 from photo_cleaner.ui.workflows.selection_workflow_controller import SelectionWorkflowController
 from photo_cleaner.ui.workflows.export_delete_workflow_controller import ExportDeleteWorkflowController
+from photo_cleaner.ui.cleanup_completion_dialog import CleanupCompletionDialog
 from photo_cleaner.cache.image_cache_manager import ImageCacheManager  # v0.5.3
 from photo_cleaner.ui.thumbnail_lazy import ThumbnailLoader, SmartThumbnailCache  # Thumbnail async loading
 
@@ -8081,6 +8082,27 @@ class ModernMainWindow(QMainWindow):
             }
         if not self.session_manager.save_auto(image_groups, self.db_path):
             logger.warning("Session flush failed: %s", description)
+
+    def _show_cleanup_completion_dialog(
+        self,
+        *,
+        title: str,
+        cleaned_bytes: int,
+        removed_count: int,
+        exported_count: int = 0,
+        skipped_count: int = 0,
+        archive_path: Path | None = None,
+    ) -> None:
+        dialog = CleanupCompletionDialog(
+            title=title,
+            cleaned_bytes=cleaned_bytes,
+            removed_count=removed_count,
+            exported_count=exported_count,
+            skipped_count=skipped_count,
+            archive_path=archive_path,
+            parent=self,
+        )
+        dialog.exec()
     
     def _update_progress(self):
         """Update progress bar with detailed breakdown.
@@ -8590,6 +8612,15 @@ class ModernMainWindow(QMainWindow):
             )
             if result_message.level == "warning":
                 QMessageBox.warning(self, result_message.title, result_message.message)
+            elif not cancelled and delete_failed_message is None:
+                self._show_cleanup_completion_dialog(
+                    title=result_message.title,
+                    cleaned_bytes=reclaimable_bytes,
+                    removed_count=delete_applied_count,
+                    exported_count=success_count,
+                    skipped_count=skipped_locked_count,
+                    archive_path=archive_path,
+                )
             else:
                 QMessageBox.information(self, result_message.title, result_message.message)
             self.refresh_groups()
@@ -8630,7 +8661,12 @@ class ModernMainWindow(QMainWindow):
         if result_message.level == "warning":
             QMessageBox.warning(self, result_message.title, result_message.message)
         else:
-            QMessageBox.information(self, result_message.title, result_message.message)
+            self._show_cleanup_completion_dialog(
+                title=result_message.title,
+                cleaned_bytes=reclaimable_bytes,
+                removed_count=len(result.get("deleted_ids", [])),
+                skipped_count=len(result.get("skipped_locked", [])),
+            )
 
         self.refresh_groups()
         self._flush_session_state("Delete marked completed")
