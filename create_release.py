@@ -15,7 +15,7 @@ def get_version():
     """Extract version from run_ui.py."""
     run_ui = Path(__file__).parent / "run_ui.py"
     if not run_ui.exists():
-        return "0.8.6"
+        return "0.8.7"
     
     with open(run_ui, "r", encoding="utf-8") as f:
         for line in f:
@@ -23,7 +23,7 @@ def get_version():
                 # Extract version string: VERSION = "0.6.0"
                 version = line.split("=")[1].strip().strip('"\'')
                 return version
-    return "0.8.6"
+    return "0.8.7"
 
 
 def main():

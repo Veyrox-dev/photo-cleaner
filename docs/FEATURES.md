@@ -1,4 +1,4 @@
-# 📋 PhotoCleaner v0.8.6 - Komplette Feature-Liste
+# 📋 PhotoCleaner v0.8.7 - Komplette Feature-Liste
 
 ## 🎯 Überblick
 
@@ -526,7 +526,7 @@ Lizenz-Tiers:                 2
 
 ## 📈 VERSIONS-HIGHLIGHTS
 
-### v0.8.6 (Aktuell)
+### v0.8.7 (Aktuell)
 - ✨ Live Analysis Log Panel mit per-Bild-Nachrichten
 - 🔧 Finalize Hang Fix
 - 📊 Detaillierte per-Image Logs mit Emoji-Präfixe
@@ -668,7 +668,7 @@ Lizenz-Tiers:                 2
 
 ## 📈 VERSIONS-HIGHLIGHTS
 
-### v0.8.6 (Aktuell)
+### v0.8.7 (Aktuell)
 - ✨ Live Analysis Log Panel mit per-Bild-Nachrichten
 - 🔧 Finalize Hang Fix
 - 📊 Detaillierte per-Image Logs mit Emoji-Präfixe
@@ -695,5 +695,5 @@ Lizenz-Tiers:                 2
 
 ---
 
-*Dokumentation aktualisiert: April 2026 | Version 0.8.6*
+*Dokumentation aktualisiert: April 2026 | Version 0.8.7*
 *Feature-Roadmap erweitert mit Community-Ideen & KI-Vorschlägen*

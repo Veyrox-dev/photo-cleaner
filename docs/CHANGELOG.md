@@ -1,5 +1,5 @@
 # PhotoCleaner - Changelog
-> Version 0.8.6 - MSI Reliability + Review UX Hotfixes (2026-04-11)
+> Version 0.8.7 - Export Options + UI Consistency Update (2026-04-11)
 
 ## [Unreleased] - Full i18n Rollout FR/ES/NL/IT + JSON Locale Loader (2026-04-10) ✅
 

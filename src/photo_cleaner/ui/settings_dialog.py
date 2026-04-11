@@ -313,17 +313,24 @@ class SettingsDialog(QDialog):
         export_layout.addWidget(self._make_label(t("export_format")))
         self.export_format_combo = QComboBox()
         self._install_no_wheel(self.export_format_combo)
-        self.export_format_combo.addItems(["Original", "JPG", "PNG", "WebP"])
+        self.export_format_combo.addItem(t("export_format_original"), "original")
+        self.export_format_combo.addItem(t("export_format_jpg"), "jpg")
+        self.export_format_combo.addItem(t("export_format_png"), "png")
+        self.export_format_combo.addItem(t("export_format_webp"), "webp")
+        self.export_format_combo.addItem(t("export_format_tiff"), "tiff")
+        self.export_format_combo.addItem(t("export_format_bmp"), "bmp")
         export_layout.addWidget(self.export_format_combo)
 
         # Export structure (folder layout)
         export_layout.addWidget(self._make_label(t("export_structure_label")))
         self.export_structure_combo = QComboBox()
         self._install_no_wheel(self.export_structure_combo)
-        self._export_structure_codes = ("date", "year_month", "year", "flat")
+        self._export_structure_codes = ("date", "year_month", "year", "month_day", "month", "flat")
         self.export_structure_combo.addItem(t("export_structure_date"),      "date")
         self.export_structure_combo.addItem(t("export_structure_year_month"), "year_month")
         self.export_structure_combo.addItem(t("export_structure_year"),       "year")
+        self.export_structure_combo.addItem(t("export_structure_month_day"),  "month_day")
+        self.export_structure_combo.addItem(t("export_structure_month"),      "month")
         self.export_structure_combo.addItem(t("export_structure_flat"),       "flat")
         export_layout.addWidget(self.export_structure_combo)
 
@@ -385,7 +392,7 @@ class SettingsDialog(QDialog):
         self._install_no_wheel(self.export_quality_spin)
         self.export_quality_spin.setMinimum(50)
         self.export_quality_spin.setMaximum(100)
-        self.export_quality_spin.setValue(90)
+        self.export_quality_spin.setValue(100)
         self.export_quality_spin.setSuffix("%")
         quality_row.addWidget(self.export_quality_spin)
         quality_row.addStretch()
@@ -605,8 +612,10 @@ class SettingsDialog(QDialog):
         settings = AppConfig.get_user_settings()
         dialog_settings = settings.get("settings_dialog", {})
 
-        self.export_format_combo.setCurrentText(dialog_settings.get("export_format", "Original"))
-        self.export_quality_spin.setValue(int(dialog_settings.get("export_quality", 90)))
+        current_format = AppConfig.get_export_format()
+        format_idx = self.export_format_combo.findData(current_format)
+        self.export_format_combo.setCurrentIndex(max(0, format_idx))
+        self.export_quality_spin.setValue(AppConfig.get_export_quality())
         current_structure = AppConfig.get_export_structure()
         idx = self.export_structure_combo.findData(current_structure)
         self.export_structure_combo.setCurrentIndex(max(0, idx))
@@ -687,8 +696,9 @@ class SettingsDialog(QDialog):
             self.underexposed_check.setChecked(True)
             self.overexposed_check.setChecked(False)
 
-            self.export_format_combo.setCurrentText("Original")
-            self.export_quality_spin.setValue(90)
+            default_format_idx = self.export_format_combo.findData(AppConfig.DEFAULT_EXPORT_FORMAT)
+            self.export_format_combo.setCurrentIndex(max(0, default_format_idx))
+            self.export_quality_spin.setValue(AppConfig.DEFAULT_EXPORT_QUALITY)
             default_idx = self.export_structure_combo.findData(AppConfig.DEFAULT_EXPORT_STRUCTURE)
             self.export_structure_combo.setCurrentIndex(max(0, default_idx))
             self.tier1_threshold_spin.setValue(AppConfig.DEFAULT_TIER1_THRESHOLD)
@@ -826,7 +836,7 @@ class SettingsDialog(QDialog):
             # Persist settings that are not part of config_update_system
             settings = AppConfig.get_user_settings()
             settings["settings_dialog"] = {
-                "export_format": self.export_format_combo.currentText(),
+                "export_format": self.export_format_combo.currentData() or AppConfig.DEFAULT_EXPORT_FORMAT,
                 "export_quality": self.export_quality_spin.value(),
                 "export_structure": self.export_structure_combo.currentData() or "date",
                 "tier1_threshold": self.tier1_threshold_spin.value(),
@@ -843,6 +853,8 @@ class SettingsDialog(QDialog):
                 "show_advanced": self.show_advanced_check.isChecked(),
             }
             AppConfig.set_user_settings(settings)
+            AppConfig.set_export_format(self.export_format_combo.currentData() or AppConfig.DEFAULT_EXPORT_FORMAT)
+            AppConfig.set_export_quality(self.export_quality_spin.value())
             AppConfig.set_export_structure(self.export_structure_combo.currentData() or "date")
             AppConfig.set_auto_keep_tiers(
                 self.tier1_threshold_spin.value(),

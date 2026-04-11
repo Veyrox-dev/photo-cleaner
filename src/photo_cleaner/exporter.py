@@ -80,16 +80,34 @@ class Exporter:
     - ``"year"``          : Output/YYYY/bild.jpg
     """
 
-    MODES = ("date", "flat", "year_month", "year")
+    MODES = ("date", "flat", "year_month", "year", "month_day", "month")
+    FORMATS = {
+        "original": None,
+        "jpg": ".jpg",
+        "png": ".png",
+        "webp": ".webp",
+        "tiff": ".tiff",
+        "bmp": ".bmp",
+    }
 
-    def __init__(self, output_base: Path, mode: str = "date"):
+    def __init__(
+        self,
+        output_base: Path,
+        mode: str = "date",
+        output_format: str = "original",
+        quality: int = 100,
+    ):
         """
         Args:
             output_base: Basis-Ordner für Export (z.B. /Output)
-            mode: Export-Strukturmodus (date | flat | year_month | year)
+            mode: Export-Strukturmodus (date | flat | year_month | year | month_day | month)
+            output_format: Zielformat (original | jpg | png | webp | tiff | bmp)
+            quality: Qualitätswert 1-100 für komprimierende Formate
         """
         self.output_base = output_base
         self.mode = mode if mode in self.MODES else "date"
+        self.output_format = output_format if output_format in self.FORMATS else "original"
+        self.quality = max(1, min(int(quality), 100))
         self.output_base.mkdir(parents=True, exist_ok=True)
 
     def export_file(self, source: Path) -> Tuple[bool, Optional[Path], Optional[str]]:
@@ -123,6 +141,10 @@ class Exporter:
                 target_dir = self.output_base / f"{date.year:04d}"
             elif self.mode == "year_month":
                 target_dir = self.output_base / f"{date.year:04d}" / f"{date.month:02d}"
+            elif self.mode == "month_day":
+                target_dir = self.output_base / f"{date.month:02d}" / f"{date.day:02d}"
+            elif self.mode == "month":
+                target_dir = self.output_base / f"{date.month:02d}"
             else:  # "date" (default)
                 year = f"{date.year:04d}"
                 month = f"{date.month:02d}"
@@ -131,7 +153,7 @@ class Exporter:
             target_dir.mkdir(parents=True, exist_ok=True)
 
             # Zieldatei
-            target_path = target_dir / source.name
+            target_path = self._build_target_path(target_dir, source)
 
             # Kollisionsvermeidung
             counter = 1
@@ -142,12 +164,17 @@ class Exporter:
                 counter += 1
 
             # Kopieren (with P1.9 error handling for locked files)
-            try:
-                shutil.copy2(source, target_path)
-            except (PermissionError, IOError) as e:
-                error_msg = f"Cannot copy file (locked or permission denied): {source}"
-                logger.warning(error_msg)
-                return False, None, error_msg
+            if self.output_format == "original":
+                try:
+                    shutil.copy2(source, target_path)
+                except (PermissionError, IOError) as e:
+                    error_msg = f"Cannot copy file (locked or permission denied): {source}"
+                    logger.warning(error_msg)
+                    return False, None, error_msg
+            else:
+                success, error_msg = self._convert_and_save(source, target_path)
+                if not success:
+                    return False, None, error_msg
             
             logger.info(f"Exported: {source} → {target_path}")
             return True, target_path, None
@@ -174,6 +201,54 @@ class Exporter:
             datetime-Objekt
         """
         return _extract_date_from_path(image_path)
+
+    def _build_target_path(self, target_dir: Path, source: Path) -> Path:
+        suffix = self.FORMATS[self.output_format] or source.suffix
+        target_path = target_dir / f"{source.stem}{suffix}"
+
+        counter = 1
+        while target_path.exists():
+            target_path = target_dir / f"{source.stem}_{counter}{suffix}"
+            counter += 1
+
+        return target_path
+
+    def _convert_and_save(self, source: Path, target_path: Path) -> Tuple[bool, Optional[str]]:
+        if not PIL_AVAILABLE or Image is None:
+            error_msg = f"Export format conversion requires Pillow: {source}"
+            logger.warning(error_msg)
+            return False, error_msg
+
+        try:
+            with Image.open(source) as image:
+                save_format = self.output_format.upper()
+                save_kwargs = self._build_save_kwargs(save_format)
+
+                if save_format in {"JPG", "JPEG", "BMP"} and image.mode not in ("RGB", "L"):
+                    image = image.convert("RGB")
+                elif save_format == "WEBP" and image.mode not in ("RGB", "RGBA"):
+                    image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
+                elif save_format in {"PNG", "TIFF"} and image.mode not in ("RGB", "RGBA", "L"):
+                    image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
+
+                image.save(target_path, format="JPEG" if save_format == "JPG" else save_format, **save_kwargs)
+            return True, None
+        except Exception as e:
+            error_msg = f"Export conversion failed for {source}: {e}"
+            logger.exception(error_msg)
+            return False, error_msg
+
+    def _build_save_kwargs(self, save_format: str) -> dict:
+        if save_format in {"JPG", "JPEG"}:
+            return {"quality": self.quality, "optimize": True}
+        if save_format == "WEBP":
+            return {"quality": self.quality, "method": 6}
+        if save_format == "PNG":
+            compress_level = max(0, min(9, round((100 - self.quality) * 9 / 100)))
+            return {"compress_level": compress_level, "optimize": True}
+        if save_format == "TIFF":
+            return {"compression": "tiff_lzw"}
+        return {}
 
     def export_files(self, sources: List[Path]) -> Tuple[int, int, List[str]]:
         """

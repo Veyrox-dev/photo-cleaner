@@ -194,7 +194,10 @@ class AppConfig:
     # --- Export mode ---
 
     DEFAULT_EXPORT_STRUCTURE = "date"
-    _VALID_EXPORT_STRUCTURES = ("date", "year_month", "year", "flat")
+    _VALID_EXPORT_STRUCTURES = ("date", "year_month", "year", "month_day", "month", "flat")
+    DEFAULT_EXPORT_FORMAT = "original"
+    _VALID_EXPORT_FORMATS = ("original", "jpg", "png", "webp", "tiff", "bmp")
+    DEFAULT_EXPORT_QUALITY = 100
 
     @classmethod
     def get_export_structure(cls) -> str:
@@ -208,6 +211,38 @@ class AppConfig:
         settings = cls.get_user_settings()
         d = settings.setdefault("settings_dialog", {})
         d["export_structure"] = mode if mode in cls._VALID_EXPORT_STRUCTURES else cls.DEFAULT_EXPORT_STRUCTURE
+        cls.set_user_settings(settings)
+
+    @classmethod
+    def get_export_format(cls) -> str:
+        settings = cls.get_user_settings()
+        d = settings.get("settings_dialog", {})
+        export_format = d.get("export_format", cls.DEFAULT_EXPORT_FORMAT)
+        return export_format if export_format in cls._VALID_EXPORT_FORMATS else cls.DEFAULT_EXPORT_FORMAT
+
+    @classmethod
+    def set_export_format(cls, export_format: str) -> None:
+        settings = cls.get_user_settings()
+        d = settings.setdefault("settings_dialog", {})
+        d["export_format"] = (
+            export_format if export_format in cls._VALID_EXPORT_FORMATS else cls.DEFAULT_EXPORT_FORMAT
+        )
+        cls.set_user_settings(settings)
+
+    @classmethod
+    def get_export_quality(cls) -> int:
+        settings = cls.get_user_settings()
+        d = settings.get("settings_dialog", {})
+        try:
+            return max(1, min(int(d.get("export_quality", cls.DEFAULT_EXPORT_QUALITY)), 100))
+        except (TypeError, ValueError):
+            return cls.DEFAULT_EXPORT_QUALITY
+
+    @classmethod
+    def set_export_quality(cls, quality: int) -> None:
+        settings = cls.get_user_settings()
+        d = settings.setdefault("settings_dialog", {})
+        d["export_quality"] = max(1, min(int(quality), 100))
         cls.set_user_settings(settings)
 
     # === LOGGING ===

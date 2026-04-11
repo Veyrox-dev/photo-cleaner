@@ -46,7 +46,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 from photo_cleaner.config import AppConfig, AppMode
 
 # Project version constant for UI/logging
-VERSION = "0.8.6"
+VERSION = "0.8.7"
 from photo_cleaner import get_logger
 from photo_cleaner.i18n import t, load_language_from_settings
 
@@ -286,7 +286,7 @@ def _log_tf_diagnostics(app_dir: Path, logger) -> None:
             ctypes.WinDLL(str(target), use_last_error=True)
             logger.debug(f"ctypes load OK: {target}")
         except OSError as exc:
-            last_error = ctypes.get_last_error()
+            last_error = ctypes.get_last_error()    
             win_error = ctypes.WinError(last_error) if last_error else None
             logger.error(f"ctypes load failed: {target}: {exc}")
             logger.error(f"ctypes last_error: {last_error} ({win_error})")

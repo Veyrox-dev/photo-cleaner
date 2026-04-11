@@ -2360,6 +2360,8 @@ class ZoomableImageView(QGraphicsView):
         self._min_zoom = 0.1
         self._max_zoom = 10.0
         self._zoom_step = 1.15
+        self._fit_mode = True
+        self._pending_initial_fit = False
         
         self._pixmap_item: Optional[QGraphicsPixmapItem] = None
         self._sync_enabled = False  # NEW: Track if sync is enabled
@@ -2379,7 +2381,10 @@ class ZoomableImageView(QGraphicsView):
         self.scene().clear()
         self._pixmap_item = QGraphicsPixmapItem(pixmap)
         self.scene().addItem(self._pixmap_item)
-        self.reset_zoom()
+        self.scene().setSceneRect(self._pixmap_item.boundingRect())
+        self._fit_mode = True
+        self._pending_initial_fit = True
+        QTimer.singleShot(0, self._apply_pending_fit)
     
     def wheelEvent(self, event: QWheelEvent):
         """Handle mousewheel zoom."""
@@ -2416,15 +2421,38 @@ class ZoomableImageView(QGraphicsView):
     
     def reset_zoom(self):
         """Reset to fit view."""
+        self._fit_mode = True
         self.fit_in_view()
     
     def fit_in_view(self):
         """Fit the entire image in the view."""
         if not self._pixmap_item:
             return
-        
+
+        if self.viewport().width() <= 0 or self.viewport().height() <= 0:
+            self._pending_initial_fit = True
+            return
+
+        self.resetTransform()
         self.fitInView(self._pixmap_item, Qt.KeepAspectRatio)
         self._zoom_level = self.transform().m11()
+        self._pending_initial_fit = False
+
+    def resizeEvent(self, event):
+        """Keep image fitted to the current view until the user zooms manually."""
+        super().resizeEvent(event)
+        if self._pixmap_item and (self._fit_mode or self._pending_initial_fit):
+            QTimer.singleShot(0, self._apply_pending_fit)
+
+    def _apply_pending_fit(self):
+        """Apply deferred fit once the viewport has its final size."""
+        if not self._pixmap_item:
+            return
+        if self.viewport().width() <= 0 or self.viewport().height() <= 0:
+            self._pending_initial_fit = True
+            return
+        if self._fit_mode or self._pending_initial_fit:
+            self.fit_in_view()
     
     def _apply_zoom(self, factor: float):
         """Apply zoom factor, respecting limits."""
@@ -2437,6 +2465,8 @@ class ZoomableImageView(QGraphicsView):
             factor = self._max_zoom / self._zoom_level
         
         if factor != 1.0:
+            self._fit_mode = False
+            self._pending_initial_fit = False
             self.scale(factor, factor)
             self._zoom_level *= factor
     
@@ -3044,10 +3074,10 @@ class ImageDetailWindow(QMainWindow):
     def _build_ui(self):
         """Erstelle Detailansicht-UI."""
         layout = self._main_layout
-        layout.setSpacing(4)  # Minimale Abstände
-        layout.setContentsMargins(6, 6, 6, 6)  # Minimale Ränder
+        layout.setSpacing(12)
+        layout.setContentsMargins(12, 12, 12, 12)
         
-        # Info Header – ultra-kompakt
+        # Info Header
         status_colors = get_status_colors()
         status_color = status_colors.get(self.file_row.status.value, status_colors['UNDECIDED'])
         status_text = f"<span style='color: {status_color};'>{self.file_row.status.value}</span>"
@@ -3057,10 +3087,7 @@ class ImageDetailWindow(QMainWindow):
             status_text = f"{t('detail_badge_locked')} " + status_text
         
         header_row = QHBoxLayout()
-        header_row.setSpacing(4)
-        header_row.setContentsMargins(0, 0, 0, 0)
-        header = QLabel(f"<b style='font-size: 11px;'>{self.file_row.path.name}</b><br/><span style='font-size: 10px;'>Status: {status_text}</span>")
-        header.setMaximumHeight(40)
+        header = QLabel(f"<h3>{self.file_row.path.name}</h3><p>Status: {status_text}</p>")
         self.header_label = header  # Store for later update
         header_row.addWidget(header)
         header_row.addStretch()
@@ -3071,15 +3098,14 @@ class ImageDetailWindow(QMainWindow):
         self.status_badge = status_badge  # Store for later update
         status_badge.setStyleSheet(
             f"background-color: {status_color}; color: {badge_fg};"
-            "font-weight: bold; padding: 3px 6px; border-radius: 4px;"
-            "font-size: 9px;"
+            "font-weight: bold; padding: 6px 10px; border-radius: 10px;"
+            "font-size: 11px;"
         )
         status_badge.setAlignment(Qt.AlignCenter)
-        status_badge.setMaximumHeight(25)
         header_row.addWidget(status_badge, alignment=Qt.AlignTop | Qt.AlignRight)
         layout.addLayout(header_row)
         
-        # Quality Score Display – ultra-compact
+        # Quality Score Display (compact banner like side-by-side)
         colors = get_theme_colors()
         explanation = build_score_explanation(
             quality_score=self.file_row.quality_score,
@@ -3102,11 +3128,10 @@ class ImageDetailWindow(QMainWindow):
             ]
 
             score_label = QLabel(" | ".join(parts) if parts else t("no_quality_data_available"))
-            score_label.setWordWrap(False)
-            score_label.setMaximumHeight(20)
+            score_label.setWordWrap(True)
             score_label.setToolTip(explanation.tooltip_text)
             score_label.setStyleSheet(
-                f"font-size: 9px; color: {colors['text']}; padding: 2px 3px; background-color: {colors['base']}; border: 1px solid {colors['border']}; border-radius: 3px;"
+                f"font-size: 11px; color: {colors['text']}; padding: 6px; background-color: {colors['base']}; border: 1px solid {colors['border']}; border-radius: 6px;"
             )
             layout.addWidget(score_label)
         
@@ -3135,11 +3160,10 @@ class ImageDetailWindow(QMainWindow):
             layout.addWidget(error_label)
         
         # P2 FIX #16: EXIF Info - load in background to avoid blocking UI
-        # Create placeholder label (ultra-compact)
+        # Create placeholder label
         info_label = QLabel(t("exif_loading"))
-        info_label.setMaximumHeight(18)
         hint_color = get_text_hint_color()
-        info_label.setStyleSheet(f"color: {hint_color}; font-size: 9px; padding: 2px 3px;")
+        info_label.setStyleSheet(f"color: {hint_color}; font-size: 12px; padding: 8px;")
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
         
@@ -3150,31 +3174,23 @@ class ImageDetailWindow(QMainWindow):
         self._exif_thread.error.connect(lambda err: self._on_image_exif_error(err))
         self._exif_thread.start()
         
-        # Control bar – ultra-compact
+        # Control bar
         control_bar = QHBoxLayout()
-        control_bar.setSpacing(3)
-        control_bar.setContentsMargins(0, 0, 0, 0)
+        control_bar.setSpacing(6)
 
-        # Navigation buttons – compact
+        # Navigation buttons
         if self.all_files and len(self.all_files) > 1:
-            prev_btn = QPushButton("◄")
-            prev_btn.setMaximumWidth(30)
-            prev_btn.setMaximumHeight(24)
-            prev_btn.setToolTip(t("previous_image"))
+            prev_btn = QPushButton("◄ " + t("previous_image"))
             prev_btn.setEnabled(self.current_index > 0)
             prev_btn.clicked.connect(self._navigate_previous)
             control_bar.addWidget(prev_btn)
 
-            nav_info = QLabel(f"{self.current_index + 1}/{len(self.all_files)}")
-            nav_info.setStyleSheet(f"color: {get_text_hint_color()}; font-size: 9px; padding: 0 4px;")
-            nav_info.setMaximumWidth(40)
-            nav_info.setMaximumHeight(24)
+            nav_info = QLabel(f"{self.current_index + 1} / {len(self.all_files)}")
+            hint_color = get_text_hint_color()
+            nav_info.setStyleSheet(f"color: {hint_color}; font-size: 14px; padding: 0 12px;")
             control_bar.addWidget(nav_info)
 
-            next_btn = QPushButton("►")
-            next_btn.setMaximumWidth(30)
-            next_btn.setMaximumHeight(24)
-            next_btn.setToolTip(t("next_image"))
+            next_btn = QPushButton(t("next_image") + " ►")
             next_btn.setEnabled(self.current_index < len(self.all_files) - 1)
             next_btn.clicked.connect(self._navigate_next)
             control_bar.addWidget(next_btn)
@@ -3185,35 +3201,30 @@ class ImageDetailWindow(QMainWindow):
         if self.parent_window:
             status_colors = get_status_colors()
             keep_btn = QPushButton(t("keep"))
-            keep_btn.setMaximumWidth(65)
-            keep_btn.setMaximumHeight(24)
+            keep_btn.setMinimumWidth(80)
             keep_btn.setShortcut(QKeySequence(Qt.Key_K))
             keep_btn.setToolTip(f"{t('keep')} (K)")
-            keep_btn.setStyleSheet(_build_button_style(status_colors["KEEP"], padding="4px 8px", font_size=10))
+            keep_btn.setStyleSheet(_build_button_style(status_colors["KEEP"], padding="8px 14px", font_size=13))
             keep_btn.clicked.connect(lambda: self._set_status(FileStatus.KEEP))
             control_bar.addWidget(keep_btn)
 
             del_btn = QPushButton(t("delete"))
-            del_btn.setMaximumWidth(65)
-            del_btn.setMaximumHeight(24)
+            del_btn.setMinimumWidth(80)
             del_btn.setShortcut(QKeySequence(Qt.Key_D))
             del_btn.setToolTip(f"{t('delete')} (D)")
-            del_btn.setStyleSheet(_build_button_style(status_colors["DELETE"], padding="4px 8px", font_size=10))
+            del_btn.setStyleSheet(_build_button_style(status_colors["DELETE"], padding="8px 14px", font_size=13))
             del_btn.clicked.connect(lambda: self._set_status(FileStatus.DELETE))
             control_bar.addWidget(del_btn)
 
             unsure_btn = QPushButton(t("unsure"))
-            unsure_btn.setMaximumWidth(65)
-            unsure_btn.setMaximumHeight(24)
+            unsure_btn.setMinimumWidth(80)
             unsure_btn.setShortcut(QKeySequence(Qt.Key_U))
             unsure_btn.setToolTip(f"{t('unsure')} (U)")
-            unsure_btn.setStyleSheet(_build_button_style(status_colors["UNSURE"], padding="4px 8px", font_size=10))
+            unsure_btn.setStyleSheet(_build_button_style(status_colors["UNSURE"], padding="8px 14px", font_size=13))
             unsure_btn.clicked.connect(lambda: self._set_status(FileStatus.UNSURE))
             control_bar.addWidget(unsure_btn)
 
         close_btn = QPushButton(t("close_button"))
-        close_btn.setMaximumWidth(65)
-        close_btn.setMaximumHeight(24)
         close_btn.clicked.connect(self.close)
         control_bar.addWidget(close_btn)
 
@@ -3249,7 +3260,7 @@ class ImageDetailWindow(QMainWindow):
             
             hint_color = get_text_hint_color()
             self._exif_label.setText(text)
-            self._exif_label.setStyleSheet(f"color: {hint_color}; font-size: 9px; padding: 2px 3px;")
+            self._exif_label.setStyleSheet(f"color: {hint_color}; font-size: 12px; padding: 8px;")
             logger.debug(f"EXIF display updated for {self.file_row.path.name}")
         except Exception as e:
             logger.error(f"Failed to format EXIF data: {e}", exc_info=True)
@@ -3325,19 +3336,19 @@ class ImageDetailWindow(QMainWindow):
         if self.file_row.locked:
             status_text = f"{t('detail_badge_locked')} " + status_text
         
-        # Update header label only (keep compact style)
+        # Update header label only
         if hasattr(self, 'header_label'):
-            self.header_label.setText(f"<b style='font-size: 11px;'>{self.file_row.path.name}</b><br/><span style='font-size: 10px;'>Status: {status_text}</span>")
+            self.header_label.setText(f"<h3>{self.file_row.path.name}</h3><p>Status: {status_text}</p>")
         
-        # Update status badge (keep compact style)
+        # Update status badge
         if hasattr(self, 'status_badge'):
             badge_text = self._detail_status_badge_text()
             badge_fg = _best_text_color_for_bg(status_color)
             self.status_badge.setText(badge_text)
             self.status_badge.setStyleSheet(
                 f"background-color: {status_color}; color: {badge_fg};"
-                "font-weight: bold; padding: 3px 6px; border-radius: 4px;"
-                "font-size: 9px;"
+                "font-weight: bold; padding: 6px 10px; border-radius: 10px;"
+                "font-size: 11px;"
             )
 
 
@@ -4107,14 +4118,12 @@ class ModernMainWindow(QMainWindow):
         logger.info("Indexing cancelled by user")
         if self.indexing_thread:
             self.indexing_thread.stop(wait=False)
+        
+        # ✅ CRITICAL FIX: Close dialog immediately
         if self._indexing_progress_dialog and self._indexing_progress_dialog.isVisible():
-            if isinstance(self._indexing_progress_dialog, ProgressStepDialog):
-                self._indexing_progress_dialog.set_progress(
-                    self._indexing_progress_dialog.progress_bar.value(),
-                    t("cancel_in_progress"),
-                )
-            else:
-                self._indexing_progress_dialog.setLabelText(t("cancel_in_progress"))
+            logger.info("Closing indexing progress dialog...")
+            self._indexing_progress_dialog.close()
+            self._indexing_progress_dialog = None
 
     def _update_progress_dialog(self, dialog: QProgressDialog, *, value: int | None = None, label: str | None = None, force: bool = False) -> None:
         if dialog is None or not dialog.isVisible():
@@ -4546,18 +4555,13 @@ class ModernMainWindow(QMainWindow):
         self._update_progress()
         self._pending_rating_summary = rating_info
         self._update_thumbnail_progress()
-        if not self._post_indexing_progress_dialog:
-            summary = self._pending_rating_summary
-            self._pending_rating_summary = None
-            if summary is not None:
-                self._show_analysis_summary(summary)
-            self._mark_analysis_stage_end("finalization")
-            if self._pipeline_start_ts > 0:
-                self._analysis_duration = max(0.0, time.monotonic() - self._pipeline_start_ts)
-            self._persist_analysis_metrics(rating_info)
-            finish_time = time.monotonic() - finish_start
-            logger.info(f"[UI] _finish_post_indexing() FINISHED in {finish_time:.3f}s")
-            return
+        
+        # ✅ CRITICAL FIX: Close progress dialog BEFORE showing summary
+        if self._post_indexing_progress_dialog and self._post_indexing_progress_dialog.isVisible():
+            logger.info("[UI] Closing post-indexing progress dialog...")
+            self._post_indexing_progress_dialog.close()
+            self._post_indexing_progress_dialog = None
+        
         if not self._thumb_loading_active:
             summary = self._pending_rating_summary
             self._pending_rating_summary = None
@@ -6605,8 +6609,9 @@ class ModernMainWindow(QMainWindow):
         self.split_group_btn = QPushButton(f"{t('split_group')} (S)")
         self.split_group_btn.setEnabled(False)
         self.split_group_btn.setMinimumHeight(36)
+        self.split_group_btn.setMinimumWidth(170)
         self.split_group_btn.setStyleSheet(
-            _build_button_style(get_semantic_colors()["info"], padding="10px 12px", font_size=11)
+            _build_button_style(get_semantic_colors()["info"], padding="10px 12px", font_size=12)
         )
         self.split_group_btn.clicked.connect(self._split_selected_from_group)
         row1_layout.addWidget(self.split_group_btn)
@@ -8679,6 +8684,17 @@ class ModernMainWindow(QMainWindow):
         """Finalisieren und exportiere behaltene Bilder in Ordnerstruktur (YYYY/MM/DD)."""
         from photo_cleaner.exporter import Exporter
 
+        structure_code = AppConfig.get_export_structure()
+        structure_labels = {
+            "date": t("export_structure_date"),
+            "year_month": t("export_structure_year_month"),
+            "year": t("export_structure_year"),
+            "month_day": t("export_structure_month_day"),
+            "month": t("export_structure_month"),
+            "flat": t("export_structure_flat"),
+        }
+        structure_label = structure_labels.get(structure_code, t("export_structure_date"))
+
         cur = self.conn.execute(
             "SELECT COUNT(*) FROM files WHERE file_status = 'KEEP' AND is_deleted = 0"
         )
@@ -8691,6 +8707,7 @@ class ModernMainWindow(QMainWindow):
             keep_count,
             len(delete_paths),
             planned_reclaimable_bytes,
+            structure_label,
             t,
         )
         if not decision.can_continue:
@@ -8732,7 +8749,12 @@ class ModernMainWindow(QMainWindow):
             progress.setMinimumDuration(0)
             progress.setValue(0)
 
-            exporter = Exporter(self.output_path, mode=AppConfig.get_export_structure())
+            exporter = Exporter(
+                self.output_path,
+                mode=structure_code,
+                output_format=AppConfig.get_export_format(),
+                quality=AppConfig.get_export_quality(),
+            )
             total = len(keep_paths)
             success_count = 0
             failure_count = 0
@@ -8799,6 +8821,7 @@ class ModernMainWindow(QMainWindow):
                 errors,
                 self.output_path,
                 cancelled,
+                structure_label,
                 delete_applied_count=delete_applied_count,
                 reclaimable_bytes=reclaimable_bytes,
                 skipped_locked_count=skipped_locked_count,

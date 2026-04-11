@@ -63,6 +63,7 @@ class ExportDeleteWorkflowController:
         keep_count: int,
         delete_count: int,
         reclaimable_bytes: int,
+        structure_label: str,
         t_func: Callable[[str], str],
     ) -> DialogDecision:
         """Build pre-check result and confirmation text for export flow."""
@@ -85,7 +86,7 @@ class ExportDeleteWorkflowController:
         export_lines = [
             f"{keep_count} Bild(er) werden in den Exportordner übernommen.",
             f"Zielordner: {output_path}",
-            "Struktur: Jahr/Monat/Tag (YYYY/MM/DD)",
+            f"Struktur: {structure_label}",
         ]
         cleanup_lines = [
             f"{delete_count} Bild(er) werden aus der aktiven Sitzung entfernt.",
@@ -119,6 +120,7 @@ class ExportDeleteWorkflowController:
         errors: Sequence[str],
         export_path: Path,
         cancelled: bool,
+        structure_label: str,
         delete_applied_count: int = 0,
         reclaimable_bytes: int = 0,
         skipped_locked_count: int = 0,
@@ -149,7 +151,7 @@ class ExportDeleteWorkflowController:
                     [
                         f"{success_count} Bild(er) wurden exportiert.",
                         f"Exportordner: {export_path}",
-                        "Ablage: YYYY/MM/DD",
+                        f"Ablage: {structure_label}",
                     ],
                 )
             ]
