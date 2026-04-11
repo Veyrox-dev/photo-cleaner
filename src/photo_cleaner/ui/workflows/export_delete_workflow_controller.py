@@ -83,8 +83,9 @@ class ExportDeleteWorkflowController:
             )
 
         export_lines = [
-            f"{keep_count} Bild(er) werden ins ZIP übernommen.",
+            f"{keep_count} Bild(er) werden in den Exportordner übernommen.",
             f"Zielordner: {output_path}",
+            "Struktur: Jahr/Monat/Tag (YYYY/MM/DD)",
         ]
         cleanup_lines = [
             f"{delete_count} Bild(er) werden aus der aktiven Sitzung entfernt.",
@@ -102,7 +103,7 @@ class ExportDeleteWorkflowController:
                 "Bereit zum Abschließen"
                 "</div>"
                 "<div style='margin-bottom:8px;'>"
-                "Beim Fortfahren wird ein ZIP-Archiv erstellt und die aktuelle Bereinigung angewendet."
+                "Beim Fortfahren werden die Bilder in den Exportordner einsortiert und die aktuelle Bereinigung angewendet."
                 "</div>"
                 f"{self._summary_block('Export', export_lines)}"
                 f"{self._summary_block('Bereinigung', cleanup_lines)}"
@@ -116,7 +117,7 @@ class ExportDeleteWorkflowController:
         success_count: int,
         failure_count: int,
         errors: Sequence[str],
-        archive_path: Path,
+        export_path: Path,
         cancelled: bool,
         delete_applied_count: int = 0,
         reclaimable_bytes: int = 0,
@@ -128,7 +129,7 @@ class ExportDeleteWorkflowController:
             return DialogMessage(
                 level="info",
                 title="Export abgebrochen",
-                message="Der Export wurde abgebrochen. Teilresultate können im ZIP liegen.",
+                message="Der Export wurde abgebrochen. Teilresultate können bereits im Exportordner liegen.",
             )
 
         cleanup_lines = [
@@ -146,8 +147,9 @@ class ExportDeleteWorkflowController:
                 self._summary_block(
                     "Export",
                     [
-                        f"{success_count} Bild(er) wurden als ZIP exportiert.",
-                        f"Archiv: {archive_path}",
+                        f"{success_count} Bild(er) wurden exportiert.",
+                        f"Exportordner: {export_path}",
+                        "Ablage: YYYY/MM/DD",
                     ],
                 )
             ]
@@ -184,7 +186,7 @@ class ExportDeleteWorkflowController:
                 [
                     f"Erfolgreich exportiert: {success_count}",
                     f"Fehler: {failure_count}",
-                    f"ZIP: {archive_path}",
+                    f"Exportordner: {export_path}",
                 ],
             ),
             self._summary_block("Fehlerdetails", error_lines),

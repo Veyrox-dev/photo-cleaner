@@ -245,7 +245,7 @@ class CleanupCompletionDialog(QDialog):
         button_row = QHBoxLayout()
         button_row.setSpacing(10)
         if self.archive_path is not None:
-            open_button = QPushButton("Archivordner oeffnen", card)
+            open_button = QPushButton("Exportordner oeffnen", card)
             open_button.clicked.connect(self._open_archive_folder)
             button_row.addWidget(open_button)
         button_row.addStretch(1)

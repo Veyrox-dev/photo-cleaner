@@ -34,6 +34,7 @@ def test_build_export_decision_with_valid_input_returns_question() -> None:
     assert decision.level == "question"
     assert decision.title == "Export & Bereinigung abschließen"
     assert "4 Bild(er)" in decision.message
+    assert "YYYY/MM/DD" in decision.message
     assert "Du sparst damit aktuell 5.0 MB." in decision.message
     assert "nicht physisch gelöscht" in decision.message
     assert str(Path("C:/out")) in decision.message
@@ -46,7 +47,7 @@ def test_build_export_result_message_for_partial_failures_is_warning() -> None:
         success_count=2,
         failure_count=1,
         errors=["a", "b"],
-        archive_path=Path("C:/out/export.zip"),
+        export_path=Path("C:/out"),
         cancelled=False,
     )
 
@@ -62,7 +63,7 @@ def test_build_export_result_message_cancelled_returns_info() -> None:
         success_count=1,
         failure_count=0,
         errors=[],
-        archive_path=Path("C:/out/export.zip"),
+        export_path=Path("C:/out"),
         cancelled=True,
     )
 
@@ -78,7 +79,7 @@ def test_build_export_result_message_includes_reclaimable_size_summary() -> None
         success_count=5,
         failure_count=0,
         errors=[],
-        archive_path=Path("C:/out/export.zip"),
+        export_path=Path("C:/out"),
         cancelled=False,
         delete_applied_count=3,
         reclaimable_bytes=5 * 1024 * 1024,
@@ -98,7 +99,7 @@ def test_build_export_result_message_limits_error_preview_to_five() -> None:
         success_count=3,
         failure_count=7,
         errors=["e1", "e2", "e3", "e4", "e5", "e6", "e7"],
-        archive_path=Path("C:/out/export.zip"),
+        export_path=Path("C:/out"),
         cancelled=False,
     )
 

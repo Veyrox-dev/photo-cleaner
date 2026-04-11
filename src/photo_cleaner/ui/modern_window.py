@@ -8075,6 +8075,14 @@ class ModernMainWindow(QMainWindow):
         row = cur.fetchone()
         return int((row[0] if row else 0) or 0)
 
+    @staticmethod
+    def _format_progress_counter(current: int, total: int) -> str:
+        """Return a fixed-width progress counter string like 003/136."""
+        total_safe = max(1, int(total or 0))
+        width = max(2, len(str(total_safe)))
+        current_safe = max(0, int(current or 0))
+        return f"{current_safe:0{width}d}/{total_safe:0{width}d}"
+
     def _flush_session_state(self, description: str) -> None:
         """Persist the current UI selection state immediately."""
         image_groups = {}
@@ -8513,8 +8521,8 @@ class ModernMainWindow(QMainWindow):
     # Export
     
     def _finalize_and_export(self):
-        """Finalisieren und exportiere behaltene Bilder (streaming ZIP)."""
-        from photo_cleaner.exporter import StreamingExporter
+        """Finalisieren und exportiere behaltene Bilder in Ordnerstruktur (YYYY/MM/DD)."""
+        from photo_cleaner.exporter import Exporter
 
         cur = self.conn.execute(
             "SELECT COUNT(*) FROM files WHERE file_status = 'KEEP' AND is_deleted = 0"
@@ -8569,20 +8577,35 @@ class ModernMainWindow(QMainWindow):
             progress.setMinimumDuration(0)
             progress.setValue(0)
 
-            exporter = StreamingExporter(self.output_path)
+            exporter = Exporter(self.output_path)
+            total = len(keep_paths)
+            success_count = 0
+            failure_count = 0
+            errors: list[str] = []
+            exported_keep_paths: list[Path] = []
+            cancelled = False
 
-            def on_progress(current: int, total: int, name: str) -> None:
-                progress.setMaximum(total)
-                progress.setValue(current)
-                progress.setLabelText(f"{name}\n({current}/{total})")
+            progress.setMaximum(total)
+            for idx, source in enumerate(keep_paths, start=1):
+                progress.setValue(idx - 1)
+                progress.setLabelText(
+                    f"{source.name}\n({self._format_progress_counter(idx, total)})"
+                )
                 QApplication.processEvents()
                 if progress.wasCanceled():
-                    exporter.request_cancel()
+                    cancelled = True
+                    break
 
-            success_count, failure_count, errors, archive_path, cancelled = exporter.export_files_streaming(
-                keep_paths,
-                progress_callback=on_progress,
-            )
+                success, _, error = exporter.export_file(source)
+                if success:
+                    success_count += 1
+                    exported_keep_paths.append(source)
+                else:
+                    failure_count += 1
+                    if error:
+                        errors.append(error)
+
+            progress.setValue(total)
 
             progress.close()
 
@@ -8590,23 +8613,36 @@ class ModernMainWindow(QMainWindow):
             reclaimable_bytes = 0
             skipped_locked_count = 0
             delete_failed_message = None
+            exported_removed_count = 0
             if not cancelled:
+                if exported_keep_paths:
+                    keep_cleanup = self.actions.ui_batch_delete(exported_keep_paths)
+                    if keep_cleanup.get("ok"):
+                        exported_removed_count = len(keep_cleanup.get("deleted_ids", []))
+                    else:
+                        delete_failed_message = keep_cleanup.get("message", "Unbekannter Fehler")
+
                 if delete_paths:
                     delete_result = self.actions.ui_batch_delete(delete_paths)
                     if delete_result.get("ok"):
                         deleted_ids = delete_result.get("deleted_ids", [])
                         skipped_locked = delete_result.get("skipped_locked", [])
-                        delete_applied_count = len(deleted_ids)
+                        delete_applied_count = len(deleted_ids) + exported_removed_count
                         skipped_locked_count = len(skipped_locked)
                         reclaimable_bytes = self._sum_file_sizes_for_ids(deleted_ids)
                     else:
-                        delete_failed_message = delete_result.get("message", "Unbekannter Fehler")
+                        if delete_failed_message:
+                            delete_failed_message = f"{delete_failed_message}; {delete_result.get('message', 'Unbekannter Fehler')}"
+                        else:
+                            delete_failed_message = delete_result.get("message", "Unbekannter Fehler")
+                elif exported_removed_count:
+                    delete_applied_count = exported_removed_count
 
             result_message = self._export_delete_workflow.build_export_result_message(
                 success_count,
                 failure_count,
                 errors,
-                archive_path,
+                self.output_path,
                 cancelled,
                 delete_applied_count=delete_applied_count,
                 reclaimable_bytes=reclaimable_bytes,
@@ -8622,7 +8658,7 @@ class ModernMainWindow(QMainWindow):
                     removed_count=delete_applied_count,
                     exported_count=success_count,
                     skipped_count=skipped_locked_count,
-                    archive_path=archive_path,
+                    archive_path=self.output_path,
                 )
             else:
                 QMessageBox.information(self, result_message.title, result_message.message)
