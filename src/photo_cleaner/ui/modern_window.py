@@ -123,6 +123,7 @@ from photo_cleaner.ui.workflows.selection_workflow_controller import SelectionWo
 from photo_cleaner.ui.workflows.export_delete_workflow_controller import ExportDeleteWorkflowController
 from photo_cleaner.ui.cleanup_completion_dialog import CleanupCompletionDialog
 from photo_cleaner.cache.image_cache_manager import ImageCacheManager  # v0.5.3
+from photo_cleaner.ui.gallery import GalleryView
 from photo_cleaner.ui.thumbnail_lazy import ThumbnailLoader, SmartThumbnailCache  # Thumbnail async loading
 
 # Lazy load heavy analysis modules
@@ -3926,6 +3927,9 @@ class ModernMainWindow(QMainWindow):
         self._grid_thumb_loader: Optional[ThumbnailLoader] = None
         self._grid_thumb_index_map: dict[int, ThumbnailCard] = {}
         
+        # Gallery View (lazy-created on first open)
+        self._gallery_view: Optional[GalleryView] = None
+
         # Batch selection state - PER GROUP (not global!)
         # Maps group_id -> (selected_indices: set, last_selected_index: int)
         self._group_selection_state: dict[str, tuple[set[int], int]] = {}
@@ -4571,6 +4575,10 @@ class ModernMainWindow(QMainWindow):
             if self._pipeline_start_ts > 0:
                 self._analysis_duration = max(0.0, time.monotonic() - self._pipeline_start_ts)
             self._persist_analysis_metrics(rating_info)
+            # Gallery-first: nach Analyse zurück zur Galerie + Review-Badge anzeigen
+            self._open_gallery()
+            group_count = getattr(self, "_post_indexing_group_count", 0) or 0
+            self._show_gallery_review_badge(group_count)
         
         finish_time = time.monotonic() - finish_start
         logger.info(f"[UI] _finish_post_indexing() FINISHED in {finish_time:.3f}s")
@@ -5141,33 +5149,42 @@ class ModernMainWindow(QMainWindow):
     
     def _build_ui(self):
         """Build main UI - simplified without Hauptmenü frame."""
+        from PySide6.QtWidgets import QStackedWidget
+
+        # Root-Stack: Index 0 = Galerie (Startseite), Index 1 = Review-Workflow
+        self._main_stack = QStackedWidget()
+
+        # ── Galerie (Seite 0 — Startseite) ────────────────────────────────────
+        self._gallery_view = GalleryView(self.db_path, parent=self)
+        self._gallery_view.gallery_closed.connect(self._close_gallery)
+        self._gallery_view.image_status_changed.connect(self._on_gallery_status_changed)
+        self._gallery_view.scan_requested.connect(self._open_import_dialog)
+        self._gallery_view.review_requested.connect(self._open_review)
+        self._main_stack.addWidget(self._gallery_view)       # Index 0: Galerie (Home)
+
+        # ── Review-Workflow (Seite 1) ──────────────────────────────────────────
         wrapper = QWidget()
         layout = QVBoxLayout(wrapper)
         layout.setSpacing(6)
         layout.setContentsMargins(6, 6, 6, 6)
-        
-        # Main content splitter (no top bar, no main menu frame)
+
         splitter = QSplitter(Qt.Horizontal)
-        
-        # Left: Group list
         splitter.addWidget(self._build_group_panel())
-        
-        # Center: Grid view
         splitter.addWidget(self._build_grid_panel())
-        
-        # Right: Quick actions panel
         splitter.addWidget(self._build_actions_panel())
-        
         splitter.setStretchFactor(0, 2)
         splitter.setStretchFactor(1, 5)
         splitter.setStretchFactor(2, 2)
-        
         layout.addWidget(splitter)
-        
-        # Bottom: Status bar
         layout.addWidget(self._build_status_bar())
-        
-        self.setCentralWidget(wrapper)
+
+        self._main_stack.addWidget(wrapper)                  # Index 1: Review
+
+        self._main_stack.currentChanged.connect(self._on_main_stack_changed)
+
+        self.setCentralWidget(self._main_stack)
+        # Starte auf der Gallery-Seite — kein load_keep_images hier,
+        # das passiert in _post_init nach vollständiger Initialisierung.
     
     def _build_menu(self):
         """Baut Menüleiste mit Language & Theme Switcher."""
@@ -5180,11 +5197,26 @@ class ModernMainWindow(QMainWindow):
             "QMenuBar::item { padding: 6px 10px; margin: 0px 2px; }"
         )
         
+        # ← Zurück zur Galerie (nur sichtbar wenn im Review-Modus — initial versteckt)
+        self.home_action = menubar.addAction("← " + t("gallery_title"))
+        self.home_action.triggered.connect(self._open_gallery)
+        self.home_action.setToolTip(t("gallery_open_button"))
+
         # Import button
         self.import_action = menubar.addAction(t("import"))
         self.import_action.triggered.connect(self._open_import_dialog)
         self.import_action.setToolTip(t("import_tooltip"))
-        
+
+        # Diashow im Gallery-Kontext
+        self.slideshow_action = menubar.addAction(t("gallery_slideshow_start"))
+        self.slideshow_action.triggered.connect(self._start_gallery_slideshow_from_menu)
+        self.slideshow_action.setToolTip(t("gallery_slideshow_start"))
+
+        # Duplikate reviewen (wird nach Analyse aktiviert / sichtbar)
+        self.review_action = menubar.addAction(t("review_duplicates"))
+        self.review_action.triggered.connect(self._open_review)
+        self.review_action.setToolTip(t("review_duplicates_tooltip"))
+
         # Settings button
         self.settings_action = menubar.addAction(t("settings"))
         self.settings_action.triggered.connect(self._open_settings)
@@ -5197,11 +5229,15 @@ class ModernMainWindow(QMainWindow):
         self.license_action = menubar.addAction(t("license"))
         self.license_action.triggered.connect(self._show_license_dialog)
         self.license_action.setToolTip(t("license_tooltip"))
-        
+
         # Help button
         self.help_action = menubar.addAction(t("help"))
         self.help_action.triggered.connect(self._show_help)
         self.help_action.setToolTip(t("help_tooltip"))
+
+        # home_action erst sichtbar wenn man im Review-Modus ist
+        self.home_action.setVisible(False)
+        self._sync_topbar_actions_for_current_view()
         
         # Quit via Ctrl+Q (no File menu)
         quit_shortcut = QShortcut(QKeySequence.Quit, self)
@@ -5234,7 +5270,72 @@ class ModernMainWindow(QMainWindow):
             "Intelligente Fotoverwaltung und -bereinigung.\n\n"
             "© 2024-2026 PhotoCleaner Team"
         )
-    
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Gallery View (Startseite)
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _open_gallery(self) -> None:
+        """Wechselt zur Gallery (Startseite) und lädt KEEP-Bilder neu."""
+        self._gallery_view.load_keep_images()
+        self._main_stack.setCurrentIndex(0)
+        self._sync_topbar_actions_for_current_view()
+        logger.info("[Gallery] Zurück zur Galerie")
+
+    def _close_gallery(self) -> None:
+        """Kein echter Close — Gallery ist Home. Kein-Op."""
+        pass
+
+    def _open_review(self) -> None:
+        """Wechselt zum Review-Workflow (Duplikat-Gruppen)."""
+        self._main_stack.setCurrentIndex(1)
+        self._sync_topbar_actions_for_current_view()
+        logger.info("[Gallery] Review-Workflow geöffnet")
+
+    def _on_main_stack_changed(self, _index: int) -> None:
+        """Synchronisiert die obere Aktionsleiste mit dem aktiven Tab."""
+        self._sync_topbar_actions_for_current_view()
+
+    def _sync_topbar_actions_for_current_view(self) -> None:
+        """Zeigt nur sinnvolle Aktionen pro View (Gallery vs Review)."""
+        if not hasattr(self, "_main_stack"):
+            return
+
+        in_gallery = self._main_stack.currentIndex() == 0
+
+        if hasattr(self, "home_action"):
+            self.home_action.setVisible(not in_gallery)
+        if hasattr(self, "import_action"):
+            self.import_action.setVisible(in_gallery)
+        if hasattr(self, "slideshow_action"):
+            self.slideshow_action.setVisible(in_gallery)
+        if hasattr(self, "review_action"):
+            self.review_action.setVisible(in_gallery)
+
+    def _start_gallery_slideshow_from_menu(self) -> None:
+        """Startet die Gallery-Diashow als Single-Window-Viewer."""
+        self._open_gallery()
+        if self._gallery_view is not None:
+            self._gallery_view.start_slideshow()
+
+    def _on_gallery_status_changed(self, path, new_status) -> None:
+        """Callback wenn der Nutzer in der Gallery einen Status ändert."""
+        try:
+            self._reload_after_action()
+        except Exception as e:
+            logger.error("[Gallery] Status-Change-Callback fehlgeschlagen: %s", e, exc_info=True)
+
+    def refresh_gallery_if_open(self) -> None:
+        """Aktualisiert die Gallery wenn sie gerade sichtbar ist (z.B. nach Watch-Folder-Import)."""
+        if self._gallery_view is not None and hasattr(self, "_main_stack"):
+            if self._main_stack.currentWidget() is self._gallery_view:
+                self._gallery_view.refresh()
+
+    def _show_gallery_review_badge(self, group_count: int) -> None:
+        """Zeigt in der Gallery einen Badge: 'X Duplikat-Gruppen gefunden — Jetzt reviewen'."""
+        if self._gallery_view is not None:
+            self._gallery_view.show_review_badge(group_count)
+
     def _open_import_dialog(self) -> None:
         """Open folder dialog and start analysis directly."""
         dialog = FolderSelectionDialog(self)

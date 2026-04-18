@@ -275,8 +275,26 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "language_es": "Spanisch",
         "language_nl": "Niederlaendisch",
         "language_it": "Italienisch",
-        
-        # Theme names
+
+        # Gallery View
+        "gallery_title": "Galerie",
+        "gallery_open_button": "Galerie öffnen",
+        "gallery_keep_empty": "Keine Bilder mit Status KEEP vorhanden. Führe zuerst eine Analyse durch und behalte Bilder.",
+        "gallery_filter_all": "Alle",
+        "gallery_filter_today": "Heute",
+        "gallery_filter_week": "Diese Woche",
+        "gallery_filter_month": "Dieser Monat",
+        "gallery_filter_score": "Score ≥",
+        "gallery_slideshow_start": "Diashow starten",
+        "gallery_slideshow_stop": "Diashow stoppen",
+        "gallery_of": "von",
+        "gallery_scan_cta": "Ordner scannen",
+        "gallery_review_badge": "{count} Duplikat-Gruppen gefunden",
+        "review_open": "Duplikate reviewen",
+        "review_duplicates": "Duplikate reviewen",
+        "review_duplicates_tooltip": "Zu den gefundenen Duplikat-Gruppen wechseln",
+        "gallery_title_home": "Meine Fotos",
+        "open_folder": "Ordner öffnen",
         "theme_dark": "Dunkel",
         "theme_light": "Hell",
         
@@ -1069,8 +1087,26 @@ Status: Offline-Nutzung aktiv
         "language_es": "Spanish",
         "language_nl": "Dutch",
         "language_it": "Italian",
-        
-        # Theme names
+
+        # Gallery View
+        "gallery_title": "Gallery",
+        "gallery_open_button": "Open Gallery",
+        "gallery_keep_empty": "No images with status KEEP found. Run an analysis first and keep some images.",
+        "gallery_filter_all": "All",
+        "gallery_filter_today": "Today",
+        "gallery_filter_week": "This Week",
+        "gallery_filter_month": "This Month",
+        "gallery_filter_score": "Score ≥",
+        "gallery_slideshow_start": "Start Slideshow",
+        "gallery_slideshow_stop": "Stop Slideshow",
+        "gallery_of": "of",
+        "gallery_scan_cta": "Scan Folder",
+        "gallery_review_badge": "{count} duplicate groups found",
+        "review_open": "Review Duplicates",
+        "review_duplicates": "Review Duplicates",
+        "review_duplicates_tooltip": "Switch to the duplicate review workflow",
+        "gallery_title_home": "My Photos",
+        "open_folder": "Open folder",
         "theme_dark": "Dark",
         "theme_light": "Light",
         
