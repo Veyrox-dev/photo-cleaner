@@ -36,10 +36,10 @@ try:
         WorkerResult as WorkerResultNew,
     )
     MULTIPROCESSING_IMPROVED_AVAILABLE = True
-    logger_transition.info("✓ multiprocessing_improved available (new queue-based implementation)")
+    logger_transition.info("multiprocessing_improved available (new queue-based implementation)")
 except ImportError as e:
     MULTIPROCESSING_IMPROVED_AVAILABLE = False
-    logger_transition.warning(f"✗ multiprocessing_improved not available: {e}")
+    logger_transition.warning(f"multiprocessing_improved not available: {e}")
 
 from photo_cleaner.pipeline.multiprocessing_manager import (
     WorkerPool,
@@ -100,17 +100,17 @@ def _get_worker_quality_analyzer(config: "QualityAnalysisConfig") -> QualityAnal
 if USE_NEW_MULTIPROCESSING:
     if MULTIPROCESSING_IMPROVED_AVAILABLE:
         logger.info(
-            "✓ CONFIGURATION: Using NEW queue-based multiprocessing implementation "
+            "CONFIGURATION: Using NEW queue-based multiprocessing implementation "
             "(feature flag enabled & module available)"
         )
     else:
         logger.info(
-            "⚠ CONFIGURATION: Feature flag enabled but NEW implementation not available, "
+            "CONFIGURATION: Feature flag enabled but NEW implementation not available, "
             "will use OLD implementation with automatic fallback"
         )
 else:
     logger.info(
-        "✓ CONFIGURATION: Using OLD multiprocessing implementation "
+        "CONFIGURATION: Using OLD multiprocessing implementation "
         "(feature flag disabled via PHOTOCLEANER_USE_NEW_MULTIPROCESSING=0)"
     )
 
@@ -290,11 +290,11 @@ class ParallelQualityAnalyzer:
                     timeout_per_task=timeout_per_task,
                     progress_callback=progress_callback,
                 )
-                logger.info(f"✓ New implementation succeeded ({len(results)} results)")
+                logger.info(f"New implementation succeeded ({len(results)} results)")
                 return self._apply_parallel_guardrails(image_paths, results)
             except Exception as e:
                 logger.warning(
-                    f"✗ New implementation failed, falling back to old: {e}",
+                    f"New implementation failed, falling back to old: {e}",
                     exc_info=True
                 )
                 # Fall through to old implementation

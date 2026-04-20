@@ -20,18 +20,16 @@ import sys
 import time
 from pathlib import Path
 
-# ============================================================================
 # CRITICAL: Set TensorFlow environment variables BEFORE any imports
 # This prevents DLL initialization errors when Qt is loaded later
 # ============================================================================
 if "TF_CPP_MIN_LOG_LEVEL" not in os.environ:
-    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Reduce TF logging noise
+    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"  # Verbose logs in debug, overridden for frozen build
 if "TF_ENABLE_ONEDNN_OPTS" not in os.environ:
     os.environ["TF_ENABLE_ONEDNN_OPTS"] = "1"  # Enable CPU optimizations
-
-# Force TensorFlow CPU-only mode in frozen builds (avoid GPU check hang)
-if getattr(sys, 'frozen', False):
+if os.getenv("PHOTOCLEANER_CPU_ONLY", "0").lower() in ("1", "true", "yes"):
     os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")  # Disable GPU unless explicitly overridden
+if getattr(sys, "frozen", False):
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Suppress all TF logs in frozen build
 
 # In frozen GUI builds, stdout/stderr can be None; make them safe early.
@@ -508,11 +506,11 @@ def main():
     except Exception as e:
         mtcnn_status["error"] = str(e)
         mtcnn_status["error"] = _sanitize_mtcnn_error(mtcnn_status["error"])
-        logger.error(f"✗ TensorFlow initialization failed: {type(e).__name__}: {e}")
+        logger.error(f"TensorFlow initialization failed: {type(e).__name__}: {e}")
         if isinstance(e, ModuleNotFoundError) and "tensorflow" in str(e).lower():
             logger.error("TensorFlow not found in this Python environment. Please run using .venv\\Scripts\\python.exe or install TensorFlow in the active environment.")
-        logger.warning("⚠ Photo quality analysis will use fallback face detection (Haar Cascade)")
-        logger.warning("⚠ This may reduce accuracy in detecting best photos with faces")
+        logger.warning("Photo quality analysis will use fallback face detection (Haar Cascade)")
+        logger.warning("This may reduce accuracy in detecting best photos with faces")
     
     # NOTE: Do NOT show MTCNN warning yet - MTCNN may be re-initialized below
     # Warning will only be shown if MTCNN still unavailable after splash phase
@@ -548,18 +546,18 @@ def main():
         try:
             from mtcnn import MTCNN
             test_detector = MTCNN()
-            logger.info("✓ MTCNN successfully initialized after splash")
+            logger.info("MTCNN successfully initialized after splash")
             mtcnn_status["available"] = True
             del test_detector
         except Exception as e:
             mtcnn_status["error"] = str(e)
             mtcnn_status["error"] = _sanitize_mtcnn_error(mtcnn_status["error"])
-            logger.error(f"✗ MTCNN initialization failed: {type(e).__name__}: {e}")
+            logger.error(f"MTCNN initialization failed: {type(e).__name__}: {e}")
     
     # NOW show warning if MTCNN still unavailable (after splash retry attempt)
     if not mtcnn_status["available"]:
-        logger.warning("⚠ Photo quality analysis will use fallback face detection (Haar Cascade)")
-        logger.warning("⚠ This may reduce accuracy in detecting best photos with faces")
+        logger.warning("Photo quality analysis will use fallback face detection (Haar Cascade)")
+        logger.warning("This may reduce accuracy in detecting best photos with faces")
 
     # ====================================================================
     # PHASE 4: Schwere Module LAZY laden (mit Progress-Anzeige)

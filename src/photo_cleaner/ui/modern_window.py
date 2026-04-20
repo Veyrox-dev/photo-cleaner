@@ -280,7 +280,7 @@ class RatingWorkerThread(QThread):
             
             logger.info(f"[WORKER] Found {len(groups)} groups to rate")
             if not groups:
-                logger.warning("[WORKER] No groups found - returning early")
+                logger.info("[WORKER] No duplicate groups found; skipping rating step")
                 self.finished.emit(info)
                 return
             
@@ -4875,7 +4875,7 @@ class ModernMainWindow(QMainWindow):
             
             logger.info(f"Found {len(groups)} groups to rate")
             if not groups:
-                logger.warning("No groups found - returning early")
+                logger.info("No duplicate groups found; skipping rating step")
                 return info
             
             if progress:
@@ -5289,6 +5289,26 @@ class ModernMainWindow(QMainWindow):
     def _open_review(self) -> None:
         """Wechselt zum Review-Workflow (Duplikat-Gruppen)."""
         self._main_stack.setCurrentIndex(1)
+
+        # Ensure latest groups are visible after gallery-driven imports.
+        # If active filters/search hide all items, reset to "all" once.
+        try:
+            self.refresh_groups()
+
+            if hasattr(self, "group_list") and hasattr(self, "groups"):
+                if self.group_list.count() == 0 and len(self.groups) > 0:
+                    if hasattr(self, "search_box") and self.search_box.text().strip():
+                        self.search_box.clear()
+                    if hasattr(self, "group_filter_combo"):
+                        all_idx = self.group_filter_combo.findData("all")
+                        if all_idx >= 0:
+                            self.group_filter_combo.setCurrentIndex(all_idx)
+
+                if self.group_list.count() > 0 and not self.group_list.selectedItems():
+                    self.group_list.setCurrentRow(0)
+        except Exception as e:
+            logger.error("[Gallery] Review-Refresh fehlgeschlagen: %s", e, exc_info=True)
+
         self._sync_topbar_actions_for_current_view()
         logger.info("[Gallery] Review-Workflow geöffnet")
 
