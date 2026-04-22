@@ -224,7 +224,7 @@ class GalleryView(QWidget):
     # ──────────────────────────────────────────────────────────────────────────
 
     def load_keep_images(self) -> None:
-        """Lädt alle KEEP-Bilder aus der DB. Aufruf aus MainWindow."""
+        """Lädt alle aktiven Bilder aus der DB. Aufruf aus MainWindow."""
         self._all_entries = self._query_keep_images()
         self._apply_filter(GalleryFilterOptions())
 
@@ -265,9 +265,9 @@ class GalleryView(QWidget):
                     f.capture_time,
                     f.exif_json
                 FROM files f
-                WHERE f.file_status = 'KEEP'
+                WHERE COALESCE(f.file_status, 'UNDECIDED') != 'DELETE'
                   AND f.is_deleted = 0
-                ORDER BY f.quality_score DESC NULLS LAST, f.path ASC
+                ORDER BY COALESCE(f.quality_score, -1) DESC, COALESCE(f.capture_time, f.modified_time, 0) DESC, f.path ASC
                 """
             )
             rows = cur.fetchall()
@@ -412,12 +412,13 @@ class GalleryView(QWidget):
         )
         self._grid_layout.addWidget(empty_label, 0, 0, 1, COLS)
         cta_btn = QPushButton(t("gallery_scan_cta"))
-        cta_btn.setMinimumHeight(44)
-        cta_btn.setMinimumWidth(200)
+        cta_btn.setMinimumHeight(34)
+        cta_btn.setMinimumWidth(150)
+        cta_btn.setMaximumWidth(220)
         cta_btn.clicked.connect(self.scan_requested.emit)
         cta_btn.setStyleSheet(
-            f"QPushButton {{ padding: 10px 28px; border-radius: 10px; border: none; "
-            f"background-color: {semantic['success']}; color: white; font-size: 14px; font-weight: 700; }}"
+            f"QPushButton {{ padding: 6px 16px; border-radius: 8px; border: none; "
+            f"background-color: {semantic['success']}; color: white; font-size: 13px; font-weight: 600; }}"
         )
         cta_container = QWidget()
         cta_layout = QHBoxLayout(cta_container)

@@ -7063,9 +7063,9 @@ class ModernMainWindow(QMainWindow):
             SELECT d.group_id,
                    MIN(f.path) AS sample_path,
                    COUNT(*) AS total,
-                   SUM(CASE WHEN f.file_status IN ('UNDECIDED','UNSURE') THEN 1 ELSE 0 END) AS open_cnt,
-                   SUM(CASE WHEN f.file_status IN ('KEEP','DELETE') THEN 1 ELSE 0 END) AS decided_cnt,
-                   SUM(CASE WHEN f.file_status = 'DELETE' THEN 1 ELSE 0 END) AS delete_cnt,
+                     SUM(CASE WHEN COALESCE(f.file_status, 'UNDECIDED') IN ('UNDECIDED','UNSURE') THEN 1 ELSE 0 END) AS open_cnt,
+                     SUM(CASE WHEN COALESCE(f.file_status, 'UNDECIDED') IN ('KEEP','DELETE') THEN 1 ELSE 0 END) AS decided_cnt,
+                     SUM(CASE WHEN COALESCE(f.file_status, 'UNDECIDED') = 'DELETE' THEN 1 ELSE 0 END) AS delete_cnt,
                    MAX(d.similarity_score) AS sim,
                    SUM(CASE WHEN f.quality_score IS NOT NULL THEN 1 ELSE 0 END) AS analyzed_cnt,
                    MIN(
@@ -7168,83 +7168,82 @@ class ModernMainWindow(QMainWindow):
             self.group_lookup[grp.group_id] = grp
         
         single_rows = []
-        if rows:
-            # Only add synthetic single-image groups when there are real duplicate groups to review.
-            cur = self.conn.execute(
-                """
-                SELECT f.file_id,
-                       f.path,
-                                         f.file_status,
-                                         f.quality_score,
-                                         f.sharpness_component,
-                                         f.lighting_component,
-                                         f.resolution_component,
-                                         f.face_quality_component
-                FROM files f
-                LEFT JOIN duplicates d ON f.file_id = d.file_id
-                WHERE f.is_deleted = 0
-                  AND d.file_id IS NULL
-                  AND f.file_status IN ('UNDECIDED', 'UNSURE')
-                ORDER BY f.path
-                """
+        cur = self.conn.execute(
+            """
+            SELECT f.file_id,
+                   f.path,
+                                     f.file_status,
+                                     f.quality_score,
+                                     f.sharpness_component,
+                                     f.lighting_component,
+                                     f.resolution_component,
+                                     f.face_quality_component
+            FROM files f
+            LEFT JOIN duplicates d ON f.file_id = d.file_id
+            WHERE f.is_deleted = 0
+              AND d.file_id IS NULL
+                            AND COALESCE(f.file_status, 'UNDECIDED') IN ('UNDECIDED', 'UNSURE')
+            ORDER BY f.path
+            """
+        )
+
+        single_rows = cur.fetchall()
+
+        # BUG #4 FIX: TOCTOU-safe file existence check
+        # Instead of checking exists() then opening, try to access file stat directly
+        for idx, row in enumerate(single_rows):
+            file_id, path, status, quality_score, sharpness, lighting, resolution, face_quality = row
+            file_path = Path(path)
+
+            # TOCTOU-safe: Try to stat the file - if it fails, it doesn't exist
+            try:
+                file_path.stat()  # Raises FileNotFoundError if missing
+            except (FileNotFoundError, OSError) as e:
+                # File no longer exists or inaccessible - mark as deleted and skip
+                logger.warning(f"Single-image group SINGLE_{file_id}: Datei nicht verfügbar ({file_path.name}): {e}")
+                try:
+                    self.conn.execute(
+                        "UPDATE files SET is_deleted = 1 WHERE file_id = ?",
+                        (file_id,)
+                    )
+                    self.conn.commit()
+                except (sqlite3.DatabaseError, sqlite3.OperationalError) as db_err:
+                    logger.error(f"Fehler beim Markieren als gelöscht: {db_err}", exc_info=True)
+                continue
+
+            explanation = build_score_explanation(
+                quality_score=float(quality_score) if quality_score is not None else None,
+                sharpness_score=float(sharpness) if sharpness is not None else None,
+                lighting_score=float(lighting) if lighting is not None else None,
+                resolution_score=float(resolution) if resolution is not None else None,
+                face_quality_score=float(face_quality) if face_quality is not None else None,
+            )
+            confidence_score = compute_file_confidence_bucket(
+                quality_score=float(quality_score) if quality_score is not None else None,
+                sharpness_score=float(sharpness) if sharpness is not None else None,
+                lighting_score=float(lighting) if lighting is not None else None,
+                resolution_score=float(resolution) if resolution is not None else None,
+                face_quality_score=float(face_quality) if face_quality is not None else None,
             )
 
-            single_rows = cur.fetchall()
+            single_grp = GroupRow(
+                group_id=f"SINGLE_{file_id}",
+                sample_path=file_path,
+                total=1,
+                open_count=1,
+                decided_count=0,
+                delete_count=0,
+                similarity=0.0,
+                needs_review_count=1 if confidence_score in (10, 25) else 0,
+                confidence_score=confidence_score,
+                confidence_level=classify_group_confidence(confidence_score),
+                diagnostics_text=explanation.component_summary_text or "Diagnose: Einzelbild",
+            )
+            result.append(single_grp)
+            self.group_lookup[single_grp.group_id] = single_grp
 
-            # BUG #4 FIX: TOCTOU-safe file existence check
-            # Instead of checking exists() then opening, try to access file stat directly
-            for idx, row in enumerate(single_rows):
-                file_id, path, status, quality_score, sharpness, lighting, resolution, face_quality = row
-                file_path = Path(path)
-
-                # TOCTOU-safe: Try to stat the file - if it fails, it doesn't exist
-                try:
-                    file_path.stat()  # Raises FileNotFoundError if missing
-                except (FileNotFoundError, OSError) as e:
-                    # File no longer exists or inaccessible - mark as deleted and skip
-                    logger.warning(f"Single-image group SINGLE_{file_id}: Datei nicht verfügbar ({file_path.name}): {e}")
-                    try:
-                        self.conn.execute(
-                            "UPDATE files SET is_deleted = 1 WHERE file_id = ?",
-                            (file_id,)
-                        )
-                        self.conn.commit()
-                    except (sqlite3.DatabaseError, sqlite3.OperationalError) as db_err:
-                        logger.error(f"Fehler beim Markieren als gelöscht: {db_err}", exc_info=True)
-                    continue
-
-                explanation = build_score_explanation(
-                    quality_score=float(quality_score) if quality_score is not None else None,
-                    sharpness_score=float(sharpness) if sharpness is not None else None,
-                    lighting_score=float(lighting) if lighting is not None else None,
-                    resolution_score=float(resolution) if resolution is not None else None,
-                    face_quality_score=float(face_quality) if face_quality is not None else None,
-                )
-                confidence_score = compute_file_confidence_bucket(
-                    quality_score=float(quality_score) if quality_score is not None else None,
-                    sharpness_score=float(sharpness) if sharpness is not None else None,
-                    lighting_score=float(lighting) if lighting is not None else None,
-                    resolution_score=float(resolution) if resolution is not None else None,
-                    face_quality_score=float(face_quality) if face_quality is not None else None,
-                )
-
-                single_grp = GroupRow(
-                    group_id=f"SINGLE_{file_id}",
-                    sample_path=file_path,
-                    total=1,
-                    open_count=1,
-                    decided_count=0,
-                    delete_count=0,
-                    similarity=0.0,
-                    needs_review_count=1 if confidence_score in (10, 25) else 0,
-                    confidence_score=confidence_score,
-                    confidence_level=classify_group_confidence(confidence_score),
-                    diagnostics_text=explanation.component_summary_text or "Diagnose: Einzelbild",
-                )
-                result.append(single_grp)
-                self.group_lookup[single_grp.group_id] = single_grp
-        else:
-            logger.info("[UI] No duplicate groups found - synthetic single-image groups suppressed")
+        if not rows and single_rows:
+            logger.info("[UI] No duplicate groups found; showing single-image review entries")
         
         query_time = time.monotonic() - query_start
         logger.info(f"Loaded {len(result)} groups (including {len(single_rows)} single-image groups) in {query_time:.3f}s")
