@@ -151,11 +151,11 @@ class AutoSelector:
             logger.warning("Alle Bilder disqualifiziert (geschlossene Augen/Qualitätsfehler) – keine Empfehlung")
             return None, None
 
-        # Highest total_score among usable
-        best_img = max(usable, key=lambda x: x.total_score)
+        # Prefer non-class-A candidates; within same class, prefer higher total score.
+        best_img = min(usable, key=lambda x: (x.duplicate_class == "A", -x.total_score))
         
-        # Log all candidates (always, but with appropriate detail level)
-        usable_sorted = sorted(usable, key=lambda x: x.total_score, reverse=True)
+        # Log all candidates with the same class-aware priority.
+        usable_sorted = sorted(usable, key=lambda x: (x.duplicate_class == "A", -x.total_score))
         
         if AppConfig.is_debug():
             # DEBUG: Log detailed scoring for top 3 candidates

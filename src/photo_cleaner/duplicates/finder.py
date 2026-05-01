@@ -14,7 +14,7 @@ from photo_cleaner.core.hasher import hamming_distance
 logger = logging.getLogger(__name__)
 
 class DuplicateFinder:
-    def __init__(self, db: Database, phash_threshold: int = 10):
+    def __init__(self, db: Database, phash_threshold: int = 5):
         self.db = db
         self.phash_threshold = phash_threshold
         # CRITICAL: Increase prefix length to 8 hex chars (32 bits) to reduce bucket degeneration

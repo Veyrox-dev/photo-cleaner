@@ -98,7 +98,7 @@ class GalleryFilterBar(QWidget):
             btn = QPushButton(t(_btn_i18n_key(period_key)))
             btn.setCheckable(True)
             btn.setChecked(period_key == "all")
-            btn.clicked.connect(lambda checked, pk=period_key: self._on_period_clicked(pk))
+            btn.clicked.connect(lambda checked=False, pk=period_key: self._on_period_clicked(pk))
             btn.setMinimumHeight(28)
             self._period_btns[period_key] = btn
             layout.addWidget(btn)

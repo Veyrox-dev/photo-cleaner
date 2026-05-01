@@ -471,11 +471,10 @@ class RatingWorkerThread(QThread):
                             decision = "EMPFOHLEN"
                         elif second_path and path == second_path:
                             decision = "ZWEITWAHL"
+                        elif len(item) == 4 and components.duplicate_class == "A":
+                            decision = "KLASSE A (DUPLIKAT-LOESCHEN)"
                         elif disqualified:
-                            if len(item) == 4 and components.disqualify_reason == "Klasse A":
-                                decision = "KLASSE A (DUPLIKAT-LOESCHEN)"
-                            else:
-                                decision = "AUSSORTIERT"
+                            decision = "AUSSORTIERT"
                         else:
                             decision = "BEWERTET"
 
@@ -806,7 +805,7 @@ class DuplicateFinderThread(QThread):
     finished = Signal(object)  # group_rows list
     error = Signal(str)
 
-    def __init__(self, db_path: Path, phash_threshold: int = 10):
+    def __init__(self, db_path: Path, phash_threshold: int = 5):
         super().__init__()
         self.db_path = db_path
         self.phash_threshold = phash_threshold
@@ -3874,6 +3873,7 @@ class ModernMainWindow(QMainWindow):
         self._indexing_progress_dialog: Optional[QProgressDialog] = None
         self._post_indexing_progress_dialog: Optional[QProgressDialog] = None
         self._post_indexing_cancelled = False
+        self._post_indexing_progress_phase = 0  # 0=idle, 2=grouping, 3=rating, 4=finalization
         self._post_indexing_group_count = 0
         self._post_indexing_duplicate_images = 0
         self._rating_error_message: Optional[str] = None
@@ -4253,6 +4253,9 @@ class ModernMainWindow(QMainWindow):
         """Handle progress update from indexing thread."""
         if progress_dialog is None or not progress_dialog.isVisible():
             return
+        # Ignore late indexing signals once post-indexing has started.
+        if self._post_indexing_progress_phase >= 2 and progress_dialog is self._post_indexing_progress_dialog:
+            return
         if isinstance(progress_dialog, ProgressStepDialog):
             # Phase D: Use new progress dialog with steps
             if total > 0:
@@ -4363,6 +4366,7 @@ class ModernMainWindow(QMainWindow):
         self._analysis_duration = 0.0
         self._analysis_stage_timings = {}
         self._analysis_stage_started_at = {}
+        self._post_indexing_progress_phase = 2
         self._analysis_progress_events_total = 0
         self._analysis_progress_events_rendered = 0
         self._analysis_metrics_output_path = None
@@ -4390,7 +4394,7 @@ class ModernMainWindow(QMainWindow):
         self._post_indexing_progress_dialog = progress
 
         logger.info("[UI] Starting DuplicateFinderThread...")
-        self._duplicate_thread = DuplicateFinderThread(self.db_path, phash_threshold=10)
+        self._duplicate_thread = DuplicateFinderThread(self.db_path, phash_threshold=5)
         self._duplicate_thread.finished.connect(self._on_duplicate_finder_finished)
         self._duplicate_thread.error.connect(self._on_duplicate_finder_error)
         self._duplicate_thread.start()
@@ -4444,6 +4448,7 @@ class ModernMainWindow(QMainWindow):
             progress.setMinimum(0)
             progress.setMaximum(100)
             if isinstance(progress, ProgressStepDialog):
+                self._post_indexing_progress_phase = max(self._post_indexing_progress_phase, 3)
                 progress.set_step(3)
                 progress.set_progress(75, t("progress_step_3_rating"))
             else:
@@ -4481,6 +4486,7 @@ class ModernMainWindow(QMainWindow):
         logger.info("[DUPFINDER] Waiting for [WORKER] logs from RatingWorkerThread.run()...")
 
     def _on_duplicate_finder_error(self, error_msg: str) -> None:
+        self._post_indexing_progress_phase = 0
         if self._post_indexing_progress_dialog:
             self._post_indexing_progress_dialog.close()
             self._post_indexing_progress_dialog = None
@@ -4488,6 +4494,9 @@ class ModernMainWindow(QMainWindow):
         QMessageBox.critical(self, t("error"), t("duplicate_search_failed").format(error=error_msg))
 
     def _on_rating_progress(self, pct: int, status: str) -> None:
+        # Do not allow rating progress to overwrite finalization once phase 4 started.
+        if self._post_indexing_progress_phase >= 4:
+            return
         progress = self._post_indexing_progress_dialog
         self._analysis_progress_events_total += 1
         if progress:
@@ -4513,6 +4522,7 @@ class ModernMainWindow(QMainWindow):
 
             if isinstance(progress, ProgressStepDialog):
                 # Phase D: Use new progress dialog with steps
+                self._post_indexing_progress_phase = max(self._post_indexing_progress_phase, 3)
                 progress.set_step(3)
                 progress.set_progress(
                     mapped,
@@ -4551,6 +4561,7 @@ class ModernMainWindow(QMainWindow):
             return
 
         self._mark_analysis_stage_start("finalization")
+        self._post_indexing_progress_phase = 4
         
         # ✅ CRITICAL FIX: Now that rating is complete, resume ThumbnailLoaders for sequential flow
         logger.info("[UI] Rating complete! Resuming ThumbnailLoaders for sequential flow...")
@@ -4588,6 +4599,7 @@ class ModernMainWindow(QMainWindow):
             logger.info("[UI] Closing post-indexing progress dialog...")
             self._post_indexing_progress_dialog.close()
             self._post_indexing_progress_dialog = None
+            self._post_indexing_progress_phase = 0
         
         if not self._thumb_loading_active:
             summary = self._pending_rating_summary
@@ -4724,7 +4736,7 @@ class ModernMainWindow(QMainWindow):
             progress.set_step(2)
             progress.set_progress(65, t("progress_step_2_grouping"))
             QApplication.processEvents()
-            finder = DuplicateFinder(self.db, phash_threshold=10)
+            finder = DuplicateFinder(self.db, phash_threshold=5)
             duplicate_groups = finder.build_groups()
             
             progress.set_progress(75, t("progress_step_3_rating"))
@@ -7638,6 +7650,10 @@ class ModernMainWindow(QMainWindow):
         if total <= 0:
             return
         self._thumb_loading_active = done < total
+        # Finalization UI must only be driven during phase 4 to avoid confusing jumps
+        # (e.g. grouping/rating -> finalization -> rating).
+        if self._post_indexing_progress_phase < 4:
+            return
         progress = self._post_indexing_progress_dialog
         if progress and progress.isVisible():
             progress.setMinimum(0)
@@ -7667,6 +7683,7 @@ class ModernMainWindow(QMainWindow):
                 progress.close()
                 self._post_indexing_progress_dialog = None
                 self._indexing_progress_dialog = None
+                self._post_indexing_progress_phase = 0
                 self._thumb_loading_active = False
                 if self._pending_rating_summary:
                     summary = self._pending_rating_summary

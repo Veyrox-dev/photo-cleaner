@@ -28,8 +28,11 @@
         - [ ] Debounce/Lock-Handling für stabile Windows-Läufe
 
 - [ ] **Pre-Release UX-Fixes** (Priorität: Mittel · Zeitraum: Mai-Juli 2026)
-        - [ ] Theme-Audit-Restlauf abschließen
-        - [ ] UI-Snapshot-Smoke Dark/Light/Dark
+        - [x] Theme-Audit-Restlauf abgeschlossen (siehe scripts/theme_audit.py)
+        - [x] UI-Snapshot-Smoke Dark/Light/Dark abgeschlossen (siehe scripts/ui_snapshot_smoke.py)
+        - [x] Analyse-Progressbar ohne Ruecksprung zwischen "Finalisierung" und "Bilder bewerten" stabilisiert
+        - [x] Duplikat-Ranking mit Klasse-A-Markierung (Kopie-Dateien als bevorzugte Loeschkandidaten)
+        - [x] Regressions-Check: 3 komplette Analyselaeufe ohne Progress/Status-Spruenge (siehe scripts/pre_release_regression_check.py --runs 3)
         - [x] ✅ **1. Mai 2026 - Critical UX Stability Fixes durchgeführt:**
                 - [x] **Thumbnail Race Condition** (Priorität: Kritisch)
                         - **Problem**: Viele Thumbnails erschienen gleichzeitig, überlappend mit alten Einträgen
@@ -76,9 +79,8 @@
 
 - [ ] **5× Frozen-Build Smoke-Test** (Priorität: Kritisch · Zeitraum: Juli-September 2026)
         - [ ] EXE + MSI auf sauberen Win10/Win11-Maschinen testen
-        - [ ] Theme-Audit-Restlauf abschließen
-        - [ ] UI-Snapshot-Smoke Dark/Light/Dark
-        - [ ] Performance-Testing & Profiling
+        - [ ] Install / Upgrade / Uninstall protokollieren
+        - [ ] 5/5 Durchläufe ohne kritische Fehler
 
 
 - [ ] **Stripe + Supabase E2E-Validierung** (Priorität: Hoch · Zeitraum: August-September 2026)

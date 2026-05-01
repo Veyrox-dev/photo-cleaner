@@ -429,8 +429,8 @@ class GroupScorer:
             comp = self.auto_selector._score_image(path, quality_data[path])
             scored.append(comp)
 
-        # Sort by score (descending), track disqualified separately
-        scored_sorted = sorted(scored, key=lambda c: c.total_score, reverse=True)
+        # Sort by class-aware priority: non-class-A first, then higher score.
+        scored_sorted = sorted(scored, key=lambda c: (c.duplicate_class == "A", -c.total_score))
         usable = [c for c in scored_sorted if not c.disqualified]
         
         # Build full score list for all images (now includes components)
@@ -438,7 +438,13 @@ class GroupScorer:
         
         logger.info(f"\n📈 Gruppe {group_id}: Score-Liste (Augen-Gewicht 55%):")
         for i, (path, score, disq, _) in enumerate(all_scores, 1):
-            status = "❌ DISQUALIFIZIERT" if disq else "✅ Verwendbar"
+            comp = all_scores[i - 1][3]
+            if disq:
+                status = "❌ DISQUALIFIZIERT"
+            elif comp.duplicate_class == "A":
+                status = "🅰️ Klasse A (Duplikat-Loeschen bevorzugt)"
+            else:
+                status = "✅ Verwendbar"
             logger.info(f"  #{i}: {path.name:20s} Score={score:6.2f} {status}")
         
         if not usable:
