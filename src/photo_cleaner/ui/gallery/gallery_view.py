@@ -265,7 +265,7 @@ class GalleryView(QWidget):
                     f.capture_time,
                     f.exif_json
                 FROM files f
-                WHERE COALESCE(f.file_status, 'UNDECIDED') != 'DELETE'
+                WHERE f.file_status = 'KEEP'
                   AND f.is_deleted = 0
                 ORDER BY COALESCE(f.quality_score, -1) DESC, COALESCE(f.capture_time, f.modified_time, 0) DESC, f.path ASC
                 """
@@ -587,7 +587,7 @@ class GalleryView(QWidget):
         layout.addWidget(image_label, 1)
 
         close_btn = QPushButton(t("close_button"))
-        close_btn.clicked.connect(lambda: self._stop_slideshow())
+        close_btn.clicked.connect(lambda checked=False: self._stop_slideshow())
         layout.addWidget(close_btn, alignment=Qt.AlignRight)
 
         dialog.finished.connect(self._on_slideshow_dialog_closed)

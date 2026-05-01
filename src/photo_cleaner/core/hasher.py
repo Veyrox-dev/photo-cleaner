@@ -170,25 +170,32 @@ class ImageHasher:
 
     def compute_file_hash(self, file_path: Path, algorithm: str = "sha256") -> Optional[str]:
         """
-        Compute cryptographic hash of image pixels, ignoring EXIF or file metadata.
+        Compute cryptographic hash of entire image file bytes (for exact duplicate detection).
+        
+        CRITICAL: This hashes the complete file bytes, not just pixels.
+        This allows detection of bit-exact copies, which is essential for handling
+        files copied with "Kopie" suffixes or other metadata preservation.
 
         Args:
             file_path: Path to image file
             algorithm: Hash algorithm (sha256, md5, etc.)
 
         Returns:
-            Hexadecimal hash string of pixels, or None on failure
+            Hexadecimal hash string of file bytes, or None on failure
         """
         try:
-            with Image.open(file_path) as img:
-                img = img.convert("RGB")  # Alpha-Kanal ignorieren
-                data = img.tobytes()
-                hash_obj = hashlib.new(algorithm)
-                hash_obj.update(data)
-                return hash_obj.hexdigest()
+            hash_obj = hashlib.new(algorithm)
+            with open(file_path, 'rb') as f:
+                # Hash entire file in chunks for memory efficiency
+                while True:
+                    chunk = f.read(8192)  # 8KB chunks
+                    if not chunk:
+                        break
+                    hash_obj.update(chunk)
+            return hash_obj.hexdigest()
         # P6.6: Handle corrupted images gracefully
         except (OSError, IOError, Exception) as e:
-            logger.warning(f"Failed to compute pixel hash for {file_path} (corrupted or unsupported): {e}")
+            logger.warning(f"Failed to compute file hash for {file_path}: {e}")
             return None
 
     def compute_all_hashes(self, image_path: Path) -> dict[str, Optional[str]]:

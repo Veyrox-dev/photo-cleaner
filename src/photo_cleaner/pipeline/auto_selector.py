@@ -19,6 +19,7 @@ User can always override the recommendation.
 """
 
 import logging
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -64,6 +65,7 @@ class ImageScoreComponents:
     reason: str = ""  # Why this was chosen
     disqualified: bool = False
     disqualify_reason: str = ""
+    duplicate_class: str = ""
     
     def __post_init__(self):
         """Calculate total score if not set."""
@@ -414,6 +416,15 @@ class AutoSelector:
             components.recency_score,
         ]
         components.total_score = sum(w * s for w, s in zip(weights, scores))
+        
+        # Classify copy-like filenames into a dedicated class (A) instead of numeric penalty.
+        # Class A is a soft ranking signal: prefer deleting these when originals exist,
+        # but do not hard-disqualify to avoid "no usable image" edge cases.
+        _copy_patterns = (" - kopie", " - copy", "- kopie", "- copy")
+        name_lower = image_path.stem.lower()
+        if any(name_lower.endswith(p) for p in _copy_patterns) or re.search(r"\(\d+\)$", name_lower):
+            components.duplicate_class = "A"
+            components.reason += " | Klasse A"
         
         # DEBUG: Log detailed scoring breakdown
         if AppConfig.is_debug():

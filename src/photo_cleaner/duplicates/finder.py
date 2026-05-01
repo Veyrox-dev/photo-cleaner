@@ -14,7 +14,7 @@ from photo_cleaner.core.hasher import hamming_distance
 logger = logging.getLogger(__name__)
 
 class DuplicateFinder:
-    def __init__(self, db: Database, phash_threshold: int = 5):
+    def __init__(self, db: Database, phash_threshold: int = 10):
         self.db = db
         self.phash_threshold = phash_threshold
         # CRITICAL: Increase prefix length to 8 hex chars (32 bits) to reduce bucket degeneration
@@ -110,6 +110,7 @@ class DuplicateFinder:
         )
         rows = cur.fetchall()
         logger.info(f"Found {len(rows)} files with phash")
+        logger.info(f"Using phash_threshold={self.phash_threshold} bits (Hamming distance)")
 
         cur.execute("DELETE FROM duplicates")
 
@@ -184,6 +185,7 @@ class DuplicateFinder:
                         logger.debug("Error computing hamming distance in build_groups", exc_info=True)
                         continue
                     if dist <= self.phash_threshold:
+                        logger.debug(f"Match: {a['path']} <==> {b['path']} (distance={dist})")
                         union(a_idx, b_idx)
 
         # Time-aware relaxation for burst/series photos: if timestamps are close,

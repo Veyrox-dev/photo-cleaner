@@ -472,7 +472,10 @@ class RatingWorkerThread(QThread):
                         elif second_path and path == second_path:
                             decision = "ZWEITWAHL"
                         elif disqualified:
-                            decision = "AUSSORTIERT"
+                            if len(item) == 4 and components.disqualify_reason == "Klasse A":
+                                decision = "KLASSE A (DUPLIKAT-LOESCHEN)"
+                            else:
+                                decision = "AUSSORTIERT"
                         else:
                             decision = "BEWERTET"
 
@@ -1528,6 +1531,9 @@ class FolderSelectionDialog(QDialog):
         
         self.start_btn = QPushButton(t("start_analysis"))
         self.start_btn.setEnabled(False)
+        # Avoid accidental immediate re-start when Enter is pressed while opening this dialog.
+        self.start_btn.setAutoDefault(False)
+        self.start_btn.setDefault(False)
         self.start_btn.setMinimumWidth(190)
         self.start_btn.setMinimumHeight(44)
         success_color = get_semantic_colors()['success']
@@ -1538,6 +1544,8 @@ class FolderSelectionDialog(QDialog):
         button_box.addButton(self.start_btn, QDialogButtonBox.AcceptRole)
         
         cancel_btn = QPushButton(t("cancel"))
+        cancel_btn.setAutoDefault(False)
+        cancel_btn.setDefault(False)
         cancel_btn.setMinimumWidth(190)
         cancel_btn.setMinimumHeight(44)
         cancel_btn.setStyleSheet(
@@ -4334,6 +4342,10 @@ class ModernMainWindow(QMainWindow):
         """Build duplicate groups and rate images without blocking the UI."""
         start_time = time.monotonic()
         logger.info("[UI] _start_post_indexing_analysis() STARTED")
+
+        # UX: Move directly to review workflow as soon as duplicate scan starts.
+        # This keeps users in the right context while grouping/rating is still running.
+        self._open_review()
         
         # ✅ CRITICAL FIX: Pause ThumbnailLoaders during post-indexing to prevent race conditions
         # The loaders will resume ONLY in _finish_post_indexing() after rating is complete
@@ -5369,6 +5381,15 @@ class ModernMainWindow(QMainWindow):
         if self._gallery_view is not None and hasattr(self, "_main_stack"):
             if self._main_stack.currentWidget() is self._gallery_view:
                 self._gallery_view.refresh()
+
+    def _refresh_gallery_data(self) -> None:
+        """Refresh gallery data cache regardless of current active view."""
+        if self._gallery_view is None:
+            return
+        try:
+            self._gallery_view.refresh()
+        except Exception as e:
+            logger.error("[Gallery] Data refresh failed: %s", e, exc_info=True)
 
     def _show_gallery_review_badge(self, group_count: int) -> None:
         """Zeigt in der Gallery einen Badge: 'X Duplikat-Gruppen gefunden — Jetzt reviewen'."""
@@ -9048,6 +9069,7 @@ class ModernMainWindow(QMainWindow):
             else:
                 QMessageBox.information(self, result_message.title, result_message.message)
             self.refresh_groups()
+            self._refresh_gallery_data()
             self._flush_session_state("Finalize export completed")
             self._update_progress()
         except (OSError, IOError, ValueError) as e:
@@ -9093,6 +9115,7 @@ class ModernMainWindow(QMainWindow):
             )
 
         self.refresh_groups()
+        self._refresh_gallery_data()
         self._flush_session_state("Delete marked completed")
         self._update_progress()
     
