@@ -85,7 +85,7 @@ class GalleryView(QWidget):
         # Thumbnail-Loader (eigener, unabhängig vom MainWindow-Loader)
         self._thumb_cache = SmartThumbnailCache(max_size_mb=150)
         self._thumb_loader = ThumbnailLoader(self._thumb_cache, thumb_size=(200, 200))
-        self._thumb_loader.thumbnail_loaded.connect(self._on_thumb_loaded)
+        self._thumb_loader.thumbnail_loaded_with_path.connect(self._on_thumb_loaded)
         self._thumb_loader.start()
         self._thumb_loader.resume()
 
@@ -443,12 +443,16 @@ class GalleryView(QWidget):
     # Thumbnail-Callback
     # ──────────────────────────────────────────────────────────────────────────
 
-    def _on_thumb_loaded(self, global_idx: int, qimg: QImage) -> None:
+    def _on_thumb_loaded(self, global_idx: int, qimg: QImage, source_path: str) -> None:
         """Callback vom ThumbnailLoader — läuft im UI-Thread (via Signal)."""
         page_start = self._current_page * PAGE_SIZE
         local_idx = global_idx - page_start
         if 0 <= local_idx < len(self._cards):
-            self._cards[local_idx].set_thumbnail_image(qimg)
+            card = self._cards[local_idx]
+            if str(card.path) != source_path:
+                # Stale worker result from an older render pass.
+                return
+            card.set_thumbnail_image(qimg)
 
     # ──────────────────────────────────────────────────────────────────────────
     # Interaktion

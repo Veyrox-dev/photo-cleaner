@@ -67,6 +67,8 @@ class PhotoIndexer:
             logger.warning(f"No image files found in {folder_path}")
             return {"processed": 0, "skipped": 0, "failed": 0}
 
+        self._reactivate_scanned_files(files)
+
         logger.info(f"Found {len(files)} files to index")
 
         stats = {"processed": 0, "skipped": 0, "failed": 0}
@@ -123,6 +125,42 @@ class PhotoIndexer:
         cursor = self.db.conn.cursor()
         cursor.execute("SELECT 1 FROM files WHERE path = ?", (str(path),))
         return cursor.fetchone() is not None
+
+    def _reactivate_scanned_files(self, files: list[Path]) -> int:
+        """Clear stale deleted markers for files that are present in the current scan.
+
+        This self-heals DB rows that were marked deleted in a previous session even
+        though the underlying file still exists and is being scanned again.
+        """
+        if not files:
+            return 0
+
+        cursor = self.db.conn.cursor()
+        restored = 0
+        chunk_size = 500
+
+        for start in range(0, len(files), chunk_size):
+            chunk = files[start:start + chunk_size]
+            placeholders = ",".join("?" for _ in chunk)
+            params = [str(path) for path in chunk]
+            cursor.execute(
+                f"""
+                UPDATE files
+                SET is_deleted = 0,
+                    deleted_at = NULL,
+                    trash_path = NULL
+                WHERE is_deleted = 1
+                  AND path IN ({placeholders})
+                """,
+                params,
+            )
+            restored += cursor.rowcount or 0
+
+        if restored:
+            self.db.conn.commit()
+            logger.info("Reactivated %d previously deleted file records from current scan", restored)
+
+        return restored
 
     @staticmethod
     def _extract_capture_time(path: Path) -> Optional[float]:
@@ -344,6 +382,8 @@ class PhotoIndexer:
         logger.info(
             f"[{scan_id}] Starting incremental scan: {len(all_files)} total files"
         )
+
+        self._reactivate_scanned_files(all_files)
         
         # Categorize files: new, modified, unchanged
         new_files, modified_files, unchanged_files = self._categorize_files(all_files)

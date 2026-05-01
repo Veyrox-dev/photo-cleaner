@@ -80,6 +80,7 @@ class ThumbnailLoader(QThread):
     """
 
     thumbnail_loaded = Signal(int, QImage)  # index, image
+    thumbnail_loaded_with_path = Signal(int, QImage, str)  # index, image, source path
 
     def __init__(self, cache: SmartThumbnailCache, thumb_size: Tuple[int, int] = (200, 200)):
         super().__init__()
@@ -136,6 +137,7 @@ class ThumbnailLoader(QThread):
             img = self._load_or_generate(image_path, self.thumb_size)
             logger.debug(f"[THUMB] Emitting thumbnail index={index} size={img.width()}x{img.height()}")
             self.thumbnail_loaded.emit(index, img)
+            self.thumbnail_loaded_with_path.emit(index, img, str(image_path))
 
     def _load_or_generate(self, image_path: Path, size: Tuple[int, int]) -> QImage:
         # Try cache

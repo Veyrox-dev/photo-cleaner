@@ -106,10 +106,13 @@ from photo_cleaner.services.status_service import StatusService
 # NOTE: get_thumbnail is used for detail views only; list/grid thumbnails are async.
 from photo_cleaner.ui.thumbnail_cache import get_thumbnail
 from photo_cleaner.ui.onboarding_state import (
+    mark_first_run_setup_completed,
     mark_onboarding_completed,
     reset_onboarding_completed,
+    should_show_first_run_setup,
     should_show_onboarding,
 )
+from photo_cleaner.ui.first_run_setup_dialog import FirstRunSetupDialog
 from photo_cleaner.ui.onboarding_tour import OnboardingStep, OnboardingTourDialog
 from photo_cleaner.ui.group_filters import GroupFilterOptions, group_matches_filters
 from photo_cleaner.ui.quota_messaging import build_quota_limit_message
@@ -174,7 +177,14 @@ def _parse_version_tuple(version_str: str) -> tuple[int, int, int]:
 
 def _is_newer_version(latest: str, current: str) -> bool:
     return _parse_version_tuple(latest) > _parse_version_tuple(current)
-from photo_cleaner.i18n import t, set_language, load_language_from_settings, save_language_to_settings, get_available_languages
+from photo_cleaner.i18n import (
+    t,
+    set_language,
+    get_language,
+    load_language_from_settings,
+    save_language_to_settings,
+    get_available_languages,
+)
 from photo_cleaner.theme import (
     set_theme,
     load_theme_from_settings,
@@ -3961,6 +3971,7 @@ class ModernMainWindow(QMainWindow):
         # Theme
         self.current_theme = "Dunkel"
         self._user_settings = self._load_user_settings()
+        self._first_run_setup_prompted_this_session = False
         self._onboarding_prompted_this_session = False
 
         # Load language and theme from settings BEFORE building UI
@@ -5207,6 +5218,10 @@ class ModernMainWindow(QMainWindow):
         self.import_action.triggered.connect(self._open_import_dialog)
         self.import_action.setToolTip(t("import_tooltip"))
 
+        self.fresh_session_action = menubar.addAction(t("fresh_session"))
+        self.fresh_session_action.triggered.connect(self._start_fresh_session)
+        self.fresh_session_action.setToolTip(t("fresh_session_tooltip"))
+
         # Diashow im Gallery-Kontext
         self.slideshow_action = menubar.addAction(t("gallery_slideshow_start"))
         self.slideshow_action.triggered.connect(self._start_gallery_slideshow_from_menu)
@@ -5331,6 +5346,10 @@ class ModernMainWindow(QMainWindow):
             self.slideshow_action.setVisible(in_gallery)
         if hasattr(self, "review_action"):
             self.review_action.setVisible(in_gallery)
+            self.review_action.setEnabled(in_gallery and self._has_any_images())
+        if hasattr(self, "fresh_session_action"):
+            self.fresh_session_action.setVisible(in_gallery)
+            self.fresh_session_action.setEnabled(in_gallery and self._has_any_images())
 
     def _start_gallery_slideshow_from_menu(self) -> None:
         """Startet die Gallery-Diashow als Single-Window-Viewer."""
@@ -5682,6 +5701,7 @@ class ModernMainWindow(QMainWindow):
             from photo_cleaner.ui.settings_dialog import SettingsDialog
             dialog = SettingsDialog(self, actions=self.actions)
             if dialog.exec():
+                self._user_settings = self._load_user_settings()
                 self._show_status_message("Einstellungen gespeichert")
                 # Refresh UI with new settings
                 self.refresh_groups()
@@ -6931,6 +6951,8 @@ class ModernMainWindow(QMainWindow):
         """Show onboarding once per user and once per app session."""
         if self._onboarding_prompted_this_session:
             return
+        if not self._maybe_show_first_run_setup():
+            return
         if not should_show_onboarding(self._user_settings):
             return
 
@@ -6957,6 +6979,71 @@ class ModernMainWindow(QMainWindow):
         if result == QDialog.Accepted or tour.dont_show_again:
             mark_onboarding_completed(self._user_settings)
             self._save_user_settings()
+
+    def _maybe_show_first_run_setup(self) -> bool:
+        """Show a compact first-run setup before the guided tour."""
+        if self._first_run_setup_prompted_this_session:
+            return True
+        if not should_show_first_run_setup(self._user_settings):
+            return True
+
+        self._first_run_setup_prompted_this_session = True
+        dialog = FirstRunSetupDialog(self)
+        if dialog.exec() != QDialog.Accepted:
+            return False
+
+        self._apply_first_run_setup(dialog.selected_settings())
+        mark_first_run_setup_completed(self._user_settings)
+        self._save_user_settings()
+        return True
+
+    def _apply_first_run_setup(self, selected_settings: dict) -> None:
+        """Persist and apply first-run settings without opening the full settings dialog."""
+        settings_dialog = self._user_settings.setdefault("settings_dialog", {})
+        settings_dialog["keep_originals"] = bool(selected_settings.get("keep_originals", True))
+        settings_dialog["auto_backup"] = bool(selected_settings.get("auto_backup", True))
+        settings_dialog["confirm_delete"] = bool(selected_settings.get("confirm_delete", True))
+
+        selected_language = str(selected_settings.get("language") or self._user_settings.get("language") or get_language())
+        selected_theme = str(selected_settings.get("theme") or self._user_settings.get("theme") or get_theme())
+        self._user_settings["language"] = selected_language
+        self._user_settings["theme"] = selected_theme
+        self._save_user_settings()
+
+        if selected_language != get_language():
+            self._change_language(selected_language)
+        if selected_theme != get_theme():
+            self._change_theme(selected_theme)
+
+        self.refresh_groups()
+        self.refresh_gallery_if_open()
+
+    def _start_fresh_session(self) -> None:
+        """Reset current review state and jump into a new import flow."""
+        reply = QMessageBox.question(
+            self,
+            t("fresh_session_title"),
+            t("fresh_session_confirm"),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        result = self.actions.ui_reset_pipeline_state()
+        if not result.get("ok"):
+            QMessageBox.warning(self, t("fresh_session_title"), result.get("message", t("fresh_session_failed")))
+            return
+
+        self.current_group = None
+        self.current_index = -1
+        self.files_in_group = []
+        self.refresh_groups()
+        if self._gallery_view is not None:
+            self._gallery_view.show_review_badge(0)
+        self._open_gallery()
+        QMessageBox.information(self, t("fresh_session_title"), t("fresh_session_done"))
+        self._open_import_dialog()
 
     def _build_onboarding_tour_steps(self) -> List[OnboardingStep]:
         """Build visible onboarding steps for the current UI state."""
