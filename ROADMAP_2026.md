@@ -1,6 +1,6 @@
 # PhotoCleaner Roadmap 2026 (Neu ab 15. April 2026)
 
-**Stand:** 15. April 2026  
+**Stand:** 2. Mai 2026  
 **Version:** v0.8.7  
 **Launch-Ziel:** v1.0.0 am 3. Oktober 2026  
 **Preismodell:** FREE (einmaliger Scan, 250 Bilder) · PRO (29 EUR/Jahr, unbegrenzt)  
@@ -17,15 +17,27 @@
         - [x] Keep-Bilder als Galerie statt Liste
         - [x] Finaler Qualitätscheck vor Export direkt in der Galerie
 
-- [ ] **EXIF Smart Grouping** (Priorität: Hoch · Zeitraum: Apr-Juni 2026)
-        - [ ] Gruppierung nach Ort + Datum
-        - [ ] Reverse Geocoding via OSM Nominatim
-        - [ ] Caching + Fallback bei fehlenden GPS/EXIF-Daten
+- [x] **EXIF Smart Grouping** (Priorität: Hoch · Zeitraum: Apr-Juni 2026) ✅ DESIGN & ARCHITEKTUR ABGESCHLOSSEN (2. Mai 2026)
+        - [x] Architektur-Dokumentation & Designentscheidungen (siehe docs/EXIF_SMART_GROUPING.md)
+        - [x] Code-Skelette: NominatimGeocoder, GeocodingCache, ExifGroupingEngine
+        - [x] Hybrid Caching (Memory-LRU + SQLite, 7 Tage TTL)
+        - [x] Reverse Geocoding via OSM Nominatim mit Rate-Limiting (1 req/sec)
+        - [x] Fallback-Hierarchie (GPS → Kamera-Ort → Datum-Cluster → Ungrouped)
+        - [x] DB-Schema mit Migrationen (4 neue Tabellen)
+        - [x] Implementierungs-Leitfaden mit FILL-Platzhaltern (docs/EXIF_SMART_GROUPING_IMPLEMENTATION_GUIDE.md)
+        - [ ] EXIF-Extraktion aus RatingWorkerThread integrieren (nächste Phase: Juni)
+        - [ ] DB-Integration (_save_groups_to_db implementation) (nächste Phase: Juni)
+        - [ ] UI-Integration: Gallery-Filter + Map-Visualisierung (nächste Phase: Juni-Juli)
 
-- [ ] **Watch Folders / Auto-Import** (Priorität: Hoch · Zeitraum: Mai-Juni 2026)
-        - [ ] Ordner dauerhaft überwachen (chokidar-basiert)
-        - [ ] Neue Bilder automatisch scannen/analysieren
-        - [ ] Debounce/Lock-Handling für stabile Windows-Läufe
+- [x] **Watch Folders / Auto-Import** (Priorität: Hoch · Zeitraum: Mai-Juni 2026) ✅ DESIGN & ARCHITEKTUR ABGESCHLOSSEN (2. Mai 2026)
+        - [x] Architektur-Dokumentation & Designentscheidungen (siehe docs/WATCHFOLDERS_AUTOIMPORT.md)
+        - [x] Code-Skelette: WatchfolderMonitor, DebouncedEventHandler, AutoimportPipeline, Controller
+        - [x] Unit-Tests Framework (pytest + qtbot, 15+ Tests)
+        - [x] Implementierungs-Leitfaden mit Copy-Paste-Code-Snippets (docs/WATCHFOLDERS_IMPLEMENTATION_GUIDE.md)
+        - [x] E2E-Test-Szenarien & Troubleshooting-Guide
+        - [ ] Integration in modern_window.py (nächste Phase: Juni)
+        - [ ] DuplicateFinder/RatingWorker-Integration in Pipeline (nächste Phase: Juni)
+        - [ ] End-to-End Testing & Performance-Optimierung (nächste Phase: Juni-Juli)
 
 - [ ] **Pre-Release UX-Fixes** (Priorität: Mittel · Zeitraum: Mai-Juli 2026)
         - [x] Theme-Audit-Restlauf abgeschlossen (siehe scripts/theme_audit.py)
