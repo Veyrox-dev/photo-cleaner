@@ -606,5 +606,21 @@
   "review_duplicates": "Review Duplicates",
   "review_duplicates_tooltip": "Switch to the duplicate review workflow",
   "gallery_title_home": "My Photos",
-  "open_folder": "Open folder"
+  "open_folder": "Open folder",
+  "first_run_setup_title": "Organiseer uw eerste sessie",
+  "first_run_setup_subtitle": "Kies de belangrijke standaardinstellingen voordat u met uw foto's aan de slag gaat.",
+  "first_run_setup_intro": "PhotoCleaner is onmiddellijk klaar voor gebruik. Gebruik deze snelle stap om de taal, het thema en het verwijdergedrag te kiezen voor een schonere eerste sessie.",
+  "first_run_setup_settings_hint": "U kunt deze keuzes later op elk gewenst moment wijzigen in Instellingen.",
+  "first_run_setup_delete_strategy_hint": "Aanbeveling: laat de verwijderingsbevestiging ingeschakeld totdat u zeker bent van de workflow.",
+  "first_run_setup_skip": "Later",
+  "first_run_setup_continue": "Doorgaan",
+  "fresh_session": "Nieuwe sessie",
+  "fresh_session_tooltip": "Reset besluiten en groepen en begin vervolgens met een nieuwe scan",
+  "fresh_session_title": "Start een nieuwe sessie",
+  "fresh_session_confirm": "Hierdoor worden groepen, beslissingen en caches opnieuw ingesteld, terwijl de geïndexeerde bestanden behouden blijven. Daarna kunt u direct een nieuwe map scannen. Doorgaan?",
+  "fresh_session_done": "De huidige sessie is gereset. Kies nu een map om de volgende pas te starten.",
+  "fresh_session_failed": "Nieuwe sessie kon niet worden gestart.",
+  "pro_upgrade_button": "⭐ Upgrade naar Pro",
+  "validation_free_limit_exceeded": "Gratis licentie: uw levenslange limiet is 250 afbeeldingen. Al gescand: {used}. In deze map: {count}. Te veel – kies een kleinere map of upgrade naar Pro.",
+  "validation_free_quota_remaining": "Gratis licentie: {remaining} van 250 resterende afbeeldingen."
 }

@@ -55,6 +55,15 @@ class _CelebrationCanvas(QWidget):
         self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self._particles: list[_Particle] = []
+        semantic = get_semantic_colors()
+        theme = get_theme_colors()
+        self._palette: list[QColor] = [
+            QColor(semantic["success"]),
+            QColor(semantic["info"]),
+            QColor(semantic["warning"]),
+            QColor(theme["highlight"]),
+            QColor(theme["link"]),
+        ]
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._spawn_until = 0.0
@@ -68,13 +77,6 @@ class _CelebrationCanvas(QWidget):
     def _spawn_particles(self, count: int) -> None:
         width = max(1, self.width())
         height = max(1, self.height())
-        palette = [
-            QColor("#1D9E75"),
-            QColor("#5DCAA5"),
-            QColor("#9FE1CB"),
-            QColor("#1F6F8B"),
-            QColor("#E7B646"),
-        ]
         origin_y = max(36.0, height * 0.28)
         for _ in range(count):
             self._particles.append(
@@ -84,7 +86,7 @@ class _CelebrationCanvas(QWidget):
                     vx=random.uniform(-2.8, 2.8),
                     vy=random.uniform(-5.2, -2.4),
                     size=random.uniform(4.0, 8.0),
-                    color=random.choice(palette),
+                    color=random.choice(self._palette),
                     life=0.0,
                     max_life=random.uniform(34.0, 60.0),
                     rotation=random.uniform(0.0, 360.0),
@@ -175,7 +177,7 @@ class CleanupCompletionDialog(QDialog):
             f"QFrame#statCard {{ background: {theme_colors['base']}; border: 1px solid {theme_colors['border']}; border-radius: 14px; }}"
             f"QPushButton {{ border-radius: 12px; padding: 10px 18px; border: 1px solid {theme_colors['border']}; background: {theme_colors['alternate_base']}; color: {theme_colors['text']}; font-weight: 600; }}"
             f"QPushButton:hover {{ border-color: {semantic_colors['success']}; }}"
-            f"QPushButton#primaryButton {{ background: {semantic_colors['success']}; color: white; border-color: {semantic_colors['success']}; }}"
+            f"QPushButton#primaryButton {{ background: {semantic_colors['success']}; color: {theme_colors['highlighted_text']}; border-color: {semantic_colors['success']}; }}"
         )
 
         root = QVBoxLayout(self)
@@ -203,7 +205,9 @@ class CleanupCompletionDialog(QDialog):
         counter_row.setSpacing(10)
         counter_row.setAlignment(Qt.AlignHCenter)
         self.counter_label = QLabel("0", card)
-        self.counter_label.setStyleSheet("font-size: 68px; font-weight: 700; line-height: 1; color: #1D9E75;")
+        self.counter_label.setStyleSheet(
+            f"font-size: 68px; font-weight: 700; line-height: 1; color: {semantic_colors['success']};"
+        )
         counter_row.addWidget(self.counter_label)
         unit_label = QLabel("MB", card)
         unit_label.setStyleSheet(f"font-size: 28px; font-weight: 600; color: {theme_colors['disabled_text']};")

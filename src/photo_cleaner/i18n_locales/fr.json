@@ -606,5 +606,21 @@
   "review_duplicates": "Review Duplicates",
   "review_duplicates_tooltip": "Switch to the duplicate review workflow",
   "gallery_title_home": "My Photos",
-  "open_folder": "Open folder"
+  "open_folder": "Open folder",
+  "first_run_setup_title": "Configurez votre première session",
+  "first_run_setup_subtitle": "Choisissez les valeurs par défaut importantes avant de commencer à travailler avec vos photos.",
+  "first_run_setup_intro": "PhotoCleaner est prêt à fonctionner immédiatement. Utilisez cette étape rapide pour choisir la langue, le thème et le comportement de suppression pour une première session plus propre.",
+  "first_run_setup_settings_hint": "Vous pouvez modifier ces choix ultérieurement dans Paramètres à tout moment.",
+  "first_run_setup_delete_strategy_hint": "Recommandation : laissez la confirmation de suppression activée jusqu'à ce que vous soyez sûr du flux de travail.",
+  "first_run_setup_skip": "Plus tard",
+  "first_run_setup_continue": "Continuer",
+  "fresh_session": "Nouvelle session",
+  "fresh_session_tooltip": "Réinitialisez les décisions et les groupes, puis démarrez une nouvelle analyse",
+  "fresh_session_title": "Error 500 (Server Error)!!1500.That’s an error.There was an error. Please try again later.That’s all we know.",
+  "fresh_session_confirm": "Cela réinitialise les groupes, les décisions et les caches tout en conservant les fichiers indexés. Après cela, vous pouvez immédiatement analyser un nouveau dossier. Continuer?",
+  "fresh_session_done": "La session en cours a été réinitialisée. Choisissez un dossier maintenant pour démarrer la prochaine passe.",
+  "fresh_session_failed": "Une nouvelle session n'a pas pu être démarrée.",
+  "pro_upgrade_button": "⭐ Mise à niveau vers Pro",
+  "validation_free_limit_exceeded": "Licence gratuite : votre limite à vie est de 250 images. Déjà numérisé : {used}. Dans ce dossier : {count}. Trop – veuillez choisir un dossier plus petit ou passer à Pro.",
+  "validation_free_quota_remaining": "Licence gratuite : {remaining} sur 250 images restantes."
 }

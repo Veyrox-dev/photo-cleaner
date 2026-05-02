@@ -1559,6 +1559,40 @@ class FolderSelectionDialog(QDialog):
         )
         cancel_btn.clicked.connect(self.reject)
         button_box.addButton(cancel_btn, QDialogButtonBox.RejectRole)
+
+        show_upgrade_button = True
+        try:
+            from photo_cleaner.license import get_license_manager
+            from photo_cleaner.license.license_manager import LicenseType
+
+            license_mgr = get_license_manager()
+            show_upgrade_button = license_mgr.license_info.license_type != LicenseType.PRO
+        except Exception:
+            # If license status cannot be resolved, keep button visible for Free/offline users.
+            show_upgrade_button = True
+
+        if show_upgrade_button:
+            upgrade_btn = QPushButton(t("pro_upgrade_button"))
+            upgrade_btn.setAutoDefault(False)
+            upgrade_btn.setDefault(False)
+            upgrade_btn.setMinimumWidth(190)
+            upgrade_btn.setMinimumHeight(44)
+            semantic = get_semantic_colors()
+            colors = get_theme_colors()
+            upgrade_btn.setStyleSheet(
+                _build_button_style(
+                    semantic["warning"],
+                    text_color=colors["highlighted_text"],
+                    hover_color=semantic["warning"],
+                    padding="12px 28px",
+                    font_size=14,
+                    radius=10,
+                )
+            )
+            upgrade_btn.clicked.connect(
+                lambda: QDesktopServices.openUrl(QUrl("https://veyrox-dev.github.io/photocleaner-website/#pricing"))
+            )
+            button_box.addButton(upgrade_btn, QDialogButtonBox.ActionRole)
         
         layout.addWidget(button_box)
 
@@ -1583,11 +1617,6 @@ class FolderSelectionDialog(QDialog):
         
         input_label = QLabel(t("select_input_folder_label"))
         input_layout.addWidget(input_label)
-        
-        input_hint = QLabel(f"<i>{t('import_input_card_hint')}</i>")
-        hint_color = get_text_hint_color()
-        input_hint.setStyleSheet(f"color: {hint_color}; font-size: 11px;")
-        input_layout.addWidget(input_hint)
         
         input_row = QHBoxLayout()
         self.input_path_label = QLabel(t("not_selected"))
@@ -1991,15 +2020,63 @@ class FolderSelectionDialog(QDialog):
             if hasattr(self, "start_btn"):
                 self.start_btn.setEnabled(False)
             return
-        
+
+        # Free-Lizenz: Lifetime-Kontingent prüfen
+        if self.input_folder:
+            try:
+                from photo_cleaner.license import get_license_manager
+                from photo_cleaner.license.license_manager import LicenseType
+                from photo_cleaner.license.usage_tracker import get_usage_tracker
+                from photo_cleaner.io.file_scanner import SUPPORTED_EXTENSIONS
+                license_mgr = get_license_manager()
+                if license_mgr.license_info.license_type == LicenseType.FREE:
+                    tracker = get_usage_tracker()
+                    image_count = sum(
+                        1 for p in Path(self.input_folder).rglob("*")
+                        if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS
+                    )
+                    allowed, remaining_after = tracker.can_scan(image_count)
+                    if not allowed:
+                        used = tracker.get_total_used()
+                        remaining = tracker.get_remaining()
+                        msg = t("validation_free_limit_exceeded").format(
+                            used=used, count=image_count
+                        )
+                        self.validation_label.setText(msg)
+                        self.validation_label.setStyleSheet(
+                            f"color: {get_semantic_colors()['error']}; font-weight: bold;"
+                        )
+                        if hasattr(self, "start_btn"):
+                            self.start_btn.setEnabled(False)
+                        return
+                    # Show remaining quota as a hint
+                    remaining = tracker.get_remaining()
+                    if remaining < 250:
+                        quota_hint = t("validation_free_quota_remaining").format(remaining=remaining)
+                        self.validation_label.setText(
+                            t("validation_ready") + f"  ({quota_hint})"
+                        )
+                        self.validation_label.setStyleSheet(
+                            f"color: {get_semantic_colors()['success']}; font-weight: bold;"
+                        )
+                        if hasattr(self, "start_btn"):
+                            self.start_btn.setEnabled(True)
+                        return
+            except Exception:
+                pass  # Im Fehlerfall nicht blockieren
+
         # Eingabeordner ist optional (kann existierende DB verwenden)
+        # Eingabeordner ist jetzt ebenfalls erforderlich
         if not self.input_folder:
             self.validation_label.setText(t("validation_optional_input"))
             self.validation_label.setStyleSheet(f"color: {get_semantic_colors()['warning']}; font-weight: bold;")
-        else:
-            self.validation_label.setText(t("validation_ready"))
-            self.validation_label.setStyleSheet(f"color: {get_semantic_colors()['success']}; font-weight: bold;")
-        
+            if hasattr(self, "start_btn"):
+                self.start_btn.setEnabled(False)
+            return
+
+        self.validation_label.setText(t("validation_ready"))
+        self.validation_label.setStyleSheet(f"color: {get_semantic_colors()['success']}; font-weight: bold;")
+
         if hasattr(self, "start_btn"):
             self.start_btn.setEnabled(True)
 
@@ -3870,6 +3947,7 @@ class ModernMainWindow(QMainWindow):
         self.indexing_thread: Optional[IndexingThread] = None
         self._duplicate_thread: Optional[DuplicateFinderThread] = None
         self._rating_thread: Optional[RatingWorkerThread] = None
+        self._is_shutting_down = False
         self._indexing_progress_dialog: Optional[QProgressDialog] = None
         self._post_indexing_progress_dialog: Optional[QProgressDialog] = None
         self._post_indexing_cancelled = False
@@ -4281,6 +4359,9 @@ class ModernMainWindow(QMainWindow):
     
     def _on_indexing_finished(self, results: dict, progress_dialog):
         """Handle successful indexing completion."""
+        if self._is_shutting_down:
+            logger.info("[UI] Ignoring indexing completion while shutting down")
+            return
         import time
         handler_start = time.monotonic()
         logger.info("[UI] _on_indexing_finished() STARTED")
@@ -4311,6 +4392,20 @@ class ModernMainWindow(QMainWindow):
 
         logger.info(f"[UI] Indexing finished: {results}")
         self._indexing_results = results
+
+        # Free-Lizenz: Verbrauch nach erfolgreichem Scan verbuchen
+        try:
+            from photo_cleaner.license import get_license_manager
+            from photo_cleaner.license.license_manager import LicenseType
+            from photo_cleaner.license.usage_tracker import get_usage_tracker
+            license_mgr = get_license_manager()
+            if license_mgr.license_info.license_type == LicenseType.FREE:
+                scanned = int(results.get("total_files", 0))
+                if scanned > 0:
+                    get_usage_tracker().record_scan(scanned)
+                    logger.info("[UsageTracker] recorded %d images", scanned)
+        except Exception as e:
+            logger.warning("[UsageTracker] could not record scan: %s", e)
 
         # Refresh UI for indexed files (duplicates/rating follow asynchronously)
         logger.info("[UI] About to call refresh_groups() - this should be FAST now (no thumbnail loading)")
@@ -4408,15 +4503,14 @@ class ModernMainWindow(QMainWindow):
         if self._rating_thread:
             self._rating_thread.cancel()
         if self._post_indexing_progress_dialog and self._post_indexing_progress_dialog.isVisible():
-            if isinstance(self._post_indexing_progress_dialog, ProgressStepDialog):
-                self._post_indexing_progress_dialog.set_progress(
-                    self._post_indexing_progress_dialog.progress_bar.value(),
-                    t("cancel_in_progress"),
-                )
-            else:
-                self._post_indexing_progress_dialog.setLabelText(t("cancel_in_progress"))
+            self._post_indexing_progress_dialog.close()
+            self._post_indexing_progress_dialog = None
+            self._post_indexing_progress_phase = 0
 
     def _on_duplicate_finder_finished(self, group_rows) -> None:
+        if self._is_shutting_down:
+            logger.info("[DUPFINDER] Ignoring duplicate-finder completion while shutting down")
+            return
         import time
         handler_start = time.monotonic()
         logger.info(f"[DUPFINDER] _on_duplicate_finder_finished() STARTED with {len(group_rows) if group_rows else 0} groups")
@@ -4548,6 +4642,9 @@ class ModernMainWindow(QMainWindow):
         self._rating_error_message = error_msg
 
     def _on_rating_finished(self, rating_info: dict) -> None:
+        if self._is_shutting_down:
+            logger.info("[UI] Ignoring rating completion while shutting down")
+            return
         self._mark_analysis_stage_end("rating")
         self._finish_post_indexing(rating_info)
 
@@ -7244,7 +7341,7 @@ class ModernMainWindow(QMainWindow):
             JOIN files f ON f.file_id = d.file_id
             WHERE f.is_deleted = 0
             GROUP BY d.group_id
-            ORDER BY (open_cnt > 0) DESC, open_cnt DESC, MIN(COALESCE(f.capture_time, f.modified_time, 0)) ASC, d.group_id
+            ORDER BY (open_cnt > 0) DESC, open_cnt DESC, MAX(COALESCE(f.is_recommended, 0)) DESC, MIN(COALESCE(f.capture_time, f.modified_time, 0)) ASC, d.group_id
             """
         )
         
@@ -9278,9 +9375,85 @@ class ModernMainWindow(QMainWindow):
                 )
     
     # Cleanup
+
+    def _stop_worker_thread(self, thread: Optional[QThread], name: str, *, wait_ms: int = 1200) -> None:
+        """Request graceful stop for a worker thread and force-stop as fallback."""
+        if thread is None:
+            return
+        try:
+            if not thread.isRunning():
+                return
+
+            logger.info("[UI] Stopping worker thread: %s", name)
+
+            if hasattr(thread, "cancel"):
+                try:
+                    thread.cancel()
+                except Exception:
+                    logger.debug("[UI] %s.cancel() failed", name, exc_info=True)
+
+            if hasattr(thread, "stop"):
+                try:
+                    thread.stop(wait=False)
+                except Exception:
+                    logger.debug("[UI] %s.stop() failed", name, exc_info=True)
+
+            try:
+                thread.requestInterruption()
+            except Exception:
+                logger.debug("[UI] %s.requestInterruption() failed", name, exc_info=True)
+
+            if not thread.wait(wait_ms):
+                logger.warning("[UI] Worker %s did not stop in time; forcing terminate()", name)
+                thread.terminate()
+                thread.wait(800)
+        except Exception as e:
+            logger.warning("[UI] Failed stopping worker %s: %s", name, e)
+
+    def _shutdown_background_work(self) -> None:
+        """Stop all currently active analysis workers before closing the window."""
+        self._post_indexing_cancelled = True
+
+        try:
+            if self._indexing_progress_dialog and self._indexing_progress_dialog.isVisible():
+                self._indexing_progress_dialog.close()
+        except Exception:
+            logger.debug("Could not close indexing progress dialog", exc_info=True)
+
+        try:
+            if self._post_indexing_progress_dialog and self._post_indexing_progress_dialog.isVisible():
+                self._post_indexing_progress_dialog.close()
+        except Exception:
+            logger.debug("Could not close post-indexing progress dialog", exc_info=True)
+
+        self._stop_worker_thread(self.indexing_thread, "IndexingThread", wait_ms=1500)
+        self._stop_worker_thread(self._duplicate_thread, "DuplicateFinderThread", wait_ms=1200)
+        self._stop_worker_thread(self._rating_thread, "RatingWorkerThread", wait_ms=2200)
+        self._stop_worker_thread(self._merge_worker, "MergeGroupRatingWorker", wait_ms=1500)
+
+        exif_threads: list[QThread] = []
+        if hasattr(self, "_exif_thread") and self._exif_thread is not None:
+            exif_threads.append(self._exif_thread)
+        if hasattr(self, "_exif_threads") and isinstance(self._exif_threads, list):
+            exif_threads.extend([t for t in self._exif_threads if t is not None])
+
+        seen: set[int] = set()
+        for idx, t in enumerate(exif_threads, start=1):
+            tid = id(t)
+            if tid in seen:
+                continue
+            seen.add(tid)
+            self._stop_worker_thread(t, f"ExifWorkerThread#{idx}", wait_ms=500)
     
     def closeEvent(self, event):
         """Handle window close - cleanup threads before exit."""
+        self._is_shutting_down = True
+
+        try:
+            self._shutdown_background_work()
+        except Exception:
+            logger.warning("Failed to shutdown background work cleanly", exc_info=True)
+
         try:
             if self._auto_save_timer is not None:
                 self._auto_save_timer.stop()

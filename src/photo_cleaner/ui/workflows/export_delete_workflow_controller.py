@@ -52,7 +52,7 @@ class ExportDeleteWorkflowController:
         entries = "".join(f"<div>{self._html_escape(line)}</div>" for line in lines)
         return (
             "<div style='margin:10px 0 0 0; padding:10px 12px; "
-            "border:1px solid #d8dde6; border-radius:10px; background:#f6f8fb;'>"
+            "border:1px solid; border-radius:10px; background:transparent; color:inherit;'>"
             f"<div style='font-weight:700; margin-bottom:6px;'>{self._html_escape(title)}</div>"
             f"{entries}</div>"
         )

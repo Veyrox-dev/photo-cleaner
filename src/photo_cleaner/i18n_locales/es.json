@@ -606,5 +606,21 @@
   "review_duplicates": "Review Duplicates",
   "review_duplicates_tooltip": "Switch to the duplicate review workflow",
   "gallery_title_home": "My Photos",
-  "open_folder": "Open folder"
+  "open_folder": "Open folder",
+  "first_run_setup_title": "Configura tu primera sesión",
+  "first_run_setup_subtitle": "Elija los valores predeterminados importantes antes de comenzar a trabajar con sus fotografías.",
+  "first_run_setup_intro": "PhotoCleaner está listo para ejecutarse inmediatamente. Utilice este paso rápido para elegir el idioma, el tema y el comportamiento de eliminación para una primera sesión más limpia.",
+  "first_run_setup_settings_hint": "Puedes cambiar estas opciones más adelante en Configuración en cualquier momento.",
+  "first_run_setup_delete_strategy_hint": "Recomendación: mantenga habilitada la confirmación de eliminación hasta que esté seguro del flujo de trabajo.",
+  "first_run_setup_skip": "Más tarde",
+  "first_run_setup_continue": "Continuar",
+  "fresh_session": "nueva sesión",
+  "fresh_session_tooltip": "Restablezca decisiones y grupos, luego comience con un nuevo escaneo",
+  "fresh_session_title": "Iniciar nueva sesión",
+  "fresh_session_confirm": "Esto restablece grupos, decisiones y cachés mientras mantiene los archivos indexados. Después de eso, podrá escanear inmediatamente una nueva carpeta. ¿Continuar?",
+  "fresh_session_done": "La sesión actual fue restablecida. Elija una carpeta ahora para comenzar el siguiente paso.",
+  "fresh_session_failed": "No se pudo iniciar una nueva sesión.",
+  "pro_upgrade_button": "⭐ Actualiza a Pro",
+  "validation_free_limit_exceeded": "Licencia gratuita: su límite de por vida es de 250 imágenes. Ya escaneado: {used}. En esta carpeta: {count}. Demasiados: elija una carpeta más pequeña o actualice a Pro.",
+  "validation_free_quota_remaining": "Licencia gratuita: {remaining} de 250 imágenes restantes."
 }
