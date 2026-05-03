@@ -424,7 +424,11 @@ def main():
     # ====================================================================
     # PHASE 1: SOFORT QApplication starten (für fruehen Splash)
     # ====================================================================
+    from PySide6.QtCore import Qt
     from PySide6.QtWidgets import QApplication, QMessageBox
+    # QWebEngineView (Chromium) benötigt dieses Attribut VOR der QApplication-Erstellung,
+    # sonst stürzt der WebEngine-Prozess mit einem harten Crash ab.
+    QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
     app = QApplication(sys.argv)
     
     # Windows Taskbar Integration - KRITISCH für richtiges Icon

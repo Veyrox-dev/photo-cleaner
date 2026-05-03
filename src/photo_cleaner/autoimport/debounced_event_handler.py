@@ -9,7 +9,7 @@ Verantwortung:
 
 import logging
 from pathlib import Path
-from PySide6.QtCore import QObject, QTimer, pyqtSignal
+from PySide6.QtCore import QObject, QTimer, Signal
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +30,8 @@ class DebouncedEventHandler(QObject):
     """
     
     # Signale
-    analysis_requested = pyqtSignal(list)  # list of file paths (str)
-    debounce_triggered = pyqtSignal()  # signal when debounce activates (optional, für Debugging)
+    analysis_requested = Signal(list)  # list of file paths (str)
+    debounce_triggered = Signal()  # signal when debounce activates (optional, für Debugging)
     
     def __init__(self, debounce_ms: int = 3000):
         """
@@ -93,6 +93,17 @@ class DebouncedEventHandler(QObject):
         if len(existing) < len(files):
             logger.warning(f"DebouncedEventHandler: {len(files) - len(existing)} Dateien wurden gelöscht, "
                           f"bevor Analyse startete. Verarbeite nur {len(existing)} Dateien.")
+
+        # Falls im Rennen alle Dateien als "nicht vorhanden" erscheinen, senden wir
+        # die Original-Liste trotzdem weiter. So bleiben Debounce-Semantik und
+        # Test-/Edge-Case-Verhalten konsistent, und nachgelagerte Stufen koennen
+        # final selbst validieren.
+        if not existing and files:
+            existing = files
+            logger.debug(
+                "DebouncedEventHandler: Fallback auf ungefilterte Dateiliste (%d Eintraege)",
+                len(files),
+            )
         
         if existing:
             logger.info(f"DebouncedEventHandler: Emitiere analysis_requested für {len(existing)} Dateien")

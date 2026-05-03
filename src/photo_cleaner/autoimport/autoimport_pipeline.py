@@ -11,7 +11,7 @@ Verantwortung:
 import logging
 from pathlib import Path
 from datetime import datetime
-from PySide6.QtCore import QObject, pyqtSignal
+from PySide6.QtCore import QObject, Signal
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +29,10 @@ class AutoimportPipeline(QObject):
     """
     
     # Signale
-    import_started = pyqtSignal(int)  # count: int
-    import_progress = pyqtSignal(int, int)  # current: int, total: int
-    import_completed = pyqtSignal(dict)  # result: dict
-    import_error = pyqtSignal(str)  # error_message: str
+    import_started = Signal(int)  # count: int
+    import_progress = Signal(int, int)  # current: int, total: int
+    import_completed = Signal(dict)  # result: dict
+    import_error = Signal(str)  # error_message: str
     
     def __init__(self, db_path: Path, config, license_manager):
         """

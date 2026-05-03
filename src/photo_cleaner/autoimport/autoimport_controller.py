@@ -11,7 +11,7 @@ Verantwortung:
 import json
 import logging
 from pathlib import Path
-from PySide6.QtCore import QObject, pyqtSignal
+from PySide6.QtCore import QObject, Signal
 
 from .watchfolder_monitor import WatchfolderMonitor
 from .debounced_event_handler import DebouncedEventHandler
@@ -33,8 +33,8 @@ class AutoimportController(QObject):
     """
     
     # Signale für UI
-    status_changed = pyqtSignal(str)  # status_message: str
-    import_complete = pyqtSignal(dict)  # result: dict
+    status_changed = Signal(str)  # status_message: str
+    import_complete = Signal(dict)  # result: dict
     
     # Konfigurationsdatei
     CONFIG_FILE = Path.home() / "AppData" / "Roaming" / "PhotoCleaner" / "watchfolders.json"

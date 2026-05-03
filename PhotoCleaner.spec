@@ -94,11 +94,32 @@ except Exception as e:
 
 # Collect photo_cleaner package data from src/
 try:
-    photo_cleaner_datas = [(str(p), str(p.parent.relative_to('src'))) 
-                            for p in Path('src').rglob('photo_cleaner/**/*') 
-                            if p.is_file() and not p.suffix == '.pyc']
+    def _include_photo_cleaner_data(path: Path) -> bool:
+        if not path.is_file() or path.suffix == '.pyc':
+            return False
+        path_str = str(path).replace('\\', '/').lower()
+        if '/photo_cleaner/ui/legacy/' in path_str:
+            return False
+        if '/photo_cleaner/ui/pipeline_ui_archive/' in path_str:
+            return False
+        return True
+
+    photo_cleaner_datas = [
+        (str(p), str(p.parent.relative_to('src')))
+        for p in Path('src').rglob('photo_cleaner/**/*')
+        if _include_photo_cleaner_data(p)
+    ]
 except Exception:
     photo_cleaner_datas = []
+
+
+def _include_photo_cleaner_submodule(name: str) -> bool:
+    lowered = name.lower()
+    if lowered.startswith('photo_cleaner.ui.legacy'):
+        return False
+    if lowered.startswith('photo_cleaner.ui.pipeline_ui_archive'):
+        return False
+    return True
 
 a = Analysis(
     ['run_ui.py'],
@@ -184,7 +205,7 @@ a = Analysis(
         'platformdirs.windows',
         'platformdirs.unix',
         'platformdirs.macos',
-    ] + collect_submodules('photo_cleaner') + scipy_hiddenimports + mediapipe_hiddenimports + pillow_heif_hiddenimports + mtcnn_hiddenimports + tensorflow_hiddenimports + keras_hiddenimports + distutils_hiddenimports + distutils_compiler_hiddenimports,
+    ] + collect_submodules('photo_cleaner', filter=_include_photo_cleaner_submodule) + scipy_hiddenimports + mediapipe_hiddenimports + pillow_heif_hiddenimports + mtcnn_hiddenimports + tensorflow_hiddenimports + keras_hiddenimports + distutils_hiddenimports + distutils_compiler_hiddenimports,
     hookspath=['build_hooks'],
     hooksconfig={},
     runtime_hooks=['build_hooks/hook_multiprocessing_fix.py', 'build_hooks/runtime_setuptools_distutils.py'],

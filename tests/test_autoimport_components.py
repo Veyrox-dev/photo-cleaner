@@ -118,16 +118,12 @@ class TestDebouncedEventHandler:
         """Test: Mehrere Events werden zu einem Batch zusammengefasst."""
         handler = DebouncedEventHandler(debounce_ms=100)
         
-        signal_spy = qtbot.waitSignals([handler.analysis_requested], timeout=500)
-        
-        # Emitiere 5 Events schnell hintereinander
-        for i in range(5):
-            handler.handle_event(f"/test/photo{i}.jpg")
-        
-        # Sollte nur EINE analysis_requested emitieren
-        assert len(signal_spy) >= 1
-        # Erste Signal sollte 5 Dateien haben
-        emitted_files = signal_spy[0].args[0]
+        # Emitiere 5 Events schnell hintereinander und warte auf ein gebündeltes Signal.
+        with qtbot.waitSignal(handler.analysis_requested, timeout=500) as blocker:
+            for i in range(5):
+                handler.handle_event(f"/test/photo{i}.jpg")
+
+        emitted_files = blocker.args[0]
         assert len(emitted_files) == 5
     
     def test_timer_reset_on_event(self, qtbot):

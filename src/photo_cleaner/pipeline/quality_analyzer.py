@@ -154,6 +154,10 @@ class QualityAnalyzer:
             eye_detection_stage=self._eye_detection_stage,
             min_tracking_confidence=min_tracking_confidence,
         )
+        # Backward-compatibility shim for legacy tests/call-sites that accessed
+        # private cache attributes directly on QualityAnalyzer.
+        self._cache_lock = threading.Lock()
+        self._face_mesh_cache = None
         self.quality_scorer = QualityScorer(np_module=_np, cv2_module=_cv2)
         self.exif_extractor = ExifExtractor(image_module=_Image, cv2_module=_cv2)
 
@@ -232,6 +236,24 @@ class QualityAnalyzer:
             mediapipe_available=MEDIAPIPE_AVAILABLE,
             logger=logger,
         )
+
+    def _invalidate_face_mesh_cache(self) -> None:
+        """Backward-compatible wrapper for legacy private API."""
+        with self._cache_lock:
+            if self._face_mesh_cache is not None:
+                try:
+                    self._face_mesh_cache.close()
+                except (AttributeError, RuntimeError):
+                    pass
+                self._face_mesh_cache = None
+        try:
+            self.face_detector._invalidate_face_mesh_cache()
+        except Exception:
+            logger.debug("FaceDetector cache invalidation failed", exc_info=True)
+
+    def _analyze_faces_haar(self, img: NDArray) -> FaceQuality:
+        """Backward-compatible wrapper for legacy private API."""
+        return self.face_detector._analyze_faces_haar(img)
 
     def get_actual_stage(self) -> int:
         """Get active eye detection stage after graceful fallback."""

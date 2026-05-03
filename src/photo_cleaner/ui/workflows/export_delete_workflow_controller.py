@@ -63,10 +63,17 @@ class ExportDeleteWorkflowController:
         keep_count: int,
         delete_count: int,
         reclaimable_bytes: int,
-        structure_label: str,
-        t_func: Callable[[str], str],
+        structure_label: str = "YYYY/MM/DD",
+        t_func: Callable[[str], str] | None = None,
     ) -> DialogDecision:
         """Build pre-check result and confirmation text for export flow."""
+        # Backward-compatibility: older call-sites passed t_func as 5th arg.
+        if callable(structure_label) and t_func is None:
+            t_func = structure_label  # type: ignore[assignment]
+            structure_label = "YYYY/MM/DD"
+
+        if t_func is None:
+            t_func = lambda key: key
         if not output_path:
             return DialogDecision(
                 can_continue=False,
@@ -120,7 +127,7 @@ class ExportDeleteWorkflowController:
         errors: Sequence[str],
         export_path: Path,
         cancelled: bool,
-        structure_label: str,
+        structure_label: str = "YYYY/MM/DD",
         delete_applied_count: int = 0,
         reclaimable_bytes: int = 0,
         skipped_locked_count: int = 0,

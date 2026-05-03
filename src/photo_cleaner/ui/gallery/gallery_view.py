@@ -225,14 +225,19 @@ class GalleryView(QWidget):
     # ──────────────────────────────────────────────────────────────────────────
 
     def load_keep_images(self) -> None:
-        """Lädt alle aktiven Bilder aus der DB. Aufruf aus MainWindow."""
-        self._all_entries = self._query_keep_images()
+        """Lädt Galerie-Bilder aus der DB.
+
+        Bevorzugt explizit als KEEP markierte Bilder. Solange aber noch keine
+        Entscheidungen getroffen wurden, fällt die Galerie auf alle nicht
+        gelöschten Bilder zurück, damit sie nach Import/Neustart nicht leer ist.
+        """
+        self._all_entries = self._query_gallery_images()
         self._apply_filter(GalleryFilterOptions())
 
     def refresh(self) -> None:
         """Neu laden nach externem Status-Change (z.B. Watch Folder Import)."""
         active_filter = self._filter_bar._build_filter() if hasattr(self, "_filter_bar") else GalleryFilterOptions()
-        self._all_entries = self._query_keep_images()
+        self._all_entries = self._query_gallery_images()
         self._apply_filter(active_filter)
 
     def show_review_badge(self, group_count: int) -> None:
@@ -251,11 +256,23 @@ class GalleryView(QWidget):
         self._start_slideshow()
 
     def _query_keep_images(self) -> list[GalleryEntry]:
+        return self._query_gallery_images(prefer_keep_only=True)
+
+    def _query_gallery_images(self, prefer_keep_only: bool = False) -> list[GalleryEntry]:
         try:
             conn = sqlite3.connect(str(self._db_path))
             conn.row_factory = sqlite3.Row
+            keep_count = conn.execute(
+                "SELECT COUNT(*) FROM files WHERE file_status = 'KEEP' AND is_deleted = 0"
+            ).fetchone()[0]
+
+            if keep_count > 0 or prefer_keep_only:
+                status_clause = "f.file_status = 'KEEP'"
+            else:
+                status_clause = "f.is_deleted = 0"
+
             cur = conn.execute(
-                """
+                f"""
                 SELECT
                     f.path,
                     f.quality_score,
@@ -264,10 +281,10 @@ class GalleryView(QWidget):
                     f.resolution_component,
                     f.face_quality_component,
                     f.capture_time,
-                                        f.exif_json,
-                                        f.exif_location_name
+                    f.exif_json,
+                    f.exif_location_name
                 FROM files f
-                WHERE f.file_status = 'KEEP'
+                WHERE {status_clause}
                   AND f.is_deleted = 0
                 ORDER BY COALESCE(f.quality_score, -1) DESC, COALESCE(f.capture_time, f.modified_time, 0) DESC, f.path ASC
                 """

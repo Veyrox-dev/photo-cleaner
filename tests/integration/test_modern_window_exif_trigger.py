@@ -47,7 +47,7 @@ def test_rating_finished_triggers_exif_grouping_and_updates_db(monkeypatch) -> N
         monkeypatch.setattr(ModernMainWindow, "_schedule_update_check", lambda self: None)
         monkeypatch.setattr(ModernMainWindow, "_show_analysis_summary", lambda self, _summary: None)
         monkeypatch.setattr(ModernMainWindow, "_persist_analysis_metrics", lambda self, _info: None)
-        monkeypatch.setattr(ModernMainWindow, "_open_gallery", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_open_review", lambda self: None)
         monkeypatch.setattr(ModernMainWindow, "_show_gallery_review_badge", lambda self, _count: None)
         monkeypatch.setattr(ModernMainWindow, "_update_thumbnail_progress", lambda self: None)
 
@@ -88,6 +88,57 @@ def test_rating_finished_triggers_exif_grouping_and_updates_db(monkeypatch) -> N
             conn3.close()
 
             assert location == "Berlin, Deutschland"
+        finally:
+            win.close()
+            win.db.close()
+
+
+def test_finish_post_indexing_keeps_review_open(monkeypatch) -> None:
+    app = QApplication.instance() or QApplication([])
+    assert app is not None
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "ui_workflow.db"
+        db = Database(db_path)
+        db.close()
+
+        monkeypatch.setattr(ModernMainWindow, "_build_ui", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "show", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_setup_grid_thumbnail_loader", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_build_menu", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_wire_shortcuts", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_on_theme_changed", lambda self, _theme=None: None)
+        monkeypatch.setattr(ModernMainWindow, "_load_session", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "refresh_groups", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_update_progress", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_setup_auto_save", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_maybe_show_first_run_onboarding", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_schedule_update_check", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_show_analysis_summary", lambda self, _summary: None)
+        monkeypatch.setattr(ModernMainWindow, "_persist_analysis_metrics", lambda self, _info: None)
+        monkeypatch.setattr(ModernMainWindow, "_show_gallery_review_badge", lambda self, _count: None)
+        monkeypatch.setattr(ModernMainWindow, "_update_thumbnail_progress", lambda self: None)
+
+        transitions: list[str] = []
+        monkeypatch.setattr(ModernMainWindow, "_open_review", lambda self: transitions.append("review"))
+        monkeypatch.setattr(ModernMainWindow, "_open_gallery", lambda self: transitions.append("gallery"))
+
+        win = ModernMainWindow(db_path=db_path)
+        win._group_thumb_loader = None
+        win._grid_thumb_loader = None
+        win._post_indexing_cancelled = False
+        win._thumb_loading_active = False
+        win._pending_rating_summary = None
+        win._pipeline_start_ts = 0.0
+        win._post_indexing_group_count = 3
+
+        monkeypatch.setattr(win, "_trigger_exif_grouping_for_keep_images", lambda: None)
+
+        try:
+            win._on_rating_finished({"rated": True})
+
+            assert transitions[-1] == "review"
+            assert "gallery" not in transitions
         finally:
             win.close()
             win.db.close()

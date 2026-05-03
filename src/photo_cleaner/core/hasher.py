@@ -184,6 +184,11 @@ class ImageHasher:
             Hexadecimal hash string of file bytes, or None on failure
         """
         try:
+            # Keep behavior aligned with corrupted-image handling: if the file cannot
+            # be decoded as an image, treat it as invalid input and return None.
+            with Image.open(file_path) as img:
+                img.verify()
+
             hash_obj = hashlib.new(algorithm)
             with open(file_path, 'rb') as f:
                 # Hash entire file in chunks for memory efficiency

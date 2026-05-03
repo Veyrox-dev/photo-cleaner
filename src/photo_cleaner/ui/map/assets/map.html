@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PhotoCleaner Karte</title>
+
+  <!--
+    Alle Assets werden lokal vom TileServer (127.0.0.1:PORT) ausgeliefert.
+    maplibre-gl.js, maplibre-gl.css und pmtiles.js müssen im selben
+    Verzeichnis wie map.html liegen.
+    Kartendaten: map.pmtiles (z.B. aus https://maps.protomaps.com/builds/)
+  -->
+  <link href="./maplibre-gl.css" rel="stylesheet">
+  <script src="./maplibre-gl.js"></script>
+  <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #1a1a1a; }
+    #map { width: 100%; height: 100vh; }
+
+    /* Cluster-Kreis */
+    .cluster-label {
+      background: rgba(59, 130, 246, 0.85);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 13px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid rgba(255,255,255,0.6);
+      cursor: pointer;
+    }
+
+    /* Einzelner Foto-Marker */
+    .photo-marker {
+      width: 36px;
+      height: 36px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 2px solid #fff;
+      overflow: hidden;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+    .photo-marker img {
+      width: 100%;
+      height: 100%;
+      transform: rotate(45deg);
+      object-fit: cover;
+    }
+
+    /* Lade-Overlay */
+    #loading {
+      position: fixed;
+      inset: 0;
+      background: #1a1a1a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #aaa;
+      font-family: sans-serif;
+      font-size: 16px;
+      z-index: 999;
+    }
+    #loading.hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div id="loading">Karte wird initialisiert …</div>
+<div id="map"></div>
+
+<script>
+"use strict";
+
+// ── QWebChannel-Verbindung ─────────────────────────────────────────────────
+let mapBridge = null;
+
+function connectBridge(callback) {
+  if (typeof qt !== "undefined" && qt.webChannelTransport) {
+    new QWebChannel(qt.webChannelTransport, (channel) => {
+      mapBridge = channel.objects.mapBridge;
+      callback();
+    });
+  } else {
+    // Fallback: kein QWebChannel (z.B. Browser-Debug)
+    mapBridge = {
+      on_viewport_changed: () => {},
+      on_marker_clicked: () => {},
+      on_map_ready: () => {},
+    };
+    callback();
+  }
+}
+
+// ── Karte initialisieren ──────────────────────────────────────────────────
+let map = null;
+
+function initMap(port) {
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  map = new maplibregl.Map({
+    container: "map",
+    style: buildStyle(baseUrl),
+    center: [10.5, 51.2],
+    zoom: 4,
+    attributionControl: false,
+  });
+
+  map.addControl(new maplibregl.NavigationControl(), "top-right");
+  map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
+
+  map.on("load", () => {
+    document.getElementById("loading").classList.add("hidden");
+    _addPhotoLayer();
+    mapBridge.on_map_ready("map_load_ok");
+  });
+
+  // Viewport-Änderungen → Python melden (gedrosselt)
+  let vpTimer = null;
+  map.on("moveend", () => {
+    clearTimeout(vpTimer);
+    vpTimer = setTimeout(() => {
+      const b = map.getBounds();
+      mapBridge.on_viewport_changed(
+        b.getNorth(), b.getSouth(), b.getEast(), b.getWest()
+      );
+    }, 200);
+  });
+}
+
+// ── Kartenstil ───────────────────────────────────────────────────────────
+function buildStyle(baseUrl) {
+  return {
+    version: 8,
+    name: "PhotoCleaner Offline",
+    sources: {
+      "osm-cache": {
+        type: "raster",
+        tiles: [`${baseUrl}/tiles/{z}/{x}/{y}.png`],
+        tileSize: 256,
+        minzoom: 0,
+        maxzoom: 14,
+        attribution: "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a>-Mitwirkende"
+      }
+    },
+    layers: [
+      {
+        id: "background",
+        type: "background",
+        paint: { "background-color": "#e8e0d8" }
+      },
+      {
+        id: "osm-raster",
+        type: "raster",
+        source: "osm-cache",
+        paint: { "raster-opacity": 1 }
+      }
+    ]
+  };
+}
+
+// ── Foto-Layer ────────────────────────────────────────────────────────────
+function _addPhotoLayer() {
+  // Leere GeoJSON-Quelle (wird via loadPhotos befüllt)
+  map.addSource("photos", {
+    type: "geojson",
+    cluster: true,
+    clusterMaxZoom: 13,
+    clusterRadius: 60,
+    data: { type: "FeatureCollection", features: [] }
+  });
+
+  // Cluster-Kreise
+  map.addLayer({
+    id: "clusters",
+    type: "circle",
+    source: "photos",
+    filter: ["has", "point_count"],
+    paint: {
+      "circle-color": [
+        "step", ["get", "point_count"],
+        "#3b82f6",   10,
+        "#f59e0b",   50,
+        "#ef4444"
+      ],
+      "circle-radius": [
+        "step", ["get", "point_count"],
+        18, 10, 24, 50, 30
+      ],
+      "circle-opacity": 0.85,
+      "circle-stroke-color": "#fff",
+      "circle-stroke-width": 2
+    }
+  });
+
+  // Cluster-Anzahl als Text
+  map.addLayer({
+    id: "cluster-count",
+    type: "symbol",
+    source: "photos",
+    filter: ["has", "point_count"],
+    layout: {
+      "text-field": ["get", "point_count_abbreviated"],
+      "text-size": 13,
+      "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+    },
+    paint: { "text-color": "#fff" }
+  });
+
+  // Einzelne Marker (ungeclustert)
+  map.addLayer({
+    id: "unclustered-point",
+    type: "circle",
+    source: "photos",
+    filter: ["!", ["has", "point_count"]],
+    paint: {
+      "circle-color": [
+        "interpolate", ["linear"],
+        ["coalesce", ["get", "score"], 0],
+        0, "#94a3b8",
+        0.5, "#3b82f6",
+        1, "#22c55e"
+      ],
+      "circle-radius": 8,
+      "circle-stroke-width": 2,
+      "circle-stroke-color": "#fff",
+      "circle-opacity": 0.9
+    }
+  });
+
+  // ── Event-Handler ────────────────────────────────────────────────────
+
+  // Cluster anklicken → reinzoomen
+  map.on("click", "clusters", (e) => {
+    const features = map.queryRenderedFeatures(e.point, { layers: ["clusters"] });
+    const clusterId = features[0].properties.cluster_id;
+    map.getSource("photos").getClusterExpansionZoom(clusterId, (err, zoom) => {
+      if (err) return;
+      map.easeTo({ center: features[0].geometry.coordinates, zoom });
+    });
+  });
+
+  // Einzelnen Marker anklicken → Python benachrichtigen
+  map.on("click", "unclustered-point", (e) => {
+    const props = e.features[0].properties;
+    mapBridge.on_marker_clicked(props.id);
+
+    // Tooltip anzeigen
+    new maplibregl.Popup({ closeButton: true, maxWidth: "220px" })
+      .setLngLat(e.features[0].geometry.coordinates)
+      .setHTML(`
+        <div style="font-size:12px; line-height:1.5;">
+          <strong>${props.location_name || "Unbekannter Ort"}</strong><br>
+          Score: ${props.score != null ? (props.score * 100).toFixed(0) + "%" : "–"}
+        </div>
+      `)
+      .addTo(map);
+  });
+
+  // Cursor ändern
+  ["clusters", "unclustered-point"].forEach((layer) => {
+    map.on("mouseenter", layer, () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; });
+  });
+}
+
+// ── Öffentliche API (von Python via runJavaScript aufgerufen) ─────────────
+
+window.loadPhotos = function(jsonStr) {
+  let photos;
+  try { photos = JSON.parse(jsonStr); }
+  catch (e) { console.error("loadPhotos: JSON-Fehler", e); return; }
+
+  const features = photos.map((p) => ({
+    type: "Feature",
+    geometry: { type: "Point", coordinates: [p.lon, p.lat] },
+    properties: {
+      id:            p.id,
+      score:         p.score,
+      path:          p.path,
+      location_name: p.location_name
+    }
+  }));
+
+  const source = map.getSource("photos");
+  if (source) {
+    source.setData({ type: "FeatureCollection", features });
+  }
+
+  // Karte auf Datenpunkte ausrichten (wenn vorhanden)
+  if (features.length > 0) {
+    const lngs = features.map((f) => f.geometry.coordinates[0]);
+    const lats = features.map((f) => f.geometry.coordinates[1]);
+    map.fitBounds(
+      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+      { padding: 60, maxZoom: 12, duration: 800 }
+    );
+  }
+};
+
+window.mapFlyTo = function(lat, lon, zoom) {
+  if (map) map.flyTo({ center: [lon, lat], zoom, duration: 1000 });
+};
+
+// ── Start ─────────────────────────────────────────────────────────────────
+// PORT wird beim Laden durch Python in die URL eingebettet:
+// http://127.0.0.1:PORT/map.html?port=PORT
+const urlParams = new URLSearchParams(window.location.search);
+const tilePort = parseInt(urlParams.get("port") || window.location.port || "8765", 10);
+
+connectBridge(() => initMap(tilePort));
+</script>
+</body>
+</html>

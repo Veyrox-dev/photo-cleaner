@@ -23,7 +23,10 @@ import urllib.error
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
+
+if TYPE_CHECKING:
+    from photo_cleaner.ui.map import MapWidget
 
 logger = logging.getLogger(__name__)
 
@@ -4037,6 +4040,9 @@ class ModernMainWindow(QMainWindow):
         # Gallery View (lazy-created on first open)
         self._gallery_view: Optional[GalleryView] = None
 
+        # Map View (lazy-created on first open)
+        self._map_widget: MapWidget | None = None
+
         # Batch selection state - PER GROUP (not global!)
         # Maps group_id -> (selected_indices: set, last_selected_index: int)
         self._group_selection_state: dict[str, tuple[set[int], int]] = {}
@@ -4721,8 +4727,8 @@ class ModernMainWindow(QMainWindow):
             if self._pipeline_start_ts > 0:
                 self._analysis_duration = max(0.0, time.monotonic() - self._pipeline_start_ts)
             self._persist_analysis_metrics(rating_info)
-            # Gallery-first: nach Analyse zurück zur Galerie + Review-Badge anzeigen
-            self._open_gallery()
+            # Nach Analyse im Review-Kontext bleiben; dort sind die offenen Entscheidungen.
+            self._open_review()
             group_count = getattr(self, "_post_indexing_group_count", 0) or 0
             self._show_gallery_review_badge(group_count)
         
@@ -5361,6 +5367,11 @@ class ModernMainWindow(QMainWindow):
 
         self._main_stack.addWidget(wrapper)                  # Index 1: Review
 
+        # ── Karte (Seite 2 — lazy initialisiert) ──────────────────────────────
+        from PySide6.QtWidgets import QStackedWidget as _SW  # noqa: F401 (already imported)
+        _map_placeholder = QWidget()
+        self._main_stack.addWidget(_map_placeholder)          # Index 2: Karte (Platzhalter)
+
         self._main_stack.currentChanged.connect(self._on_main_stack_changed)
 
         self.setCentralWidget(self._main_stack)
@@ -5401,6 +5412,15 @@ class ModernMainWindow(QMainWindow):
         self.review_action = menubar.addAction(t("review_duplicates"))
         self.review_action.triggered.connect(self._open_review)
         self.review_action.setToolTip(t("review_duplicates_tooltip"))
+
+        # Karten-Ansicht
+        self.map_action = menubar.addAction("Karte (Beta)")
+        self.map_action.triggered.connect(self._open_map)
+        self.map_action.setToolTip(
+            "Fotokarte (Beta) — zeigt GPS-Standorte aller Bilder\n"
+            "In Arbeit · unvollständig"
+        )
+        self.map_action.setStatusTip("Kartenansicht (Beta): In Arbeit, noch unvollständig")
 
         # Settings button
         self.settings_action = menubar.addAction(t("settings"))
@@ -5459,6 +5479,35 @@ class ModernMainWindow(QMainWindow):
     # ──────────────────────────────────────────────────────────────────────────
     # Gallery View (Startseite)
     # ──────────────────────────────────────────────────────────────────────────
+
+    def _open_map(self) -> None:
+        """Öffnet die Karten-Ansicht (Index 2). Initialisiert MapWidget beim ersten Aufruf."""
+        logger.info("[Map] Kartenansicht angefordert")
+        if self._map_widget is None:
+            try:
+                from photo_cleaner.ui.map import MapWidget
+            except ImportError:
+                logger.error("MapWidget konnte nicht importiert werden — PySide6-WebEngine fehlt?")
+                from PySide6.QtWidgets import QMessageBox
+                QMessageBox.warning(
+                    self, "Karte nicht verfügbar",
+                    "Die Kartenansicht benötigt PySide6-WebEngine.\n"
+                    "Bitte installieren: pip install PySide6-WebEngine"
+                )
+                return
+            logger.info("[Map] Initialisiere MapWidget erstmalig")
+            self._map_widget = MapWidget(self.db_path, parent=self)
+            self._map_widget.close_requested.connect(self._open_gallery)
+            # Platzhalter (Index 2) durch echtes Widget ersetzen
+            placeholder = self._main_stack.widget(2)
+            self._main_stack.removeWidget(placeholder)
+            self._main_stack.insertWidget(2, self._map_widget)
+            placeholder.deleteLater()
+        else:
+            self._map_widget.refresh()
+        self._main_stack.setCurrentIndex(2)
+        self._sync_topbar_actions_for_current_view()
+        logger.info("[Map] Kartenansicht geöffnet")
 
     def _open_gallery(self) -> None:
         """Wechselt zur Gallery (Startseite) und lädt KEEP-Bilder neu."""
@@ -9497,6 +9546,13 @@ class ModernMainWindow(QMainWindow):
     def closeEvent(self, event):
         """Handle window close - cleanup threads before exit."""
         self._is_shutting_down = True
+
+        # TileServer (Karten-Modul) sauber beenden
+        try:
+            if self._map_widget is not None:
+                self._map_widget.shutdown()
+        except Exception:
+            logger.debug("TileServer shutdown fehlgeschlagen", exc_info=True)
 
         try:
             self._shutdown_background_work()

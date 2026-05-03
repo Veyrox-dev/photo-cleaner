@@ -9,7 +9,7 @@ Verantwortung:
 
 import logging
 from pathlib import Path
-from PySide6.QtCore import QObject, QFileSystemWatcher, pyqtSignal
+from PySide6.QtCore import QObject, QFileSystemWatcher, Signal
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +18,10 @@ class WatchfolderMonitor(QObject):
     """Qt-basierter Watchfolder-Monitor mit Multi-Path-Support."""
     
     # Signale
-    file_added = pyqtSignal(str)  # path: str
-    file_modified = pyqtSignal(str)  # path: str
-    file_removed = pyqtSignal(str)  # path: str
-    error_occurred = pyqtSignal(str)  # error_message: str
+    file_added = Signal(str)  # path: str
+    file_modified = Signal(str)  # path: str
+    file_removed = Signal(str)  # path: str
+    error_occurred = Signal(str)  # error_message: str
     
     # Unterstützte Bildformate
     SUPPORTED_EXTENSIONS = {

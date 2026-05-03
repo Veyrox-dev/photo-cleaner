@@ -1,5 +1,7 @@
 """Tests for Phase 4A location filtering in GalleryView."""
 
+import sqlite3
+import tempfile
 from pathlib import Path
 
 from photo_cleaner.ui.gallery.gallery_filter_bar import GalleryFilterOptions
@@ -74,3 +76,83 @@ def test_location_filter_excludes_none_locations() -> None:
 
     assert len(view._filtered_entries) == 1
     assert view._filtered_entries[0].path.name == "b.jpg"
+
+
+def test_query_gallery_images_falls_back_to_undecided_when_no_keep() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "gallery.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute(
+            """
+            CREATE TABLE files (
+                path TEXT,
+                quality_score REAL,
+                sharpness_component REAL,
+                lighting_component REAL,
+                resolution_component REAL,
+                face_quality_component REAL,
+                capture_time REAL,
+                modified_time REAL,
+                exif_json TEXT,
+                exif_location_name TEXT,
+                file_status TEXT,
+                is_deleted INTEGER DEFAULT 0
+            )
+            """
+        )
+        conn.execute(
+            "INSERT INTO files (path, file_status, is_deleted) VALUES (?, ?, 0)",
+            (str(Path(tmpdir) / "undecided.jpg"), "UNDECIDED"),
+        )
+        conn.commit()
+        conn.close()
+
+        gallery = GalleryView.__new__(GalleryView)
+        gallery._db_path = db_path
+
+        entries = GalleryView._query_gallery_images(gallery)
+
+        assert len(entries) == 1
+        assert entries[0].path.name == "undecided.jpg"
+
+
+def test_query_gallery_images_prefers_keep_when_available() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "gallery.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute(
+            """
+            CREATE TABLE files (
+                path TEXT,
+                quality_score REAL,
+                sharpness_component REAL,
+                lighting_component REAL,
+                resolution_component REAL,
+                face_quality_component REAL,
+                capture_time REAL,
+                modified_time REAL,
+                exif_json TEXT,
+                exif_location_name TEXT,
+                file_status TEXT,
+                is_deleted INTEGER DEFAULT 0
+            )
+            """
+        )
+        conn.execute(
+            "INSERT INTO files (path, file_status, is_deleted) VALUES (?, ?, 0)",
+            (str(Path(tmpdir) / "keep.jpg"), "KEEP"),
+        )
+        conn.execute(
+            "INSERT INTO files (path, file_status, is_deleted) VALUES (?, ?, 0)",
+            (str(Path(tmpdir) / "undecided.jpg"), "UNDECIDED"),
+        )
+        conn.commit()
+        conn.close()
+
+        gallery = GalleryView.__new__(GalleryView)
+        gallery._db_path = db_path
+
+        entries = GalleryView._query_gallery_images(gallery)
+
+        assert len(entries) == 1
+        assert entries[0].path.name == "keep.jpg"
