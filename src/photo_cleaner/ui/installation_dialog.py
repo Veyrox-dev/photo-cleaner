@@ -21,6 +21,7 @@ import logging
 
 from photo_cleaner.dependency_manager import DependencyManager
 from photo_cleaner.i18n import t
+from photo_cleaner.theme import get_theme_colors
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +111,10 @@ class InstallationDialog(QDialog):
         # Empfehlung
         self.recommendation_label = QLabel()
         self.recommendation_label.setWordWrap(True)
-        self.recommendation_label.setStyleSheet("QLabel { background-color: #e8f4f8; padding: 10px; border-radius: 5px; }")
+        _colors = get_theme_colors()
+        self.recommendation_label.setStyleSheet(
+            f"QLabel {{ background-color: {_colors['alternate_base']}; color: {_colors['text']}; padding: 10px; border-radius: 5px; }}"
+        )
         layout.addWidget(self.recommendation_label)
         
         # Fortschrittsbalken
@@ -134,11 +138,13 @@ class InstallationDialog(QDialog):
         button_layout = QHBoxLayout()
         
         self.install_button = QPushButton(t("install_button"))
+        self.install_button.setAccessibleName(t("install_button"))
         self.install_button.clicked.connect(self._start_installation)
         self.install_button.setMinimumHeight(35)
         button_layout.addWidget(self.install_button)
         
         self.cancel_button = QPushButton(t("close_button"))
+        self.cancel_button.setAccessibleName(t("close_button"))
         self.cancel_button.clicked.connect(self.reject)
         button_layout.addWidget(self.cancel_button)
         

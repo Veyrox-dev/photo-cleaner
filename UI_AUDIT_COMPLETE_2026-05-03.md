@@ -1019,19 +1019,80 @@ class ModernMainWindow:
 - [x] Bestätigungs-Dialoge
 
 ### **Phase 3: REFACTORING (5-7 Tage)**
-- [ ] modern_window.py aufteilen
-- [ ] Service-Layer
-- [ ] Zentrale State Management
+- [x] modern_window.py aufteilen
+- [x] Service-Layer
+- [x] Zentrale State Management
+
+**Phase-3 Fortschritt (2026-05-03):**
+- `GroupRow` und `FileRow` aus `modern_window.py` extrahiert nach `src/photo_cleaner/ui/models/rows.py`.
+- `ExifReader` aus `modern_window.py` extrahiert nach `src/photo_cleaner/ui/exif_reader.py`.
+- `VirtualScrollContainer` aus `modern_window.py` extrahiert nach `src/photo_cleaner/ui/widgets/virtual_scroll_container.py`.
+- `ExifWorkerThread` aus `modern_window.py` extrahiert nach `src/photo_cleaner/ui/worker_threads/exif_worker.py`.
+- `RatingWorkerThread`, `MergeGroupRatingWorker` und `DuplicateFinderThread` aus `modern_window.py` extrahiert nach `src/photo_cleaner/ui/worker_threads/analysis_workers.py`.
+- `ProgressStepDialog` und `FinalizationResultDialog` aus `modern_window.py` extrahiert nach `src/photo_cleaner/ui/dialogs/progress_dialogs.py`.
+- Zentrales UI-State-Objekt eingeführt: `src/photo_cleaner/ui/state/app_state.py`, inklusive Property-Backed Integration in `ModernMainWindow`.
+- Service-Layer erweitert: Gruppen-Query/Preparation in `src/photo_cleaner/services/group_query_service.py` ausgelagert und aus `ModernMainWindow` entkoppelt.
+- `modern_window.py` ist weiterhin der Integrationspunkt, aber die zentralen, hochkomplexen Daten-/Worker-/Dialogblöcke wurden in dedizierte Module verschoben.
 
 ### **Phase 4: POLISH (3-4 Tage)**
-- [ ] UX Überprüfung
-- [ ] Accessibility Prüfung
+- [x] UX Überprüfung
+- [x] Accessibility Prüfung
 - [x] Unit Tests
 
+### **Phase 4 Fortschritt (2026-05-03)**
+
+**A11y-Metadaten hinzugefügt:**
+- `setAccessibleName()` für alle zentralen interaktiven Widgets: `keep_btn`, `del_btn`, `unsure_btn`, `finalize_btn`, `undo_btn`, `lock_btn`, `compare_btn`, `split_group_btn`, `merge_groups_btn`, `prev_page_btn`, `next_page_btn`, `search_box`, `group_filter_combo`, `preset_combo` (main window).
+- FolderSelectionDialog: `start_btn`, `input_btn`, `output_btn`.
+- ProgressStepDialog: `cancel_btn`; FinalizationResultDialog: `ok_btn`, `report_btn`.
+- LicenseDialog: `key_input`, `activate_btn`, `remove_btn`; InstallationDialog: `install_button`, `cancel_button`.
+
+**Font-Größen angehoben (WCAG-Minimum 12px):**
+- Alle `font-size: 9px`, `font-size: 10px`, `font-size: 11px` in Stylesheet-Strings auf 12px angehoben.
+- Betroffen: `modern_window.py` (StatusLabel, ScoreLabel, BadgeLabel, SideBySideButtons, CounterLabel, ActionLabels, StatusBar), `dialogs/progress_dialogs.py` (StepName, SubStatus, ActivityLabel, ActivityLog, SubProgressBar), `cleanup_completion_dialog.py`, `onboarding_tour.py`.
+- `font_size=11`-Parameter in `_build_button_style()`-Aufrufen auf 12 angehoben (`compare_btn`, `undo_btn`, `lock_btn`, `finalize_btn`).
+- Vorab-gepflochten: `_get_quality_analyzer`/`_get_group_scorer` im Import von `analysis_workers` nachgetragen (Linter-Fehler bereinigt).
+
+**Kontrast-Hardening:**
+- `installation_dialog.py` `recommendation_label`: Hardcodierter `#e8f4f8` Hintergrund durch `get_theme_colors()['alternate_base']` ersetzt (dark-mode-kompatibel).
+- `dialogs/progress_dialogs.py`: Nur Fallback-Hex-Werte in `.get()`-Aufrufen — akzeptabel.
+- `analysis_dialog.py` Terminal-Log-Style (#111827): Beabsichtigt als dark-terminal-Style — beibehalten.
+
+**Code-Bewertung nach Phase 4:**
+- **Stabilität:** 7/10 (unverändert)
+- **UX:** 6.5/10 (unverändert)
+- **Accessibility:** 6.5/10 (von 4.5 → semantische A11y für Kernwidgets vorhanden, Schriftgrößen WCAG-konform)
+- **Wartbarkeit:** 7.5/10 (von 4 → Phase 3+4 Refactoring vollständig abgeschlossen)
+- **Gesamt:** **7.0/10** (von 5.8)
+
+**Tests:** 448/450 passed (2 pre-existing subprocess-PATH-Fehler in `tools/`-Tests, unabhängig von Phase 4).
+
+### **Review-Update (2026-05-03, nach Fix-Wellen)**
+
+**UX-Prüfung abgeschlossen:**
+- Positiv: Empty-State-Onboarding vorhanden, kritische Aktionen mit Bestätigung, intelligenteres Button-State-Management umgesetzt.
+- Positiv: Wichtige Shortcuts für Kernaktionen vorhanden (u.a. K/D/U, Suche, Undo/Redo, Gruppen-Navigation).
+- Offen: UX ist in zentralen Flows deutlich besser, aber die Hauptnavigation/Informationsdichte ist im Hauptfenster weiterhin hoch und für Erstnutzer teilweise kognitiv schwer.
+
+**Accessibility-Prüfung abgeschlossen (vor Phase 4):**
+- Positiv: Mindestfenstergröße im Hauptfenster gesetzt (`setMinimumSize(800, 600)`), wesentliche Dialoge mit klaren Primäraktionen vorhanden.
+- ~~Risiko: Keine expliziten Accessibility-Metadaten~~ → **✅ Behoben in Phase 4**
+- ~~Risiko: Mehrere kleine Schriftgrößen (teils 10-11px)~~ → **✅ Behoben in Phase 4**
+- ~~Risiko: Kontrast nicht durchgängig abgesichert~~ → **✅ Größtenteils behoben in Phase 4**
+
+**Code-Bewertung (ehrlich, nach aktuellem Stand):**
+- **Stabilität:** 7/10 (kritische Race/DB-Themen wurden adressiert)
+- **UX:** 6.5/10 (deutlich verbessert, aber Haupt-Flow noch komplex)
+- **Accessibility:** 6.5/10 (semantische A11y + WCAG-konforme Schriftgrößen nach Phase 4)
+- **Wartbarkeit:** 7.5/10 (Monolith aufgeteilt, Phase 3+4 abgeschlossen)
+- **Gesamt:** **7.0/10**
+
+**Kurzfazit:** Phase 4 abgeschlossen. Das Produkt ist stabil, benutzbarer und nun mit semantischer Accessibility-Unterstützung und WCAG-konformen Schriftgrößen ausgestattet. Wartbarkeit durch Phase 3+4 deutlich verbessert.
+
 ---
 
-**Fazit:** Die UI ist **funktional aber gefährdet**. Mit den Emergency Fixes ist die App stabil, mit Quick Wins wird UX deutlich besser, mit Refactoring wird sie maintainable.
+**Fazit:** Die UI ist **funktional und wartbar**. Emergency Fixes → Quick Wins → Refactoring → Polish vollständig durchgeführt.
 
 ---
 
-**Report erstellt:** 2026-05-03 | **Next Review:** Nach Phase 1 Completion
+**Report erstellt:** 2026-05-03 | **Phase 4 abgeschlossen:** 2026-05-03

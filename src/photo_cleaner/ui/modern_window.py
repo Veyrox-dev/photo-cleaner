@@ -21,8 +21,6 @@ import threading
 import time
 import urllib.request
 import urllib.error
-from collections import deque
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 
@@ -106,9 +104,22 @@ from photo_cleaner.services.mode_service import ModeService
 from photo_cleaner.services.progress_service import ProgressService
 from photo_cleaner.services.rule_simulator import RuleSimulator
 from photo_cleaner.services.status_service import StatusService
+from photo_cleaner.services.group_query_service import GroupQueryService
 # LAZY: Import QualityAnalyzer and GroupScorer only when needed (they import numpy)
 # NOTE: get_thumbnail is used for detail views only; list/grid thumbnails are async.
 from photo_cleaner.ui.thumbnail_cache import get_thumbnail
+from photo_cleaner.ui.exif_reader import ExifReader
+from photo_cleaner.ui.models.rows import FileRow, GroupRow
+from photo_cleaner.ui.state.app_state import AppState
+from photo_cleaner.ui.widgets.virtual_scroll_container import VirtualScrollContainer
+from photo_cleaner.ui.worker_threads.exif_worker import ExifWorkerThread
+from photo_cleaner.ui.worker_threads.analysis_workers import (
+    DuplicateFinderThread,
+    MergeGroupRatingWorker,
+    RatingWorkerThread,
+    _get_quality_analyzer,
+    _get_group_scorer,
+)
 from photo_cleaner.ui.onboarding_state import (
     mark_first_run_setup_completed,
     mark_onboarding_completed,
@@ -117,6 +128,7 @@ from photo_cleaner.ui.onboarding_state import (
     should_show_onboarding,
 )
 from photo_cleaner.ui.first_run_setup_dialog import FirstRunSetupDialog
+from photo_cleaner.ui.dialogs.progress_dialogs import FinalizationResultDialog, ProgressStepDialog
 from photo_cleaner.ui.onboarding_tour import OnboardingStep, OnboardingTourDialog
 from photo_cleaner.ui.group_filters import GroupFilterOptions, group_matches_filters
 from photo_cleaner.ui.quota_messaging import build_quota_limit_message
@@ -134,43 +146,7 @@ from photo_cleaner.ui.gallery import GalleryView
 from photo_cleaner.ui.thumbnail_lazy import ThumbnailLoader, SmartThumbnailCache  # Thumbnail async loading
 from photo_cleaner.exif import ExifGroupingEngine, GeocodingCache, NominatimGeocoder
 
-# Lazy load heavy analysis modules (with Thread Safety Locks - EMERGENCY FIX #1)
-_QualityAnalyzer = None
-_GroupScorer = None
-_analyzer_lock = threading.Lock()  # Thread-safe lazy loading
-_scorer_lock = threading.Lock()
 from photo_cleaner.core.kpi_tracker import get_kpi_tracker  # Phase F: KPI tracking
-
-def _get_quality_analyzer():
-    """Lazy load QualityAnalyzer to avoid numpy initialization (THREAD-SAFE)."""
-    global _QualityAnalyzer
-    with _analyzer_lock:  # EMERGENCY FIX: Prevent race condition in lazy loading
-        if _QualityAnalyzer is None:
-            from photo_cleaner.pipeline.quality_analyzer import QualityAnalyzer
-            _QualityAnalyzer = QualityAnalyzer
-    return _QualityAnalyzer
-
-def _get_group_scorer():
-    """Lazy load GroupScorer to avoid numpy initialization (THREAD-SAFE)."""
-    global _GroupScorer
-    with _scorer_lock:  # EMERGENCY FIX: Prevent race condition in lazy loading
-        if _GroupScorer is None:
-            from photo_cleaner.pipeline.scorer import GroupScorer
-            _GroupScorer = GroupScorer
-    return _GroupScorer
-
-
-def _compute_analysis_workers(image_count: int) -> int:
-    """Pick a conservative worker count for stage-4 quality analysis."""
-    if image_count <= 1:
-        return 1
-    cpu_total = os.cpu_count() or 4
-    cpu_budget = max(1, cpu_total - 1)
-    if image_count <= 3:
-        return min(cpu_budget, image_count)
-    if image_count <= 8:
-        return min(cpu_budget, 4, image_count)
-    return min(cpu_budget, 8, image_count)
 
 
 def _parse_version_tuple(version_str: str) -> tuple[int, int, int]:
@@ -229,1279 +205,6 @@ try:
 except ImportError:
     def _qt_is_valid(obj) -> bool:
         return obj is not None
-
-
-class RatingWorkerThread(QThread):
-    """Worker thread for auto-rating operation (Bug #1 Fix).
-    
-    Prevents UI-Thread blocking during long-running quality analysis.
-    Runs rating in background with signal-based progress updates.
-    """
-    
-    # Signals
-    progress = Signal(int, str)  # (percentage, status_text)
-    finished = Signal(dict)  # rating_info dict {"rated": bool, "warn": bool}
-    error = Signal(str)  # error message
-    
-    def __init__(self, db_path: Path, top_n: int, mtcnn_status: dict | None = None):
-        super().__init__()
-        self.db_path = db_path
-        self.top_n = top_n
-        self.mtcnn_status = mtcnn_status or {"available": True, "error": None}
-        self._should_cancel = False
-        self._progress_emit_interval_sec = 0.08
-    
-    def run(self):
-        """Execute auto-rating in background thread."""
-        from photo_cleaner.pipeline.quality_analyzer import QualityAnalyzer
-        from photo_cleaner.pipeline.parallel_quality_analyzer import ParallelQualityAnalyzer
-        from photo_cleaner.pipeline.scorer import GroupScorer
-        from photo_cleaner.db.schema import Database
-        from photo_cleaner.repositories.file_repository import FileRepository
-        import time
-        import sqlite3
-        
-        logger.info("[WORKER] RatingWorkerThread.run() STARTED")
-        start_time = time.monotonic()
-        info = {"rated": False, "warn": False}
-        
-        # LOG MTCNN status (informational only, not a blocker)
-        if self.mtcnn_status.get("available", False):
-            logger.info("[WORKER] MTCNN available - will use face detection for rating")
-        else:
-            error_msg = self.mtcnn_status.get("error", "MTCNN not available")
-            if error_msg:
-                logger.warning(f"[WORKER] MTCNN not available ({error_msg}) - will use Haar Cascade fallback")
-                logger.warning("[WORKER] Rating will continue with lower accuracy")
-            else:
-                logger.info("[WORKER] MTCNN status unknown - continuing with runtime auto-detection")
-        
-        db = None
-        conn = None
-        try:
-            logger.info("[WORKER] Connecting to database...")
-            db = Database(self.db_path)
-            conn = db.connect()
-            files = FileRepository(conn)
-
-            logger.info("[WORKER] Querying groups from database...")
-            cur = conn.execute(
-                """
-                SELECT d.group_id, f.path
-                FROM duplicates d
-                JOIN files f ON f.file_id = d.file_id
-                WHERE f.is_deleted = 0
-                ORDER BY d.group_id, f.path
-                """
-            )
-            groups: dict[str, list[Path]] = {}
-            for row in cur.fetchall():
-                groups.setdefault(row["group_id"], []).append(Path(row[1]))
-            
-            logger.info(f"[WORKER] Found {len(groups)} groups to rate")
-            if not groups:
-                logger.info("[WORKER] No duplicate groups found; skipping rating step")
-                self.finished.emit(info)
-                return
-            
-            total_images = sum(len(v) for v in groups.values())
-            logger.info(f"[WORKER] Total images to analyze: {total_images}")
-
-            last_progress_emit_ts = 0.0
-            last_progress_signature: tuple[int, str] | None = None
-
-            def _emit_progress(pct: int, status: str, force: bool = False) -> None:
-                nonlocal last_progress_emit_ts, last_progress_signature
-                clamped_pct = max(0, min(100, int(pct)))
-                signature = (clamped_pct, status)
-                now = time.monotonic()
-                if not force:
-                    if signature == last_progress_signature:
-                        return
-                    if now - last_progress_emit_ts < self._progress_emit_interval_sec:
-                        return
-                self.progress.emit(clamped_pct, status)
-                last_progress_emit_ts = now
-                last_progress_signature = signature
-            
-            # EMIT IMMEDIATE progress signal - tells main thread worker is active!
-            elapsed = time.monotonic() - start_time
-            logger.info(f"[WORKER] Thread alive after {elapsed:.2f}s [DB query complete] - emitting status")
-            _emit_progress(87, f"Modelle werden geladen... 0/{total_images}", force=True)
-            
-            # Initialize QualityAnalyzer with progress feedback
-            logger.info(f"[WORKER] Initializing QualityAnalyzer (use_face_mesh=True)...")
-            init_start = time.monotonic()
-            QualityAnalyzer = _get_quality_analyzer()
-            analyzer = QualityAnalyzer(use_face_mesh=True)
-            parallel_analyzer = ParallelQualityAnalyzer(analyzer)
-            init_time = time.monotonic() - init_start
-            logger.info(f"[WORKER] QualityAnalyzer initialized in {init_time:.2f}s")
-            
-            # Emit signal after first model is ready
-            _emit_progress(88, f"QualityAnalyzer bereit, lade GroupScorer... 0/{total_images}", force=True)
-            
-            logger.info(f"[WORKER] Initializing GroupScorer (top_n={self.top_n})...")
-            scorer_start = time.monotonic()
-            GroupScorer = _get_group_scorer()
-            scorer = GroupScorer(top_n=self.top_n)
-            scorer_time = time.monotonic() - scorer_start
-            logger.info(f"[WORKER] GroupScorer initialized in {scorer_time:.2f}s")
-            
-            quality_results: dict[str, list] = {}
-            done = 0
-            total_scored_images = 0
-            
-            # NOW emit progress - models are ready
-            total_init_time = time.monotonic() - start_time
-            logger.info(f"[WORKER] Models ready after {total_init_time:.2f}s total, starting warmup and analysis...")
-            _emit_progress(90, f"Modelle aufwärmen... 0/{total_images}", force=True)
-            
-            analyzer.warmup()
-            logger.info(f"[WORKER] Warmup complete, beginning batch analysis")
-            _emit_progress(87, f"Bilder werden bewertet... {done}/{total_images}", force=True)
-            
-            for group_id, paths in groups.items():
-                if self._should_cancel:
-                    logger.info("Rating cancelled by user")
-                    self.finished.emit(info)
-                    return
-                
-                logger.debug(f"Analyzing group {group_id} with {len(paths)} images...")
-                
-                # Update progress before analysis
-                pct = 87 + int(7 * (done / max(1, total_images)))
-                _emit_progress(min(94, pct), f"Bilder werden bewertet... {done}/{total_images}")
-                
-                group_base_done = done
-                last_reported_local_done = 0
-                worker_count = _compute_analysis_workers(len(paths))
-                def _progress_cb(local_done: int, local_total: int) -> None:
-                    nonlocal last_reported_local_done
-                    if self._should_cancel:
-                        return
-                    current_done = group_base_done + local_done
-                    pct = 87 + int(7 * (current_done / max(1, total_images)))
-                    _emit_progress(min(94, pct), f"Bilder werden bewertet... {current_done}/{total_images}")
-
-                    # Emit one user-facing line per newly analyzed image.
-                    capped_local_done = max(0, min(local_done, len(paths)))
-                    if capped_local_done <= last_reported_local_done:
-                        return
-                    for image_idx in range(last_reported_local_done + 1, capped_local_done + 1):
-                        global_idx = group_base_done + image_idx
-                        image_name = paths[image_idx - 1].name
-                        _emit_progress(
-                            min(94, pct),
-                            f"Bild bewertet {global_idx}/{total_images}: {image_name}",
-                            force=True,
-                        )
-                    last_reported_local_done = capped_local_done
-
-                use_process_parallel = os.getenv("PHOTOCLEANER_USE_PROCESS_PARALLEL", "1").lower() in ("1", "true", "yes")
-                if use_process_parallel and worker_count > 1:
-                    results = parallel_analyzer.analyze_batch_parallel(
-                        paths,
-                        max_workers=worker_count,
-                        batch_size=1,
-                        progress_callback=_progress_cb,
-                    )
-                else:
-                    results = analyzer.analyze_batch(
-                        paths,
-                        progress_callback=_progress_cb,
-                        max_workers=worker_count,
-                    )
-                quality_results[group_id] = results
-                done += len(paths)
-                
-                # Update progress after analysis
-                pct = 87 + int(7 * (done / max(1, total_images)))
-                _emit_progress(min(94, pct), f"Bilder werden bewertet... {done}/{total_images}", force=(done >= total_images))
-
-            total_scored_images = sum(len(group_results) for group_results in quality_results.values())
-            
-            if self._should_cancel:
-                logger.info("Rating cancelled by user")
-                self.finished.emit(info)
-                return
-            
-            logger.info("Scoring all groups...")
-            group_scores = scorer.score_multiple_groups(quality_results)
-            logger.info(f"Applying scores to database (action_id=AUTO_RATING)...")
-            scorer.apply_scores_to_db(group_scores, files, action_id="AUTO_RATING")
-            logger.info("Scores applied successfully")
-            
-            logger.info("Applying auto-selection for each group...")
-            scored_done = 0
-            for group_id, results in quality_results.items():
-                if self._should_cancel:
-                    break
-                
-                best_path, second_path, all_scores = scorer.auto_select_best_image(group_id, results)
-                try:
-                    # Reset recommendations for the group
-                    conn.execute(
-                        """
-                        UPDATE files
-                        SET is_recommended = 0, keeper_source = 'undecided', quality_score = NULL,
-                            sharpness_component = NULL, lighting_component = NULL,
-                            resolution_component = NULL, face_quality_component = NULL
-                        WHERE file_id IN (
-                            SELECT file_id FROM duplicates WHERE group_id = ?
-                        )
-                        """,
-                        (group_id,),
-                    )
-                    
-                    # Store scores for all images in batches to reduce sqlite statement overhead.
-                    score_updates_with_components: list[tuple[float, float, float, float, float, str]] = []
-                    score_updates_basic: list[tuple[float, str]] = []
-                    for item in all_scores:
-                        if len(item) == 4:
-                            path, score, disqualified, components = item
-                            score_updates_with_components.append(
-                                (
-                                    score,
-                                    components.sharpness_score,
-                                    components.lighting_score,
-                                    components.resolution_score,
-                                    components.face_quality_score,
-                                    str(path),
-                                )
-                            )
-                        else:
-                            path, score, disqualified = item
-                            score_updates_basic.append((score, str(path)))
-
-                        scored_done += 1
-                        score_value = float(score)
-                        score_display = f"{score_value:.1f}" if score_value > 1.0 else f"{score_value * 100:.0f}%"
-                        if best_path and path == best_path:
-                            decision = "EMPFOHLEN"
-                        elif second_path and path == second_path:
-                            decision = "ZWEITWAHL"
-                        elif len(item) == 4 and components.duplicate_class == "A":
-                            decision = "KLASSE A (DUPLIKAT-LOESCHEN)"
-                        elif disqualified:
-                            decision = "AUSSORTIERT"
-                        else:
-                            decision = "BEWERTET"
-
-                        score_pct = 94 + int(round((scored_done / max(1, total_scored_images)) * 5))
-                        _emit_progress(
-                            min(99, score_pct),
-                            f"Ergebnis {scored_done}/{max(1, total_scored_images)}: {Path(path).name} -> {decision} ({score_display})",
-                            force=True,
-                        )
-
-                    if score_updates_with_components:
-                        conn.executemany(
-                            """
-                            UPDATE files
-                            SET quality_score = ?,
-                                sharpness_component = ?,
-                                lighting_component = ?,
-                                resolution_component = ?,
-                                face_quality_component = ?
-                            WHERE path = ?
-                            """,
-                            score_updates_with_components,
-                        )
-                    if score_updates_basic:
-                        conn.executemany(
-                            """
-                            UPDATE files
-                            SET quality_score = ?
-                            WHERE path = ?
-                            """,
-                            score_updates_basic,
-                        )
-                    
-                    if best_path:
-                        conn.execute(
-                            """
-                            UPDATE files
-                            SET is_recommended = 1, keeper_source = 'auto'
-                            WHERE path = ?
-                            """,
-                            (str(best_path),),
-                        )
-                        logger.info(f"{best_path.name} als Empfehlung markiert")
-                    
-                    if second_path:
-                        conn.execute(
-                            """
-                            UPDATE files
-                            SET keeper_source = 'auto_secondary'
-                            WHERE path = ?
-                            """,
-                            (str(second_path),),
-                        )
-                        logger.info(f"{second_path.name} als Zweitwahl markiert")
-                    
-                    conn.commit()
-                except (sqlite3.DatabaseError, sqlite3.OperationalError) as e:
-                    logger.error(f"Fehler beim Markieren der Empfehlungen für {group_id}: {e}", exc_info=True)
-                    info["warn"] = True
-            
-            logger.info(f"[WORKER] RatingWorkerThread COMPLETED - rated={info['rated']}, warn={info['warn']}")
-            info["rated"] = True
-            self.finished.emit(info)
-            
-        except Exception as e:
-            # Catch ALL exceptions: QualityAnalyzer crashes, import errors, Runtime errors, etc.
-            logger.error(f"[WORKER] RatingWorkerThread FAILED with unexpected error: {type(e).__name__}: {e}", exc_info=True)
-            info["warn"] = True
-            self.error.emit(f"{type(e).__name__}: {str(e)}")
-            self.finished.emit(info)
-        finally:
-            logger.info(f"[WORKER] RatingWorkerThread cleanup")
-            # EMERGENCY FIX #2: Ensure database connection is properly closed
-            if conn:
-                try:
-                    conn.close()  # Close connection explicitly
-                except Exception as e:
-                    logger.warning(f"Error closing connection: {e}")
-            if db:
-                try:
-                    db.close()
-                except Exception as e:
-                    logger.warning(f"Error closing database: {e}")
-    
-    def cancel(self):
-        """Cancel the rating operation."""
-        self._should_cancel = True
-
-
-class MergeGroupRatingWorker(QThread):
-    """Background worker for re-rating a newly merged group."""
-
-    progress = Signal(int, int, str, str, int, int)
-    finished = Signal(bool)
-    error = Signal(str)
-
-    def __init__(self, db_path: Path, group_id: str, top_n: int):
-        super().__init__()
-        self.db_path = db_path
-        self.group_id = group_id
-        self.top_n = top_n
-        self._cancelled = False
-        self._progress_emit_interval_sec = 0.08
-
-    def cancel(self) -> None:
-        self._cancelled = True
-
-    def run(self) -> None:
-        db = None
-        conn = None
-        try:
-            last_progress_emit_ts = 0.0
-            last_progress_signature: tuple[int, int, str, str, int, int] | None = None
-
-            def _emit_progress(
-                pct: int,
-                step: int,
-                phase_label: str,
-                detail_label: str,
-                current: int,
-                total: int,
-                force: bool = False,
-            ) -> None:
-                nonlocal last_progress_emit_ts, last_progress_signature
-                clamped_pct = max(0, min(100, int(pct)))
-                signature = (clamped_pct, step, phase_label, detail_label, int(current), int(total))
-                now = time.monotonic()
-                if not force:
-                    if signature == last_progress_signature:
-                        return
-                    if now - last_progress_emit_ts < self._progress_emit_interval_sec:
-                        return
-                self.progress.emit(clamped_pct, step, phase_label, detail_label, int(current), int(total))
-                last_progress_emit_ts = now
-                last_progress_signature = signature
-
-            _emit_progress(5, 1, t("merge_progress_phase_prepare"), t("merge_progress_detail_prepare"), 0, 0, force=True)
-
-            db = Database(self.db_path)
-            conn = db.connect()
-            files = FileRepository(conn)
-
-            cur = conn.execute(
-                """
-                SELECT f.path
-                FROM duplicates d
-                JOIN files f ON f.file_id = d.file_id
-                WHERE d.group_id = ? AND f.is_deleted = 0
-                ORDER BY f.path
-                """,
-                (self.group_id,),
-            )
-            paths = [Path(row["path"]) for row in cur.fetchall()]
-            if not paths:
-                self.finished.emit(False)
-                return
-
-            total_images = len(paths)
-            worker_count = _compute_analysis_workers(total_images)
-            _emit_progress(
-                15,
-                1,
-                t("merge_progress_phase_prepare"),
-                t("merge_progress_detail_found_images").format(count=total_images),
-                total_images,
-                total_images,
-                force=True,
-            )
-
-            if self._cancelled:
-                self.finished.emit(False)
-                return
-
-            _emit_progress(30, 2, t("merge_progress_phase_models"), t("merge_progress_detail_models"), 0, 0, force=True)
-            QualityAnalyzer = _get_quality_analyzer()
-            from photo_cleaner.pipeline.parallel_quality_analyzer import ParallelQualityAnalyzer
-            GroupScorer = _get_group_scorer()
-            analyzer = QualityAnalyzer(use_face_mesh=True)
-            parallel_analyzer = ParallelQualityAnalyzer(analyzer)
-            scorer = GroupScorer(top_n=self.top_n)
-
-            _emit_progress(
-                40,
-                3,
-                t("merge_progress_phase_compare"),
-                t("merge_progress_detail_compare_count").format(current=0, total=total_images),
-                0,
-                total_images,
-                force=True,
-            )
-
-            def _progress_cb(local_done: int, local_total: int) -> None:
-                if self._cancelled:
-                    return
-                if local_total <= 0:
-                    pct = 40
-                else:
-                    pct = 40 + int(round((local_done / local_total) * 30))
-                total_local = max(local_total, total_images)
-                _emit_progress(
-                    min(70, max(40, pct)),
-                    3,
-                    t("merge_progress_phase_compare"),
-                    t("merge_progress_detail_compare_count").format(current=local_done, total=total_local),
-                    max(0, local_done),
-                    max(1, total_local),
-                )
-
-            use_process_parallel = os.getenv("PHOTOCLEANER_USE_PROCESS_PARALLEL", "1").lower() in ("1", "true", "yes")
-            if use_process_parallel and worker_count > 1:
-                results = parallel_analyzer.analyze_batch_parallel(
-                    paths,
-                    max_workers=worker_count,
-                    batch_size=1,
-                    progress_callback=_progress_cb,
-                )
-            else:
-                results = analyzer.analyze_batch(
-                    paths,
-                    progress_callback=_progress_cb,
-                    max_workers=worker_count,
-                )
-            if self._cancelled:
-                self.finished.emit(False)
-                return
-
-            _emit_progress(75, 4, t("merge_progress_phase_scoring"), t("merge_progress_detail_scoring_count").format(current=0, total=0), 0, 0, force=True)
-            group_scores = scorer.score_multiple_groups({self.group_id: results})
-            scorer.apply_scores_to_db(group_scores, files, action_id="AUTO_RATING_MERGE")
-
-            best_path, second_path, all_scores = scorer.auto_select_best_image(self.group_id, results)
-            total_scores = len(all_scores)
-
-            conn.execute(
-                """
-                UPDATE files
-                SET is_recommended = 0, keeper_source = 'undecided', quality_score = NULL,
-                    sharpness_component = NULL, lighting_component = NULL,
-                    resolution_component = NULL, face_quality_component = NULL
-                WHERE file_id IN (
-                    SELECT file_id FROM duplicates WHERE group_id = ?
-                )
-                """,
-                (self.group_id,),
-            )
-
-            score_updates_with_components: list[tuple[float, float, float, float, float, str]] = []
-            score_updates_basic: list[tuple[float, str]] = []
-            for idx, item in enumerate(all_scores, start=1):
-                if self._cancelled:
-                    self.finished.emit(False)
-                    return
-                if len(item) == 4:
-                    path, score, _, components = item
-                    score_updates_with_components.append(
-                        (
-                            score,
-                            components.sharpness_score,
-                            components.lighting_score,
-                            components.resolution_score,
-                            components.face_quality_score,
-                            str(path),
-                        )
-                    )
-                else:
-                    path, score, _ = item
-                    score_updates_basic.append((score, str(path)))
-
-                if total_scores > 0 and (idx == total_scores or idx == 1 or idx % 5 == 0):
-                    pct = 75 + int(round((idx / total_scores) * 21))
-                    _emit_progress(
-                        min(96, max(75, pct)),
-                        4,
-                        t("merge_progress_phase_scoring"),
-                        t("merge_progress_detail_scoring_count").format(current=idx, total=total_scores),
-                        idx,
-                        total_scores,
-                    )
-
-            if score_updates_with_components:
-                conn.executemany(
-                    """
-                    UPDATE files
-                    SET quality_score = ?,
-                        sharpness_component = ?,
-                        lighting_component = ?,
-                        resolution_component = ?,
-                        face_quality_component = ?
-                    WHERE path = ?
-                    """,
-                    score_updates_with_components,
-                )
-            if score_updates_basic:
-                conn.executemany(
-                    """
-                    UPDATE files
-                    SET quality_score = ?
-                    WHERE path = ?
-                    """,
-                    score_updates_basic,
-                )
-
-            if best_path:
-                conn.execute(
-                    """
-                    UPDATE files
-                    SET is_recommended = 1, keeper_source = 'auto'
-                    WHERE path = ?
-                    """,
-                    (str(best_path),),
-                )
-
-            if second_path:
-                conn.execute(
-                    """
-                    UPDATE files
-                    SET keeper_source = 'auto_secondary'
-                    WHERE path = ?
-                    """,
-                    (str(second_path),),
-                )
-
-            _emit_progress(98, 5, t("merge_progress_phase_finalize"), t("merge_progress_detail_finalize"), 0, 0, force=True)
-            conn.commit()
-            _emit_progress(100, 5, t("merge_progress_phase_done"), t("merge_progress_detail_done"), 0, 0, force=True)
-            self.finished.emit(True)
-        except Exception as e:
-            logger.error("MergeGroupRatingWorker failed: %s", e, exc_info=True)
-            self.error.emit(str(e))
-        finally:
-            # EMERGENCY FIX #2: Ensure database connections are properly closed
-            if conn:
-                try:
-                    conn.close()  # Close connection explicitly
-                except Exception as e:
-                    logger.warning(f"Error closing connection: {e}")
-            if db:
-                try:
-                    db.close()
-                except Exception as e:
-                    logger.warning(f"Error closing database: {e}")
-
-
-class DuplicateFinderThread(QThread):
-    """Worker thread for duplicate group building."""
-
-    finished = Signal(object)  # group_rows list
-    error = Signal(str)
-
-    def __init__(self, db_path: Path, phash_threshold: int = 5):
-        super().__init__()
-        self.db_path = db_path
-        self.phash_threshold = phash_threshold
-
-    def run(self) -> None:
-        from photo_cleaner.db.schema import Database
-        from photo_cleaner.duplicates.finder import DuplicateFinder
-
-        db = None
-        conn = None
-        try:
-            db = Database(self.db_path)
-            conn = db.connect()  # Store connection for proper cleanup
-            finder = DuplicateFinder(db, phash_threshold=self.phash_threshold)
-            group_rows = finder.build_groups()
-            self.finished.emit(group_rows)
-        except Exception as e:
-            logger.error(f"Duplicate finder failed: {e}", exc_info=True)
-            self.error.emit(str(e))
-        finally:
-            # EMERGENCY FIX #2: Ensure database connections are properly closed
-            if conn:
-                try:
-                    conn.close()  # Close connection explicitly
-                except Exception as e:
-                    logger.warning(f"Error closing connection: {e}")
-            if db:
-                try:
-                    db.close()
-                except Exception as e:
-                    logger.warning(f"Error closing database: {e}")
-
-
-class ExifWorkerThread(QThread):
-    """P2 FIX #16: Worker thread for async EXIF extraction.
-    
-    Prevents UI-Thread blocking during EXIF extraction for large batches.
-    Runs EXIF extraction in background with signal-based result updates.
-    """
-    
-    # Signals
-    finished = Signal(dict)  # exif_data dict {"field": "value"}
-    error = Signal(str)  # error message
-    
-    def __init__(self, file_path: Path):
-        super().__init__()
-        self.file_path = file_path
-    
-    def run(self):
-        """Execute EXIF extraction in background thread."""
-        try:
-            logger.debug(f"ExifWorkerThread: Reading EXIF for {self.file_path.name}")
-            exif_data = ExifReader.read_exif(self.file_path)
-            logger.debug(f"ExifWorkerThread: EXIF read complete for {self.file_path.name}")
-            self.finished.emit(exif_data)
-        except Exception as e:
-            logger.error(f"ExifWorkerThread: Failed to read EXIF for {self.file_path.name}: {e}", exc_info=True)
-            self.error.emit(str(e))
-
-
-# ────────────────────────────────────────────────────────────────────────────────
-# Phase D: Enhanced Progress & Result Dialogs
-# ────────────────────────────────────────────────────────────────────────────────
-
-class ProgressStepDialog(QDialog):
-    """Phase D: Enhanced progress dialog with step indicators and ETA."""
-    
-    cancelled = Signal()
-    
-    def __init__(
-        self,
-        parent=None,
-        *,
-        window_title: str | None = None,
-        step_names: Optional[List[str]] = None,
-        show_sub_progress: bool = False,
-    ):
-        super().__init__(parent)
-        self.setWindowTitle(window_title or t("image_analysis"))
-        self.setWindowModality(Qt.WindowModal)
-        self.setMinimumWidth(500)
-        self.setMinimumHeight(200)
-        self.current_step = 0
-        self.step_names = step_names or [
-            t("progress_step_1_scanning"),
-            t("progress_step_2_grouping"),
-            t("progress_step_3_rating"),
-            t("progress_step_4_finalization"),
-        ]
-        self.step_count = len(self.step_names)
-        self._show_sub_progress = show_sub_progress
-        self.start_time = time.time()
-        self.last_update_time = 0
-        self.last_percentage = 0
-        self._eta_points: deque[tuple[float, int]] = deque(maxlen=24)
-        self._smoothed_eta_seconds: float | None = None
-        self._last_activity_entry: str = ""
-        self._setup_ui()
-        self._apply_styling()
-    
-    def _setup_ui(self):
-        """Setup dialog UI components."""
-        layout = QVBoxLayout()
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
-        
-        # Step and title
-        self.step_label = QLabel()
-        step_font = self.step_label.font()
-        step_font.setPointSize(12)
-        step_font.setBold(True)
-        self.step_label.setFont(step_font)
-        layout.addWidget(self.step_label)
-
-        # Milestones: pending gray, active blue (busy), done green
-        milestones_layout = QHBoxLayout()
-        milestones_layout.setSpacing(10)
-        self.step_progress_bars: list[QProgressBar] = []
-        for name in self.step_names:
-            step_column = QVBoxLayout()
-            step_column.setSpacing(4)
-
-            step_name = QLabel(name.replace("...", ""))
-            step_name.setAlignment(Qt.AlignCenter)
-            step_name.setStyleSheet("font-size: 11px;")
-
-            mini_bar = QProgressBar()
-            mini_bar.setMinimum(0)
-            mini_bar.setMaximum(100)
-            mini_bar.setValue(0)
-            mini_bar.setTextVisible(False)
-            mini_bar.setFixedHeight(8)
-
-            step_column.addWidget(step_name)
-            step_column.addWidget(mini_bar)
-            milestones_layout.addLayout(step_column)
-            self.step_progress_bars.append(mini_bar)
-
-        layout.addLayout(milestones_layout)
-        
-        # Progress bar
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setMinimum(0)
-        self.progress_bar.setMaximum(100)
-        self.progress_bar.setValue(0)
-        self.progress_bar.setTextVisible(True)
-        layout.addWidget(self.progress_bar)
-
-        # Optional sub-progress for detailed per-phase updates.
-        self.sub_status_label = QLabel("")
-        self.sub_status_label.setStyleSheet("font-size: 11px;")
-        layout.addWidget(self.sub_status_label)
-
-        self.sub_progress_bar = QProgressBar()
-        self.sub_progress_bar.setMinimum(0)
-        self.sub_progress_bar.setMaximum(100)
-        self.sub_progress_bar.setValue(0)
-        self.sub_progress_bar.setTextVisible(True)
-        self.sub_progress_bar.setFixedHeight(16)
-        layout.addWidget(self.sub_progress_bar)
-
-        if not self._show_sub_progress:
-            self.sub_status_label.hide()
-            self.sub_progress_bar.hide()
-        
-        # Status info
-        info_layout = QHBoxLayout()
-        info_layout.setSpacing(12)
-        self.status_label = QLabel()
-        info_layout.addWidget(self.status_label)
-        self.eta_label = QLabel()
-        info_layout.addStretch()
-        info_layout.addWidget(self.eta_label)
-        layout.addLayout(info_layout)
-
-        # User-facing activity log under progress bars for transparent live feedback.
-        self.activity_label = QLabel(t("analysis_activity_title"))
-        self.activity_label.setStyleSheet("font-size: 11px; font-weight: 600;")
-        layout.addWidget(self.activity_label)
-
-        self.activity_log = QTextEdit()
-        self.activity_log.setReadOnly(True)
-        self.activity_log.setMinimumHeight(90)
-        self.activity_log.setMaximumHeight(140)
-        self.activity_log.setStyleSheet("QTextEdit { font-size: 11px; }")
-        layout.addWidget(self.activity_log)
-        
-        # Cancel button
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        cancel_btn = QPushButton(t("cancel"))
-        cancel_btn.clicked.connect(self.cancelled.emit)
-        button_layout.addWidget(cancel_btn)
-        layout.addLayout(button_layout)
-        
-        self.setLayout(layout)
-        self._update_step_visuals()
-        self.append_activity_log(t("analysis_activity_ready"))
-    
-    def _apply_styling(self):
-        """Apply Phase C consistent styling."""
-        colors = get_semantic_colors()
-        theme_colors = get_theme_colors()
-        
-        # Progress bar styling
-        bg_color = theme_colors.get("base", "#ffffff")
-        progress_color = colors["info"]
-        
-        self.progress_bar.setStyleSheet(f"""
-            QProgressBar {{
-                border: 1px solid {colors['neutral']};
-                border-radius: 4px;
-                background-color: {bg_color};
-                text-align: center;
-                min-height: 24px;
-            }}
-            QProgressBar::chunk {{
-                background-color: {progress_color};
-                border-radius: 3px;
-            }}
-        """)
-
-        self.sub_progress_bar.setStyleSheet(f"""
-            QProgressBar {{
-                border: 1px solid {colors['neutral']};
-                border-radius: 4px;
-                background-color: {bg_color};
-                text-align: center;
-                min-height: 16px;
-                font-size: 10px;
-            }}
-            QProgressBar::chunk {{
-                background-color: {colors['info']};
-                border-radius: 3px;
-            }}
-        """)
-        
-        # Dialog styling
-        self.setStyleSheet(f"""
-            QDialog {{
-                background-color: {theme_colors.get('window', '#f5f5f5')};
-                color: {theme_colors.get('text', '#000000')};
-            }}
-        """)
-    
-    def set_step(self, step: int):
-        """Update current step (1-4)."""
-        self.current_step = max(0, min(step, self.step_count))
-        self._update_step_label()
-        self._update_step_visuals()
-
-    def _set_milestone_state(self, bar: QProgressBar, state: str) -> None:
-        colors = get_theme_colors()
-        semantic = get_semantic_colors()
-        border = colors.get("border", "#7f8c8d")
-        pending_bg = colors.get("alternate_base", "#d0d3d6")
-        base_bg = colors.get("base", "#d9dde1")
-
-        if state == "done":
-            bar.setRange(0, 100)
-            bar.setValue(100)
-            bar.setStyleSheet(
-                f"QProgressBar {{ border: 1px solid {border}; border-radius: 4px; background-color: {base_bg}; }}"
-                f"QProgressBar::chunk {{ background-color: {semantic['success']}; border-radius: 3px; }}"
-            )
-            return
-
-        if state == "active":
-            bar.setRange(0, 0)
-            bar.setStyleSheet(
-                f"QProgressBar {{ border: 1px solid {border}; border-radius: 4px; background-color: {base_bg}; }}"
-                f"QProgressBar::chunk {{ background-color: {semantic['info']}; border-radius: 3px; }}"
-            )
-            return
-
-        bar.setRange(0, 100)
-        bar.setValue(0)
-        bar.setStyleSheet(
-            f"QProgressBar {{ border: 1px solid {border}; border-radius: 4px; background-color: {pending_bg}; }}"
-            f"QProgressBar::chunk {{ background-color: {colors.get('disabled_bg', pending_bg)}; border-radius: 3px; }}"
-        )
-
-    def _update_step_visuals(self) -> None:
-        for idx, bar in enumerate(self.step_progress_bars, start=1):
-            if idx < self.current_step:
-                self._set_milestone_state(bar, "done")
-            elif idx == self.current_step and self.current_step > 0:
-                self._set_milestone_state(bar, "active")
-            else:
-                self._set_milestone_state(bar, "pending")
-    
-    def _update_step_label(self):
-        """Update step display label."""
-        shown_step = max(1, self.current_step)
-        current_name = self.step_names[self.current_step - 1] if self.current_step > 0 else t("progress_step_1_scanning")
-        label_text = f"{t('progress_step_current').format(step=shown_step, total=self.step_count)}: {current_name}"
-        self.step_label.setText(label_text)
-    
-    def set_progress(self, value: int, status: str = "", current: int = 0, total: int = 0):
-        """Update progress bar and status info."""
-        self.progress_bar.setValue(value)
-        self.last_percentage = value
-        self.last_update_time = time.time()
-        
-        # Update status
-        if current > 0 and total > 0:
-            status_text = f"{status} ({current}/{total})"
-        else:
-            status_text = status
-        self.status_label.setText(status_text)
-
-        if status_text:
-            self.append_activity_log(status_text)
-        
-        # Calculate and update ETA
-        self._update_eta(value)
-
-    def append_activity_log(self, message: str) -> None:
-        """Append one deduplicated line to the activity log panel."""
-        entry = (message or "").strip()
-        if not entry or entry == self._last_activity_entry:
-            return
-        self._last_activity_entry = entry
-        timestamp = time.strftime("%H:%M:%S")
-        self.activity_log.append(f"[{timestamp}] {entry}")
-        scrollbar = self.activity_log.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
-
-    def set_sub_progress(self, status: str = "", current: int = 0, total: int = 0) -> None:
-        """Update optional sub-progress details for the active phase."""
-        if not self._show_sub_progress:
-            return
-
-        self.sub_status_label.show()
-        self.sub_progress_bar.show()
-        self.sub_status_label.setText(status)
-
-        if total > 0:
-            self.sub_progress_bar.setRange(0, total)
-            self.sub_progress_bar.setValue(max(0, min(current, total)))
-            self.sub_progress_bar.setFormat("%v/%m")
-            return
-
-        if status:
-            self.sub_progress_bar.setRange(0, 0)
-            self.sub_progress_bar.setFormat("")
-            return
-
-        self.sub_progress_bar.setRange(0, 100)
-        self.sub_progress_bar.setValue(0)
-        self.sub_progress_bar.setFormat("%p%")
-    
-    def _update_eta(self, percentage: int):
-        """Calculate and display a stable ETA based on smoothed progress speed."""
-        now = time.time()
-        elapsed = now - self.start_time
-
-        # Reset ETA state when progress restarts or jumps backwards.
-        if percentage < self.last_percentage:
-            self._eta_points.clear()
-            self._smoothed_eta_seconds = None
-
-        if not self._eta_points or percentage != self._eta_points[-1][1]:
-            self._eta_points.append((now, percentage))
-
-        # Keep only recent points to avoid stale early-slow samples dominating ETA.
-        while self._eta_points and (now - self._eta_points[0][0]) > 18.0:
-            self._eta_points.popleft()
-
-        # Require enough signal before showing ETA.
-        if percentage < 8 or elapsed < 4.0 or len(self._eta_points) < 3:
-            self.eta_label.setText(t("progress_eta_calculating"))
-            QApplication.processEvents()
-            return
-
-        window_start_t, window_start_p = self._eta_points[0]
-        dt = now - window_start_t
-        dp = percentage - window_start_p
-        if dt <= 0.0 or dp <= 0:
-            self.eta_label.setText(t("progress_eta_calculating"))
-            QApplication.processEvents()
-            return
-
-        # Blend short-window and overall rate for smoother but still responsive ETA.
-        window_rate = dp / dt
-        overall_rate = percentage / max(elapsed, 1e-6)
-        blended_rate = (0.7 * window_rate) + (0.3 * overall_rate)
-        if blended_rate <= 0.0:
-            self.eta_label.setText(t("progress_eta_calculating"))
-            QApplication.processEvents()
-            return
-
-        remaining_percent = max(0, 100 - percentage)
-        eta_seconds = remaining_percent / blended_rate
-
-        # Exponential smoothing prevents visible jumping in the label.
-        if self._smoothed_eta_seconds is None:
-            self._smoothed_eta_seconds = eta_seconds
-        else:
-            self._smoothed_eta_seconds = (0.75 * self._smoothed_eta_seconds) + (0.25 * eta_seconds)
-
-        stable_eta = max(0.0, self._smoothed_eta_seconds)
-        if stable_eta < 1.0:
-            self.eta_label.setText("")
-            QApplication.processEvents()
-            return
-
-        minutes = int(stable_eta // 60)
-        seconds = int(stable_eta % 60)
-        self.eta_label.setText(t("progress_eta").format(eta=f"{minutes}:{seconds:02d}"))
-        QApplication.processEvents()
-    
-    # QProgressDialog API compatibility methods
-    def setMinimum(self, value: int):
-        """Set progress bar minimum (compatibility with QProgressDialog)."""
-        self.progress_bar.setMinimum(value)
-    
-    def setMaximum(self, value: int):
-        """Set progress bar maximum (compatibility with QProgressDialog)."""
-        self.progress_bar.setMaximum(value)
-    
-    def setValue(self, value: int):
-        """Set progress bar value (compatibility with QProgressDialog)."""
-        self.progress_bar.setValue(value)
-        self.last_percentage = value
-        self.last_update_time = time.time()
-        self._update_eta(value)
-    
-    def setLabelText(self, text: str):
-        """Set label text (compatibility with QProgressDialog)."""
-        self.status_label.setText(text)
-    
-    def setFormat(self, text: str):
-        """Set format string (compatibility with QProgressDialog)."""
-        self.progress_bar.setFormat(text)
-
-
-class FinalizationResultDialog(QDialog):
-    """Phase D: Custom completion dialog with user-relevant results only."""
-    
-    report_error = Signal()
-    
-    def __init__(self, 
-                 total_files: int, 
-                 groups_found: int,
-                 new_files: int,
-                 cached_files: int,
-                 error_files: List[str] = None,
-                 analysis_time: float = 0,
-                 parent=None):
-        super().__init__(parent)
-        self.setWindowTitle(t("finalization_dialog_title"))
-        self.setWindowModality(Qt.WindowModal)
-        self.setMinimumWidth(550)
-        self.setMinimumHeight(400)
-        
-        self.total_files = total_files
-        self.groups_found = groups_found
-        self.new_files = new_files
-        self.cached_files = cached_files
-        self.error_files = error_files or []
-        self.analysis_time = analysis_time
-        
-        self._setup_ui()
-        self._apply_styling()
-    
-    def _setup_ui(self):
-        """Setup dialog UI components."""
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(16)
-        
-        # Success summary card
-        summary_card = self._create_summary_card()
-        main_layout.addWidget(summary_card)
-        
-        # Error section (if errors exist)
-        if self.error_files:
-            error_card = self._create_error_card()
-            main_layout.addWidget(error_card)
-        
-        # Processing info section
-        info_card = self._create_info_card()
-        main_layout.addWidget(info_card)
-        
-        main_layout.addStretch()
-        
-        # Button layout
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        
-        if self.error_files:
-            report_btn = QPushButton(t("finalization_button_report_error"))
-            report_btn.clicked.connect(self.report_error.emit)
-            button_layout.addWidget(report_btn)
-        
-        ok_btn = QPushButton(t("finalization_button_ok"))
-        ok_btn.clicked.connect(self.accept)
-        button_layout.addWidget(ok_btn)
-        
-        main_layout.addLayout(button_layout)
-        self.setLayout(main_layout)
-    
-    def _create_summary_card(self) -> QWidget:
-        """Create success summary card."""
-        card = QWidget()
-        layout = QVBoxLayout()
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(8)
-        
-        # Title
-        title_label = QLabel(t("finalization_success_summary").format(
-            total=self.total_files,
-            groups=self.groups_found
-        ))
-        title_font = title_label.font()
-        title_font.setPointSize(11)
-        title_font.setBold(True)
-        title_label.setFont(title_font)
-        layout.addWidget(title_label)
-        
-        colors = get_semantic_colors()
-        
-        card.setLayout(layout)
-        self._apply_card_styling(card, colors["success"])
-        
-        return card
-    
-    def _create_error_card(self) -> QWidget:
-        """Create errors and affected files card."""
-        card = QWidget()
-        layout = QVBoxLayout()
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
-        
-        colors = get_semantic_colors()
-        
-        # Error header
-        error_count = len(self.error_files)
-        error_title = QLabel(t("finalization_errors_header"))
-        error_title_font = error_title.font()
-        error_title_font.setBold(True)
-        error_title.setFont(error_title_font)
-        error_title.setStyleSheet(f"color: {colors['error']};")
-        layout.addWidget(error_title)
-        
-        # Error count
-        error_msg = QLabel(t("finalization_error_loading").format(count=error_count))
-        error_msg.setStyleSheet(f"color: {colors['error']};")
-        layout.addWidget(error_msg)
-        
-        # Affected files list
-        if self.error_files:
-            files_label = QLabel(t("finalization_affected_files") + ":")
-            files_label_font = files_label.font()
-            files_label_font.setBold(True)
-            files_label.setFont(files_label_font)
-            layout.addWidget(files_label)
-            
-            # Scrollable file list
-            scroll = QScrollArea()
-            scroll.setWidgetResizable(True)
-            file_list_widget = QWidget()
-            file_list_layout = QVBoxLayout()
-            file_list_layout.setContentsMargins(0, 0, 0, 0)
-            file_list_layout.setSpacing(4)
-            
-            for file_path in self.error_files[:20]:  # Limit to 20 visible files
-                file_item = QLabel(f"• {file_path}")
-                file_item.setWordWrap(True)
-                file_list_layout.addWidget(file_item)
-            
-            if len(self.error_files) > 20:
-                more_label = QLabel(f"... und {len(self.error_files) - 20} weitere")
-                more_label.setStyleSheet(f"color: {colors['neutral']};")
-                file_list_layout.addWidget(more_label)
-            
-            file_list_layout.addStretch()
-            file_list_widget.setLayout(file_list_layout)
-            scroll.setWidget(file_list_widget)
-            scroll.setMaximumHeight(150)
-            layout.addWidget(scroll)
-        
-        card.setLayout(layout)
-        self._apply_card_styling(card, colors["error"])
-        
-        return card
-    
-    def _create_info_card(self) -> QWidget:
-        """Create processing information card."""
-        card = QWidget()
-        layout = QVBoxLayout()
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(8)
-        
-        colors = get_semantic_colors()
-        
-        # Processing info
-        info_text = t("finalization_processing_info").format(
-            new=self.new_files,
-            cached=self.cached_files
-        )
-        info_label = QLabel(info_text)
-        layout.addWidget(info_label)
-        
-        # Analysis time
-        if self.analysis_time > 0:
-            minutes = int(self.analysis_time // 60)
-            seconds = int(self.analysis_time % 60)
-            time_label = QLabel(f"Analysezeit: {minutes}:{seconds:02d}")
-            layout.addWidget(time_label)
-        
-        card.setLayout(layout)
-        theme_colors = get_theme_colors()
-        bg_color = theme_colors.get("alternate_base", theme_colors.get("base", "#f5f5f5"))
-        text_color = theme_colors.get("text", "#000000")
-        card.setStyleSheet(f"""
-            QWidget {{
-                background-color: {bg_color};
-                border: 1px solid {colors['neutral']};
-                border-radius: 6px;
-                color: {text_color};
-            }}
-        """)
-        
-        return card
-    
-    def _apply_card_styling(self, card: QWidget, accent_color: str):
-        """Apply card styling with accent color."""
-        colors = get_semantic_colors()
-        bg_color = get_theme_colors().get("base", "#ffffff")
-        
-        card.setStyleSheet(f"""
-            QWidget {{
-                background-color: {bg_color};
-                border: 2px solid {accent_color};
-                border-radius: 6px;
-                padding: 0px;
-            }}
-        """)
-    
-    def _apply_styling(self):
-        """Apply overall dialog styling."""
-        theme_colors = get_theme_colors()
-        self.setStyleSheet(f"""
-            QDialog {{
-                background-color: {theme_colors.get('window', '#f5f5f5')};
-                color: {theme_colors.get('text', '#000000')};
-            }}
-            QPushButton {{
-                min-height: 36px;
-                min-width: 80px;
-                border-radius: 4px;
-                padding: 0px 16px;
-                font-size: 13px;
-                font-weight: bold;
-                background-color: {get_semantic_colors()['info']};
-                color: white;
-                border: none;
-            }}
-            QPushButton:hover {{
-                opacity: 0.9;
-            }}
-            QPushButton:pressed {{
-                opacity: 0.8;
-            }}
-        """)
 
 
 class FolderSelectionDialog(QDialog):
@@ -1578,6 +281,7 @@ class FolderSelectionDialog(QDialog):
         self.start_btn.setStyleSheet(
             _build_button_style(success_color, padding="12px 28px", font_size=14, radius=10)
         )
+        self.start_btn.setAccessibleName(t("start_analysis"))
         self.start_btn.clicked.connect(self.accept)
         button_box.addButton(self.start_btn, QDialogButtonBox.AcceptRole)
         
@@ -1665,6 +369,7 @@ class FolderSelectionDialog(QDialog):
         input_btn = QPushButton(t("browse"))
         input_btn.setFixedWidth(120)
         input_btn.setStyleSheet(_build_button_style(get_semantic_colors()["info"], padding="10px 14px"))
+        input_btn.setAccessibleName(t("select_input_folder_label"))
         input_btn.clicked.connect(self._select_input_folder)
         input_row.addWidget(input_btn)
         
@@ -1683,7 +388,7 @@ class FolderSelectionDialog(QDialog):
         
         output_hint = QLabel(f"<i>{t('import_output_card_hint')}</i>")
         hint_color = get_text_hint_color()
-        output_hint.setStyleSheet(f"color: {hint_color}; font-size: 11px;")
+        output_hint.setStyleSheet(f"color: {hint_color}; font-size: 12px;")
         output_layout.addWidget(output_hint)
         
         output_row = QHBoxLayout()
@@ -1694,6 +399,7 @@ class FolderSelectionDialog(QDialog):
         output_btn = QPushButton(t("browse"))
         output_btn.setFixedWidth(120)
         output_btn.setStyleSheet(_build_button_style(get_semantic_colors()["info"], padding="10px 14px"))
+        output_btn.setAccessibleName(t("select_output_folder_label"))
         output_btn.clicked.connect(self._select_output_folder)
         output_row.addWidget(output_btn)
         
@@ -2124,36 +830,6 @@ class FolderSelectionDialog(QDialog):
 # This ensures theme-aware colors that update on theme changes
 
 
-@dataclass
-class GroupRow:
-    """Represents a duplicate group with metadata."""
-    group_id: str
-    sample_path: Path
-    total: int
-    open_count: int
-    decided_count: int
-    delete_count: int
-    similarity: float
-    needs_review_count: int = 0
-    confidence_score: int = 0
-    confidence_level: str = "none"
-    diagnostics_text: str = ""
-
-
-@dataclass
-class FileRow:
-    """Represents a file with its status and metadata."""
-    path: Path
-    status: FileStatus
-    locked: bool
-    is_recommended: bool
-    quality_score: Optional[float] = None  # Overall quality score (0-100)
-    sharpness_score: Optional[float] = None  # Sharpness component (0-100)
-    lighting_score: Optional[float] = None  # Lighting/Exposure component (0-100)
-    resolution_score: Optional[float] = None  # Resolution component (0-100)
-    face_quality_score: Optional[float] = None  # Face quality component (0-100)
-
-
 def _get_confidence_style(level: Optional[str]) -> tuple[str, str]:
     semantic_colors = get_semantic_colors()
     if level == "high":
@@ -2347,119 +1023,6 @@ def _resolve_default_db_path(db_path: Optional[Path]) -> Path:
         return candidate
 
     return AppConfig.get_db_dir() / candidate.name
-
-
-class ExifReader:
-    """Liest und formatiert EXIF-Metadaten aus Bildern."""
-    
-    @staticmethod
-    def read_exif(image_path: Path) -> dict[str, str]:
-        """Lese EXIF-Daten aus Bilddatei.
-        
-        Gibt dict mit formatierten EXIF-Daten zurück, behandelt Fehler sicher.
-        Häufige Felder: Kamera, Objektiv, ISO, Blende, Verschlusszeit, Brennweite, Aufnahmedatum, etc.
-        """
-        try:
-            from PIL import Image
-            from PIL.ExifTags import TAGS, GPSTAGS
-            
-            exif_data = {}
-            
-            with Image.open(image_path) as img:
-                # Get basic image info
-                exif_data["Format"] = img.format or "Unknown"
-                exif_data["Size"] = f"{img.width} × {img.height} px"
-                exif_data["Mode"] = img.mode
-                
-                # Get EXIF data
-                exif_raw = img.getexif()
-                if not exif_raw:
-                    return exif_data
-                
-                # Map common EXIF tags to readable names
-                tag_map = {
-                    "Make": "Camera Make",
-                    "Model": "Camera Model",
-                    "LensModel": "Lens",
-                    "DateTime": "Date Taken",
-                    "DateTimeOriginal": "Date Original",
-                    "DateTimeDigitized": "Date Digitized",
-                    "ExposureTime": "Shutter Speed",
-                    "FNumber": "Aperture",
-                    "ISOSpeedRatings": "ISO",
-                    "FocalLength": "Focal Length",
-                    "Flash": "Flash",
-                    "WhiteBalance": "White Balance",
-                    "ExposureProgram": "Exposure Mode",
-                    "MeteringMode": "Metering Mode",
-                    "Orientation": "Orientation",
-                    "XResolution": "X Resolution",
-                    "YResolution": "Y Resolution",
-                    "Software": "Software",
-                }
-                
-                for tag_id, value in exif_raw.items():
-                    tag_name = TAGS.get(tag_id, f"Tag_{tag_id}")
-                    
-                    # Format specific values
-                    if tag_name == "ExposureTime" and isinstance(value, (tuple, list)):
-                        if len(value) == 2 and value[1] != 0:
-                            exif_data["Shutter Speed"] = f"{value[0]}/{value[1]} sec"
-                    elif tag_name == "FNumber" and isinstance(value, (tuple, list)):
-                        if len(value) == 2 and value[1] != 0:
-                            f_value = value[0] / value[1]
-                            exif_data["Aperture"] = f"f/{f_value:.1f}"
-                    elif tag_name == "FocalLength" and isinstance(value, (tuple, list)):
-                        if len(value) == 2 and value[1] != 0:
-                            focal = value[0] / value[1]
-                            exif_data["Focal Length"] = f"{focal:.1f} mm"
-                    elif tag_name in tag_map:
-                        display_name = tag_map[tag_name]
-                        exif_data[display_name] = str(value)
-                
-                # GPS data
-                gps_info = exif_raw.get_ifd(0x8825)
-                if gps_info:
-                    exif_data["GPS"] = "Available"
-            
-            return exif_data
-            
-        except (OSError, IOError, ValueError) as e:
-            logger.error(f"Could not read EXIF: {e}", exc_info=True)
-            return {"Error": f"Could not read EXIF: {e}"}
-    
-    @staticmethod
-    def format_exif_html(exif_data: dict[str, str]) -> str:
-        """Formatiere EXIF-Daten als HTML zur Anzeige."""
-        if not exif_data:
-            return "<p><i>Keine EXIF-Daten verfügbar</i></p>"
-        
-        html = "<table style='width: 100%; border-collapse: collapse;'>"
-        
-        # Nach Kategorien gruppieren
-        basic_fields = ["Format", "Size", "Mode"]
-        camera_fields = ["Camera Make", "Camera Model", "Lens"]
-        exposure_fields = ["Shutter Speed", "Aperture", "ISO", "Focal Length"]
-        other_fields = [k for k in exif_data.keys() 
-                       if k not in basic_fields + camera_fields + exposure_fields]
-        
-        def add_section(title: str, fields: list[str]):
-            nonlocal html
-            section_data = {k: v for k, v in exif_data.items() if k in fields}
-            if section_data:
-                label_color = get_label_foreground_color()
-                info_color = get_semantic_colors()["info"]
-                html += f"<tr><td colspan='2' style='padding-top: 12px; font-weight: bold; color: {info_color};'>{title}</td></tr>"
-                for key, value in section_data.items():
-                    html += f"<tr><td style='padding: 4px 12px; color: {label_color};'>{key}</td><td style='padding: 4px;'>{value}</td></tr>"
-        
-        add_section("Bild", basic_fields)
-        add_section("Kamera", camera_fields)
-        add_section("Belichtung", exposure_fields)
-        add_section("Andere", other_fields)
-        
-        html += "</table>"
-        return html
 
 
 class ZoomableImageView(QGraphicsView):
@@ -2940,7 +1503,7 @@ class ThumbnailCard(QWidget):
                 font-weight: bold;
                 padding: 4px;
                 border-radius: 4px;
-                font-size: 11px;
+                font-size: 12px;
             }}
         """)
         layout.addWidget(self.status_label)
@@ -2952,7 +1515,7 @@ class ThumbnailCard(QWidget):
         
         name_label = QLabel(name)
         name_label.setAlignment(Qt.AlignCenter)
-        name_label.setStyleSheet(f"font-size: 11px; color: {colors['text']};")
+        name_label.setStyleSheet(f"font-size: 12px; color: {colors['text']};")
         layout.addWidget(name_label)
         
         # Quality Score Badge (NEW Feature 4!)
@@ -2995,7 +1558,7 @@ class ThumbnailCard(QWidget):
                     font-weight: bold;
                     padding: 2px 6px;
                     border-radius: 6px;
-                    font-size: 10px;
+                    font-size: 12px;
                 }}
             """)
             score_label.setToolTip(explanation.tooltip_text)
@@ -3102,7 +1665,7 @@ class ThumbnailCard(QWidget):
                 font-weight: bold;
                 padding: 4px;
                 border-radius: 4px;
-                font-size: 11px;
+                font-size: 12px;
             }}
         """)
 
@@ -3233,7 +1796,7 @@ class ImageDetailWindow(QMainWindow):
         status_badge.setStyleSheet(
             f"background-color: {status_color}; color: {badge_fg};"
             "font-weight: bold; padding: 6px 10px; border-radius: 10px;"
-            "font-size: 11px;"
+            "font-size: 12px;"
         )
         status_badge.setAlignment(Qt.AlignCenter)
         header_row.addWidget(status_badge, alignment=Qt.AlignTop | Qt.AlignRight)
@@ -3265,7 +1828,7 @@ class ImageDetailWindow(QMainWindow):
             score_label.setWordWrap(True)
             score_label.setToolTip(explanation.tooltip_text)
             score_label.setStyleSheet(
-                f"font-size: 11px; color: {colors['text']}; padding: 6px; background-color: {colors['base']}; border: 1px solid {colors['border']}; border-radius: 6px;"
+                f"font-size: 12px; color: {colors['text']}; padding: 6px; background-color: {colors['base']}; border: 1px solid {colors['border']}; border-radius: 6px;"
             )
             layout.addWidget(score_label)
         
@@ -3482,7 +2045,7 @@ class ImageDetailWindow(QMainWindow):
             self.status_badge.setStyleSheet(
                 f"background-color: {status_color}; color: {badge_fg};"
                 "font-weight: bold; padding: 6px 10px; border-radius: 10px;"
-                "font-size: 11px;"
+                "font-size: 12px;"
             )
 
 
@@ -3563,7 +2126,7 @@ class SideBySideComparisonWindow(QMainWindow):
                 border: 1px solid {colors['border']};
                 padding: 4px 8px;
                 border-radius: 4px;
-                font-size: 10px;
+                font-size: 12px;
             }}
         """)
         self.sync_pan_checkbox.clicked.connect(self._toggle_sync_pan)
@@ -3574,7 +2137,7 @@ class SideBySideComparisonWindow(QMainWindow):
         reset_pan_btn.setMaximumWidth(80)
         reset_pan_btn.setMaximumHeight(28)
         reset_pan_btn.setStyleSheet(
-            f"font-size: 10px; padding: 4px 8px; background-color: {colors['button']}; color: {colors['button_text']}; border: 1px solid {colors['border']}; border-radius: 4px;"
+            f"font-size: 12px; padding: 4px 8px; background-color: {colors['button']}; color: {colors['button_text']}; border: 1px solid {colors['border']}; border-radius: 4px;"
         )
         reset_pan_btn.clicked.connect(self._reset_all_positions)
         control_bar.addWidget(reset_pan_btn)
@@ -3585,7 +2148,7 @@ class SideBySideComparisonWindow(QMainWindow):
         close_btn.setMaximumWidth(80)
         close_btn.setMaximumHeight(28)
         close_btn.setStyleSheet(
-            f"font-size: 10px; padding: 4px 8px; background-color: {colors['button']}; color: {colors['button_text']}; border: 1px solid {colors['border']}; border-radius: 4px;"
+            f"font-size: 12px; padding: 4px 8px; background-color: {colors['button']}; color: {colors['button_text']}; border: 1px solid {colors['border']}; border-radius: 4px;"
         )
         close_btn.clicked.connect(self.close)
         control_bar.addWidget(close_btn)
@@ -3604,7 +2167,7 @@ class SideBySideComparisonWindow(QMainWindow):
         colors = get_theme_colors()
         
         # Compact header with filename
-        header = QLabel(f"<b style='font-size: 10px;'>{file_row.path.name}</b>")
+        header = QLabel(f"<b style='font-size: 12px;'>{file_row.path.name}</b>")
         header.setWordWrap(False)
         header.setMaximumHeight(16)
         layout.addWidget(header)
@@ -3634,7 +2197,7 @@ class SideBySideComparisonWindow(QMainWindow):
             score_label.setMaximumHeight(32)
             score_label.setToolTip(explanation.tooltip_text)
             score_label.setStyleSheet(
-                f"font-size: 9px; color: {colors['text']}; padding: 2px; background-color: {colors['base']}; border: 1px solid {colors['border']}; border-radius: 3px;"
+                f"font-size: 12px; color: {colors['text']}; padding: 2px; background-color: {colors['base']}; border: 1px solid {colors['border']}; border-radius: 3px;"
             )
             layout.addWidget(score_label)
         elif explanation.needs_reanalysis:
@@ -3645,7 +2208,7 @@ class SideBySideComparisonWindow(QMainWindow):
             score_label.setMaximumHeight(24)
             score_label.setToolTip(explanation.tooltip_text)
             score_label.setStyleSheet(
-                f"font-size: 9px; color: {colors['text']}; padding: 2px; background-color: {colors['base']}; border: 1px solid {colors['border']}; border-radius: 3px;"
+                f"font-size: 12px; color: {colors['text']}; padding: 2px; background-color: {colors['base']}; border: 1px solid {colors['border']}; border-radius: 3px;"
             )
             layout.addWidget(score_label)
         
@@ -3682,7 +2245,7 @@ class SideBySideComparisonWindow(QMainWindow):
         # P2 FIX #16: EXIF info (compact) - load in background to avoid blocking UI
         info_label = QLabel("<i>EXIF geladen...</i>")
         hint_color = get_text_hint_color()
-        info_label.setStyleSheet(f"color: {hint_color}; font-size: 11px; padding: 4px;")
+        info_label.setStyleSheet(f"color: {hint_color}; font-size: 12px; padding: 4px;")
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
         
@@ -3813,99 +2376,64 @@ class SideBySideComparisonWindow(QMainWindow):
         info_label.setText("EXIF could not be loaded")
 
     
-class VirtualScrollContainer(QWidget):
-    """Virtual scrolling container for large image grids.
-    
-    Only renders visible items to improve performance.
-    """
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        
-        self.items: List[ThumbnailCard] = []
-        self.visible_items: dict[int, ThumbnailCard] = {}
-        self.item_height = 310  # Card height + spacing (increased for larger thumbnails)
-        self.items_per_row = 5  # More items per row (was 4)
-        
-        self._build_ui()
-    
-    def _build_ui(self):
-        """Build virtual scroll UI."""
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.scroll = QScrollArea()
-        self.scroll.setWidgetResizable(True)
-        self.scroll.setFrameShape(QFrame.NoFrame)
-        self.scroll.verticalScrollBar().valueChanged.connect(self._on_scroll)
-        
-        self.container = QWidget()
-        self.grid_layout = QGridLayout(self.container)
-        self.grid_layout.setSpacing(8)
-        self.grid_layout.setContentsMargins(8, 8, 8, 8)
-        
-        self.scroll.setWidget(self.container)
-        layout.addWidget(self.scroll)
-    
-    def set_items(self, items: List[ThumbnailCard]):
-        """Set items for virtual scrolling."""
-        self.items = items
-        
-        # Calculate total height
-        total_rows = (len(items) + self.items_per_row - 1) // self.items_per_row
-        total_height = total_rows * self.item_height
-        
-        self.container.setMinimumHeight(total_height)
-        
-        # Initial render
-        self._render_visible_items()
-    
-    def _on_scroll(self):
-        """Handle scroll event."""
-        self._render_visible_items()
-    
-    def _render_visible_items(self):
-        """Render only visible items."""
-        if not self.items:
-            return
-        
-        # Get visible range
-        scroll_pos = self.scroll.verticalScrollBar().value()
-        viewport_height = self.scroll.viewport().height()
-        
-        start_row = max(0, scroll_pos // self.item_height - 1)
-        end_row = min(
-            (len(self.items) + self.items_per_row - 1) // self.items_per_row,
-            (scroll_pos + viewport_height) // self.item_height + 2
-        )
-        
-        start_idx = start_row * self.items_per_row
-        end_idx = min(len(self.items), end_row * self.items_per_row)
-        
-        # Remove items outside visible range
-        for idx in list(self.visible_items.keys()):
-            if idx < start_idx or idx >= end_idx:
-                card = self.visible_items.pop(idx)
-                self.grid_layout.removeWidget(card)
-                card.hide()
-        
-        # Add items in visible range
-        for idx in range(start_idx, end_idx):
-            if idx not in self.visible_items and idx < len(self.items):
-                card = self.items[idx]
-                row = idx // self.items_per_row
-                col = idx % self.items_per_row
-                self.grid_layout.addWidget(card, row, col)
-                card.show()
-                self.visible_items[idx] = card
-    
-    def get_selected_indices(self) -> List[int]:
-        """Get indices of all selected items."""
-        return [i for i, card in enumerate(self.items) if card.is_selected()]
-
-
 class ModernMainWindow(QMainWindow):
     """Modernes PhotoCleaner Hauptfenster mit Rasteransicht und verbesserter UX."""
+
+    @property
+    def groups(self) -> List[GroupRow]:
+        return self.app_state.groups
+
+    @groups.setter
+    def groups(self, value: List[GroupRow]) -> None:
+        self.app_state.groups = value
+
+    @property
+    def group_lookup(self) -> dict[str, GroupRow]:
+        return self.app_state.group_lookup
+
+    @group_lookup.setter
+    def group_lookup(self, value: dict[str, GroupRow]) -> None:
+        self.app_state.group_lookup = value
+
+    @property
+    def files_in_group(self) -> List[FileRow]:
+        return self.app_state.files_in_group
+
+    @files_in_group.setter
+    def files_in_group(self, value: List[FileRow]) -> None:
+        self.app_state.files_in_group = value
+
+    @property
+    def current_group(self) -> Optional[str]:
+        return self.app_state.current_group
+
+    @current_group.setter
+    def current_group(self, value: Optional[str]) -> None:
+        self.app_state.current_group = value
+
+    @property
+    def current_page(self) -> int:
+        return self.app_state.current_page
+
+    @current_page.setter
+    def current_page(self, value: int) -> None:
+        self.app_state.current_page = value
+
+    @property
+    def _checked_group_ids(self) -> set[str]:
+        return self.app_state.checked_group_ids
+
+    @_checked_group_ids.setter
+    def _checked_group_ids(self, value: set[str]) -> None:
+        self.app_state.checked_group_ids = value
+
+    @property
+    def _group_selection_state(self) -> dict[str, tuple[set[int], int]]:
+        return self.app_state.group_selection_state
+
+    @_group_selection_state.setter
+    def _group_selection_state(self, value: dict[str, tuple[set[int], int]]) -> None:
+        self.app_state.group_selection_state = value
     
     def __init__(
         self,
@@ -3915,6 +2443,7 @@ class ModernMainWindow(QMainWindow):
         mtcnn_status: dict | None = None,
     ):
         super().__init__()
+        self.app_state = AppState()
         
         # Store MTCNN status for use in worker threads
         self.mtcnn_status = mtcnn_status or {"available": True, "error": None}
@@ -3982,6 +2511,7 @@ class ModernMainWindow(QMainWindow):
             self.mode_svc.get_mode,
             is_exact_duplicate=lambda _p: True,
         )
+        self.group_query_service = GroupQueryService()
         
         # v0.5.3: Initialize async indexing & smart caching
         self.indexing_thread: Optional[IndexingThread] = None
@@ -5815,7 +4345,7 @@ class ModernMainWindow(QMainWindow):
                             font-weight: bold;
                             padding: 4px;
                             border-radius: 4px;
-                            font-size: 11px;
+                            font-size: 12px;
                         }}
                     """)
             
@@ -5899,7 +4429,7 @@ class ModernMainWindow(QMainWindow):
 
         title_style = f"font-size: 18px; font-weight: 700; color: {colors['text']};"
         section_style = f"font-weight: 700; color: {colors['text']};"
-        tiny_title_style = f"font-size: 11px; font-weight: 700; color: {colors['text']};"
+        tiny_title_style = f"font-size: 12px; font-weight: 700; color: {colors['text']};"
 
         if hasattr(self, 'group_panel_title_label'):
             self.group_panel_title_label.setStyleSheet(title_style)
@@ -5918,15 +4448,15 @@ class ModernMainWindow(QMainWindow):
 
         if hasattr(self, 'needs_review_counter_label'):
             self.needs_review_counter_label.setStyleSheet(
-                f"padding: 6px 8px; font-size: 11px; background-color: {colors['alternate_base']}; border-radius: 8px; color: {colors['text']};"
+                f"padding: 6px 8px; font-size: 12px; background-color: {colors['alternate_base']}; border-radius: 8px; color: {colors['text']};"
             )
         if hasattr(self, 'smart_filter_counter_label'):
             self.smart_filter_counter_label.setStyleSheet(
-                f"padding: 6px 8px; font-size: 11px; background-color: {colors['alternate_base']}; border-radius: 8px; color: {colors['text']};"
+                f"padding: 6px 8px; font-size: 12px; background-color: {colors['alternate_base']}; border-radius: 8px; color: {colors['text']};"
             )
         if hasattr(self, 'recent_actions_label'):
             self.recent_actions_label.setStyleSheet(
-                _build_surface_style() + f" color: {colors['text']}; padding: 8px; font-size: 11px;"
+                _build_surface_style() + f" color: {colors['text']}; padding: 8px; font-size: 12px;"
             )
     
     def _update_selection_count_style(self) -> None:
@@ -6453,6 +4983,7 @@ class ModernMainWindow(QMainWindow):
         self.preset_combo.addItems(presets)
         self.preset_combo.currentTextChanged.connect(self._on_preset_selected)
         self.preset_combo.setMinimumWidth(150)
+        self.preset_combo.setAccessibleName(t("preset_label"))
         preset_combo_layout.addWidget(self.preset_combo)
         preset_combo_layout.addStretch()
         preset_layout.addLayout(preset_combo_layout)
@@ -6462,16 +4993,19 @@ class ModernMainWindow(QMainWindow):
         
         self.save_preset_btn = QPushButton(t("save_settings"))
         self.save_preset_btn.setFixedWidth(120)
+        self.save_preset_btn.setAccessibleName(t("save_settings"))
         self.save_preset_btn.clicked.connect(self._save_current_preset)
         preset_btn_layout.addWidget(self.save_preset_btn)
         
         self.delete_preset_btn = QPushButton(t("delete_button"))
         self.delete_preset_btn.setFixedWidth(120)
+        self.delete_preset_btn.setAccessibleName(t("delete_button"))
         self.delete_preset_btn.clicked.connect(self._delete_current_preset)
         preset_btn_layout.addWidget(self.delete_preset_btn)
         
         self.reset_presets_btn = QPushButton(t("reset_icon"))
         self.reset_presets_btn.setFixedWidth(120)
+        self.reset_presets_btn.setAccessibleName("Reset presets")
         self.reset_presets_btn.clicked.connect(self._reset_presets)
         preset_btn_layout.addWidget(self.reset_presets_btn)
         
@@ -6485,7 +5019,7 @@ class ModernMainWindow(QMainWindow):
         link_color = get_semantic_colors()["link"]
         self.quality_status_label.setStyleSheet(f"""
             color: {link_color};
-            font-size: 11px;
+            font-size: 12px;
             padding: 4px 8px;
         """)
         content_layout.addWidget(self.quality_status_label)
@@ -6801,6 +5335,7 @@ class ModernMainWindow(QMainWindow):
         self.search_box.setClearButtonEnabled(True)
         self.search_box.setMinimumHeight(34)
         self.search_box.setStyleSheet(_build_line_edit_widget_style())
+        self.search_box.setAccessibleName(t("search_placeholder"))
         self.search_box.textChanged.connect(self._apply_group_filter)
         layout.addWidget(self.search_box)
 
@@ -6811,18 +5346,19 @@ class ModernMainWindow(QMainWindow):
         self.group_filter_combo = QComboBox()
         self.group_filter_combo.setStyleSheet(_build_combo_widget_style())
         self._refresh_group_filter_combo_labels()
+        self.group_filter_combo.setAccessibleName(t("group_filters_title"))
         self.group_filter_combo.currentIndexChanged.connect(self._apply_group_filter)
         layout.addWidget(self.group_filter_combo)
 
         self.needs_review_counter_label = QLabel(t("needs_review_counter").format(visible=0, total=0))
         self.needs_review_counter_label.setStyleSheet(
-            f"padding: 6px 8px; font-size: 11px; background-color: {get_theme_colors()['alternate_base']}; border-radius: 8px;"
+            f"padding: 6px 8px; font-size: 12px; background-color: {get_theme_colors()['alternate_base']}; border-radius: 8px;"
         )
         layout.addWidget(self.needs_review_counter_label)
 
         self.smart_filter_counter_label = QLabel(t("smart_filter_counter").format(visible=0, total=0, active=t("smart_filter_none")))
         self.smart_filter_counter_label.setStyleSheet(
-            f"padding: 6px 8px; font-size: 11px; background-color: {get_theme_colors()['alternate_base']}; border-radius: 8px;"
+            f"padding: 6px 8px; font-size: 12px; background-color: {get_theme_colors()['alternate_base']}; border-radius: 8px;"
         )
         layout.addWidget(self.smart_filter_counter_label)
         
@@ -6862,6 +5398,7 @@ class ModernMainWindow(QMainWindow):
         self.merge_groups_btn.setEnabled(False)  # Enabled only when 2+ groups selected
         self.merge_groups_btn.clicked.connect(self._merge_selected_groups)
         self.merge_groups_btn.setText(f"{t('merge_groups')} (M)")
+        self.merge_groups_btn.setAccessibleName(t("merge_groups"))
         self.merge_groups_btn.setStyleSheet(
             _build_button_style(
                 get_semantic_colors()["info"],
@@ -6899,8 +5436,10 @@ class ModernMainWindow(QMainWindow):
         # Pagination controls (P6.4 quick-fix)
         pagination_layout = QHBoxLayout()
         self.prev_page_btn = QPushButton("←")
+        self.prev_page_btn.setAccessibleName("Previous page")
         self.prev_page_btn.clicked.connect(self._prev_page)
         self.next_page_btn = QPushButton("→")
+        self.next_page_btn.setAccessibleName("Next page")
         self.next_page_btn.clicked.connect(self._next_page)
         self.pagination_label = QLabel("1/1")
         self.prev_page_btn.setEnabled(False)
@@ -6995,7 +5534,7 @@ class ModernMainWindow(QMainWindow):
         
         # PHASE E: Enhanced visibility of Merge/Split/Compare + action buttons
         self.action_header_label = QLabel(t("phase_e_action_visibility"))
-        self.action_header_label.setStyleSheet("font-weight: bold; font-size: 11px;")
+        self.action_header_label.setStyleSheet("font-weight: bold; font-size: 12px;")
         layout.addWidget(self.action_header_label)
         
         # Compare/Split stacked to avoid text clipping on smaller panel widths.
@@ -7006,8 +5545,9 @@ class ModernMainWindow(QMainWindow):
         self.compare_btn.setEnabled(False)
         self.compare_btn.setMinimumHeight(36)
         self.compare_btn.setStyleSheet(
-            _build_button_style(get_semantic_colors()["warning"], padding="10px 12px", font_size=11)
+            _build_button_style(get_semantic_colors()["warning"], padding="10px 12px", font_size=12)
         )
+        self.compare_btn.setAccessibleName(t("compare_two"))
         self.compare_btn.clicked.connect(self._open_comparison)
         row1_layout.addWidget(self.compare_btn)
         
@@ -7018,6 +5558,7 @@ class ModernMainWindow(QMainWindow):
         self.split_group_btn.setStyleSheet(
             _build_button_style(get_semantic_colors()["info"], padding="10px 12px", font_size=12)
         )
+        self.split_group_btn.setAccessibleName(t("split_group"))
         self.split_group_btn.clicked.connect(self._split_selected_from_group)
         row1_layout.addWidget(self.split_group_btn)
         
@@ -7026,20 +5567,21 @@ class ModernMainWindow(QMainWindow):
         # Undo button (always visible but grayed out if no history)
         self.undo_btn = QPushButton(t("undo_button"))
         self.undo_btn.setStyleSheet(
-            _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'], font_size=11)
+            _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'], font_size=12)
         )
+        self.undo_btn.setAccessibleName(t("undo_button"))
         self.undo_btn.clicked.connect(self._undo)
         layout.addWidget(self.undo_btn)
 
         self.recent_actions_title_label = QLabel(t('recent_actions'))
-        self.recent_actions_title_label.setStyleSheet("font-size: 11px; font-weight: 700;")
+        self.recent_actions_title_label.setStyleSheet("font-size: 12px; font-weight: 700;")
         layout.addWidget(self.recent_actions_title_label)
 
         self.recent_actions_label = QLabel(t("no_recent_actions"))
         self.recent_actions_label.setWordWrap(True)
         self.recent_actions_label.setStyleSheet(
             _build_surface_style()
-            + f" color: {get_theme_colors()['text']}; padding: 8px; font-size: 11px;"
+            + f" color: {get_theme_colors()['text']}; padding: 8px; font-size: 12px;"
         )
         layout.addWidget(self.recent_actions_label)
 
@@ -7052,23 +5594,26 @@ class ModernMainWindow(QMainWindow):
         
         # Decision buttons (requested: vertical stack)
         self.actions_label = QLabel(t("phase_e_decisions_quick"))
-        self.actions_label.setStyleSheet("font-weight: bold; font-size: 11px;")
+        self.actions_label.setStyleSheet("font-weight: bold; font-size: 12px;")
         layout.addWidget(self.actions_label)
         
         status_colors = get_status_colors()
         
         self.keep_btn = QPushButton(f"{t('keep')} (K)")
         self.keep_btn.setStyleSheet(_build_button_style(status_colors['KEEP'], padding="12px 12px", font_size=12))
+        self.keep_btn.setAccessibleName(t('keep'))
         self.keep_btn.clicked.connect(lambda: self._apply_status_to_selection(FileStatus.KEEP))
         layout.addWidget(self.keep_btn)
         
         self.del_btn = QPushButton(f"{t('delete')} (D)")
         self.del_btn.setStyleSheet(_build_button_style(status_colors['DELETE'], padding="12px 12px", font_size=12))
+        self.del_btn.setAccessibleName(t('delete'))
         self.del_btn.clicked.connect(lambda: self._apply_status_to_selection(FileStatus.DELETE))
         layout.addWidget(self.del_btn)
         
         self.unsure_btn = QPushButton(t('unsure'))
         self.unsure_btn.setStyleSheet(_build_button_style(status_colors['UNSURE'], padding="12px 12px", font_size=12))
+        self.unsure_btn.setAccessibleName(t('unsure'))
         self.unsure_btn.clicked.connect(lambda: self._apply_status_to_selection(FileStatus.UNSURE))
         layout.addWidget(self.unsure_btn)
         
@@ -7076,8 +5621,9 @@ class ModernMainWindow(QMainWindow):
         
         self.lock_btn = QPushButton(t("lock_unlock_button"))
         self.lock_btn.setStyleSheet(
-            _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'], font_size=11)
+            _build_button_style(get_theme_colors()['button'], text_color=get_theme_colors()['button_text'], hover_color=get_theme_colors()['alternate_base'], font_size=12)
         )
+        self.lock_btn.setAccessibleName(t("lock_unlock_button"))
         self.lock_btn.clicked.connect(self._toggle_lock_selection)
         layout.addWidget(self.lock_btn)
         
@@ -7097,7 +5643,7 @@ class ModernMainWindow(QMainWindow):
         
         # FEATURE: Duplicate Count Label
         self.duplicate_count_label = QLabel(t("0_gruppen"))
-        self.duplicate_count_label.setStyleSheet("padding: 2px 6px; font-size: 11px;")
+        self.duplicate_count_label.setStyleSheet("padding: 2px 6px; font-size: 12px;")
         self.duplicate_count_label.setMaximumWidth(80)
         self.duplicate_count_label.setToolTip(t("anzahl_duplikatgruppen"))
         layout.addWidget(self.duplicate_count_label)
@@ -7112,7 +5658,7 @@ class ModernMainWindow(QMainWindow):
         
         # Status label (kleiner Text)
         self.status_label = QLabel(t("ready"))
-        self.status_label.setStyleSheet("padding: 2px 6px; font-size: 11px;")
+        self.status_label.setStyleSheet("padding: 2px 6px; font-size: 12px;")
         self.status_label.setMaximumWidth(260)
         layout.addWidget(self.status_label)
         
@@ -7125,8 +5671,9 @@ class ModernMainWindow(QMainWindow):
         self.finalize_btn.setMaximumHeight(28)
         success_color = get_semantic_colors()["success"]
         self.finalize_btn.setStyleSheet(
-            _build_button_style(success_color, padding="4px 12px", font_size=11, radius=6)
+            _build_button_style(success_color, padding="4px 12px", font_size=12, radius=6)
         )
+        self.finalize_btn.setAccessibleName(t("finalize_export"))
         self.finalize_btn.clicked.connect(self._finalize_and_export)
         layout.addWidget(self.finalize_btn)
         
@@ -7397,8 +5944,6 @@ class ModernMainWindow(QMainWindow):
         query_start = time.monotonic()
         logger.info("[UI] _query_groups() STARTED - querying database...")
         
-        self.group_lookup = {}
-
         # User setting: hide completed groups (no undecided/unsure items)
         hide_completed_groups = False
         try:
@@ -7408,196 +5953,21 @@ class ModernMainWindow(QMainWindow):
             logger.debug("Could not load hide_completed_groups setting", exc_info=True)
             hide_completed_groups = False
         
-        # 1. Get duplicate/similar groups (2+ images)
-        cur = self.conn.execute(
-            """
-            SELECT d.group_id,
-                   MIN(f.path) AS sample_path,
-                   COUNT(*) AS total,
-                     SUM(CASE WHEN COALESCE(f.file_status, 'UNDECIDED') IN ('UNDECIDED','UNSURE') THEN 1 ELSE 0 END) AS open_cnt,
-                     SUM(CASE WHEN COALESCE(f.file_status, 'UNDECIDED') IN ('KEEP','DELETE') THEN 1 ELSE 0 END) AS decided_cnt,
-                     SUM(CASE WHEN COALESCE(f.file_status, 'UNDECIDED') = 'DELETE' THEN 1 ELSE 0 END) AS delete_cnt,
-                   MAX(d.similarity_score) AS sim,
-                   SUM(CASE WHEN f.quality_score IS NOT NULL THEN 1 ELSE 0 END) AS analyzed_cnt,
-                   MIN(
-                       CASE
-                           WHEN f.quality_score IS NULL THEN 0
-                           WHEN (f.sharpness_component IS NULL AND f.lighting_component IS NULL AND f.resolution_component IS NULL AND f.face_quality_component IS NULL)
-                               THEN 10
-                           WHEN (
-                               f.quality_score >= 75
-                               AND COALESCE(f.sharpness_component, 100) >= 60
-                               AND COALESCE(f.lighting_component, 100) >= 60
-                               AND COALESCE(f.resolution_component, 100) >= 60
-                               AND COALESCE(f.face_quality_component, 100) >= 60
-                           ) THEN 100
-                           WHEN (
-                               f.quality_score < 45
-                               OR COALESCE(f.sharpness_component < 30, 0)
-                               OR COALESCE(f.lighting_component < 30, 0)
-                               OR COALESCE(f.resolution_component < 30, 0)
-                               OR COALESCE(f.face_quality_component < 30, 0)
-                               OR (
-                                   (CASE WHEN f.sharpness_component < 45 THEN 1 ELSE 0 END)
-                                   + (CASE WHEN f.lighting_component < 45 THEN 1 ELSE 0 END)
-                                   + (CASE WHEN f.resolution_component < 45 THEN 1 ELSE 0 END)
-                                   + (CASE WHEN f.face_quality_component < 45 THEN 1 ELSE 0 END)
-                               ) >= 2
-                           ) THEN 25
-                           ELSE 65
-                       END
-                   ) AS min_conf_bucket,
-                   SUM(
-                       CASE
-                           WHEN f.quality_score IS NULL THEN 0
-                           WHEN (
-                               (f.sharpness_component IS NULL AND f.lighting_component IS NULL AND f.resolution_component IS NULL AND f.face_quality_component IS NULL)
-                               OR f.quality_score < 45
-                               OR (
-                                   (CASE WHEN f.sharpness_component < 45 THEN 1 ELSE 0 END)
-                                   + (CASE WHEN f.lighting_component < 45 THEN 1 ELSE 0 END)
-                                   + (CASE WHEN f.resolution_component < 45 THEN 1 ELSE 0 END)
-                                   + (CASE WHEN f.face_quality_component < 45 THEN 1 ELSE 0 END)
-                               ) >= 2
-                           ) THEN 1
-                           ELSE 0
-                       END
-                                         ) AS needs_review_cnt,
-                                     SUM(CASE WHEN f.sharpness_component < 45 THEN 1 ELSE 0 END) AS weak_sharpness_cnt,
-                                     SUM(CASE WHEN f.lighting_component < 45 THEN 1 ELSE 0 END) AS weak_lighting_cnt,
-                                     SUM(CASE WHEN f.resolution_component < 45 THEN 1 ELSE 0 END) AS weak_resolution_cnt,
-                                     SUM(CASE WHEN f.face_quality_component < 45 THEN 1 ELSE 0 END) AS weak_face_cnt,
-                                     SUM(CASE WHEN f.sharpness_component >= 75 THEN 1 ELSE 0 END) AS strong_sharpness_cnt,
-                                     SUM(CASE WHEN f.lighting_component >= 75 THEN 1 ELSE 0 END) AS strong_lighting_cnt,
-                                     SUM(CASE WHEN f.resolution_component >= 75 THEN 1 ELSE 0 END) AS strong_resolution_cnt,
-                                     SUM(CASE WHEN f.face_quality_component >= 75 THEN 1 ELSE 0 END) AS strong_face_cnt
-            FROM duplicates d
-            JOIN files f ON f.file_id = d.file_id
-            WHERE f.is_deleted = 0
-            GROUP BY d.group_id
-            ORDER BY (open_cnt > 0) DESC, open_cnt DESC, MAX(COALESCE(f.is_recommended, 0)) DESC, MIN(COALESCE(f.capture_time, f.modified_time, 0)) ASC, d.group_id
-            """
+        result, lookup, single_count, duplicate_group_count = self.group_query_service.query_groups(
+            self.conn,
+            hide_completed_groups,
+            build_group_diagnostics_fn=build_group_diagnostics,
+            classify_group_confidence_fn=classify_group_confidence,
+            build_score_explanation_fn=build_score_explanation,
+            compute_file_confidence_bucket_fn=compute_file_confidence_bucket,
         )
-        
-        rows = cur.fetchall()
-        result: List[GroupRow] = []
-        
-        for r in rows:
-            analyzed_count = int(r[7] or 0)
-            min_conf_bucket = int(r[8] or 0)
-            needs_review_count = int(r[9] or 0)
-            confidence_score = min_conf_bucket if analyzed_count > 0 else 0
-            diagnostics_text = build_group_diagnostics(
-                weak_sharpness=int(r[10] or 0),
-                weak_lighting=int(r[11] or 0),
-                weak_resolution=int(r[12] or 0),
-                weak_face=int(r[13] or 0),
-                strong_sharpness=int(r[14] or 0),
-                strong_lighting=int(r[15] or 0),
-                strong_resolution=int(r[16] or 0),
-                strong_face=int(r[17] or 0),
-            )
+        self.group_lookup = lookup
 
-            grp = GroupRow(
-                group_id=str(r[0]),
-                sample_path=Path(r[1]),
-                total=r[2] or 0,
-                open_count=r[3] or 0,
-                decided_count=r[4] or 0,
-                delete_count=r[5] or 0,
-                similarity=float(r[6] or 0.0),
-                needs_review_count=needs_review_count,
-                confidence_score=confidence_score,
-                confidence_level=classify_group_confidence(confidence_score),
-                diagnostics_text=diagnostics_text,
-            )
-
-            if hide_completed_groups and grp.open_count == 0:
-                continue
-
-            result.append(grp)
-            self.group_lookup[grp.group_id] = grp
-        
-        single_rows = []
-        cur = self.conn.execute(
-            """
-            SELECT f.file_id,
-                   f.path,
-                                     f.file_status,
-                                     f.quality_score,
-                                     f.sharpness_component,
-                                     f.lighting_component,
-                                     f.resolution_component,
-                                     f.face_quality_component
-            FROM files f
-            LEFT JOIN duplicates d ON f.file_id = d.file_id
-            WHERE f.is_deleted = 0
-              AND d.file_id IS NULL
-                            AND COALESCE(f.file_status, 'UNDECIDED') IN ('UNDECIDED', 'UNSURE')
-            ORDER BY f.path
-            """
-        )
-
-        single_rows = cur.fetchall()
-
-        # BUG #4 FIX: TOCTOU-safe file existence check
-        # Instead of checking exists() then opening, try to access file stat directly
-        for idx, row in enumerate(single_rows):
-            file_id, path, status, quality_score, sharpness, lighting, resolution, face_quality = row
-            file_path = Path(path)
-
-            # TOCTOU-safe: Try to stat the file - if it fails, it doesn't exist
-            try:
-                file_path.stat()  # Raises FileNotFoundError if missing
-            except (FileNotFoundError, OSError) as e:
-                # File no longer exists or inaccessible - mark as deleted and skip
-                logger.warning(f"Single-image group SINGLE_{file_id}: Datei nicht verfügbar ({file_path.name}): {e}")
-                try:
-                    self.conn.execute(
-                        "UPDATE files SET is_deleted = 1 WHERE file_id = ?",
-                        (file_id,)
-                    )
-                    self.conn.commit()
-                except (sqlite3.DatabaseError, sqlite3.OperationalError) as db_err:
-                    logger.error(f"Fehler beim Markieren als gelöscht: {db_err}", exc_info=True)
-                continue
-
-            explanation = build_score_explanation(
-                quality_score=float(quality_score) if quality_score is not None else None,
-                sharpness_score=float(sharpness) if sharpness is not None else None,
-                lighting_score=float(lighting) if lighting is not None else None,
-                resolution_score=float(resolution) if resolution is not None else None,
-                face_quality_score=float(face_quality) if face_quality is not None else None,
-            )
-            confidence_score = compute_file_confidence_bucket(
-                quality_score=float(quality_score) if quality_score is not None else None,
-                sharpness_score=float(sharpness) if sharpness is not None else None,
-                lighting_score=float(lighting) if lighting is not None else None,
-                resolution_score=float(resolution) if resolution is not None else None,
-                face_quality_score=float(face_quality) if face_quality is not None else None,
-            )
-
-            single_grp = GroupRow(
-                group_id=f"SINGLE_{file_id}",
-                sample_path=file_path,
-                total=1,
-                open_count=1,
-                decided_count=0,
-                delete_count=0,
-                similarity=0.0,
-                needs_review_count=1 if confidence_score in (10, 25) else 0,
-                confidence_score=confidence_score,
-                confidence_level=classify_group_confidence(confidence_score),
-                diagnostics_text=explanation.component_summary_text or "Diagnose: Einzelbild",
-            )
-            result.append(single_grp)
-            self.group_lookup[single_grp.group_id] = single_grp
-
-        if not rows and single_rows:
+        if duplicate_group_count == 0 and single_count:
             logger.info("[UI] No duplicate groups found; showing single-image review entries")
         
         query_time = time.monotonic() - query_start
-        logger.info(f"Loaded {len(result)} groups (including {len(single_rows)} single-image groups) in {query_time:.3f}s")
+        logger.info(f"Loaded {len(result)} groups (including {single_count} single-image groups) in {query_time:.3f}s")
         logger.info(f"[UI] _query_groups() returning to refresh_groups()...")
         
         return result

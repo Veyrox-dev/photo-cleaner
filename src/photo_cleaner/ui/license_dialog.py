@@ -175,6 +175,7 @@ class LicenseDialog(QDialog):
         key_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.key_input = QLineEdit()
         self.key_input.setPlaceholderText(t("license_key_placeholder"))
+        self.key_input.setAccessibleName(t("license_key_label"))
         key_layout.addWidget(key_label)
         key_layout.addWidget(self.key_input)
         input_layout.addLayout(key_layout)
@@ -182,10 +183,12 @@ class LicenseDialog(QDialog):
         # Buttons
         btn_layout = QHBoxLayout()
         activate_btn = QPushButton(t("start"))
+        activate_btn.setAccessibleName(t("start"))
         activate_btn.clicked.connect(self._activate_license_key)
         btn_layout.addWidget(activate_btn)
 
         remove_btn = QPushButton(f"✗ {t('close')}")
+        remove_btn.setAccessibleName("Remove license")
         remove_btn.clicked.connect(self._remove_license)
         btn_layout.addWidget(remove_btn)
         btn_layout.addStretch()

@@ -272,7 +272,7 @@ class CleanupCompletionDialog(QDialog):
         layout.addWidget(value_label)
         text_label = QLabel(label, frame)
         text_label.setAlignment(Qt.AlignCenter)
-        text_label.setStyleSheet(f"font-size: 11px; color: {theme_colors['disabled_text']};")
+        text_label.setStyleSheet(f"font-size: 12px; color: {theme_colors['disabled_text']};")
         layout.addWidget(text_label)
         return frame
 

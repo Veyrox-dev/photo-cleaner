@@ -62,7 +62,7 @@ class OnboardingTourDialog(QDialog):
             "border: 1px solid #9bb8f5;"
             "border-radius: 14px;"
             "}"
-            "QLabel#onboarding_tour_step_counter { font-size: 11px; font-weight: 700; color: #2f6fde; }"
+            "QLabel#onboarding_tour_step_counter { font-size: 12px; font-weight: 700; color: #2f6fde; }"
             "QLabel#onboarding_tour_title { font-size: 18px; font-weight: 700; color: #151a2d; }"
             "QLabel#onboarding_tour_body { font-size: 13px; color: #2b3144; line-height: 1.35; }"
             "QCheckBox { color: #1a1f36; }"
@@ -101,7 +101,7 @@ class OnboardingTourDialog(QDialog):
 
         self._interactive_hint_label = QLabel(interactive_hint_label)
         self._interactive_hint_label.setWordWrap(True)
-        self._interactive_hint_label.setStyleSheet("color: #173d93; font-size: 11px;")
+        self._interactive_hint_label.setStyleSheet("color: #173d93; font-size: 12px;")
         self._interactive_hint_label.hide()
         card_layout.addWidget(self._interactive_hint_label)
 
