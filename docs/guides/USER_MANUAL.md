@@ -1,6 +1,6 @@
 # PhotoCleaner User Manual / Benutzerhandbuch
 
-**Version:** 0.8.2 (Feb 2026)
+**Version:** 0.8.7 (Mai 2026)
 
 This manual is a user-focused overview. For technical details, see [docs/INDEX.md](../INDEX.md).
 
@@ -55,6 +55,30 @@ Siehe auch: [FAQ.md](FAQ.md) und [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 Auto-Selection markiert das beste Bild pro Gruppe. Kriterien und Gewichtungen findest du in:
 - [AUTO_SELECTION.md](AUTO_SELECTION.md)
 
+### Gallery-View (neu in v0.8.5+)
+Nach dem Review oeffnet sich die **Gallery**: alle KEEP-Bilder in einer Rasteransicht.
+- Bilder nach Datum, Ort oder Kamera filtern
+- Letzter Qualitaets-Check vor dem Export
+- Bild-Status direkt in der Gallery aendern (KEEP / DELETE / UNSURE)
+- Nach Watch-Folder-Import aktualisiert sich die Gallery automatisch
+
+### EXIF Smart Grouping (neu in v0.8.6+)
+PhotoCleaner gruppiert deine Keep-Bilder nach **Aufnahmeort** anhand von GPS-Daten:
+- Reverse-Geocoding via OpenStreetMap (keine API-Key noetig)
+- Ortsname wird im EXIF-Snippet angezeigt: "Datum | Kamera | Ort"
+- **Orts-Filter** in der Gallery: Bilder einer bestimmten Stadt anzeigen
+- **Karten-Ansicht**: Keep-Bilder auf einer Offline-Karte mit Standort-Markern
+- Kein GPS in den Metadaten? Fallback auf Kamera-Herkunft → Datum-Cluster → Ungrouped
+
+### Watch Folders / Auto-Import (neu in v0.8.7)
+PhotoCleaner kann Ordner automatisch ueberwachen und neue Bilder selbststaendig analysieren:
+1. Einstellungen → Watch Folders → Ordner hinzufuegen
+2. Neue Bilder, die in diesen Ordner kopiert werden, werden automatisch indexiert
+3. Duplikat-Erkennung und Qualitaetsbewertung starten im Hintergrund
+4. Gallery und Review-Badge werden nach Abschluss aktualisiert
+- Debounce-Fenster verhindert vorzeitige Analyse bei laufenden Kopiervoргangen
+- Autoimport kann in den Einstellungen aktiviert / deaktiviert werden
+
 ### Entscheidungen & Sicherheit
 - PhotoCleaner loescht nie automatisch.
 - Im CLEANUP-Modus werden Loeschungen ausgefuehrt.
@@ -65,9 +89,8 @@ Auto-Selection markiert das beste Bild pro Gruppe. Kriterien und Gewichtungen fi
 - Export ist sicher, Originale bleiben unangetastet.
 
 ### Lizenzen (Kurzinfo)
-- FREE/PRO
-- FREE: einmalig 250 Bilder
-- PRO: unbegrenzte Bilder + Premium-Features
+- FREE: einmalig 250 Bilder (keine Zeitbeschraenkung)
+- PRO: unbegrenzte Bilder + Premium-Features (29 EUR/Jahr)
 - Offline-Nutzung moeglich (mit lokalem Cache)
 
 Details: [LICENSE_SYSTEM.md](LICENSE_SYSTEM.md)
@@ -76,6 +99,7 @@ Details: [LICENSE_SYSTEM.md](LICENSE_SYSTEM.md)
 - Grosse Sammlungen in Batches verarbeiten (z. B. 1k-5k).
 - SSD nutzen, wenn moeglich.
 - Face Mesh deaktivieren, wenn Performance kritisch ist.
+- EXIF-Geocoding benoetigt eine Internetverbindung; Ergebnisse werden lokal gecacht (7 Tage TTL).
 
 ---
 
@@ -128,6 +152,30 @@ See: [FAQ.md](FAQ.md) and [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 Auto-Selection marks the best image in each group. Details:
 - [AUTO_SELECTION.md](AUTO_SELECTION.md)
 
+### Gallery View (new in v0.8.5+)
+After the review, the **Gallery** opens showing all KEEP images in a grid layout.
+- Filter images by date, location, or camera
+- Last quality check before export
+- Change image status directly in the gallery (KEEP / DELETE / UNSURE)
+- After a Watch Folder import the gallery refreshes automatically
+
+### EXIF Smart Grouping (new in v0.8.6+)
+PhotoCleaner groups your keep images by **location** using GPS metadata:
+- Reverse-geocoding via OpenStreetMap (no API key required)
+- Location name shown in the EXIF snippet: "Date | Camera | Location"
+- **Location filter** in the gallery: show images from a specific city
+- **Map view**: keep images pinned on an offline map with location markers
+- No GPS in metadata? Fallback: camera origin → date cluster → Ungrouped
+
+### Watch Folders / Auto-Import (new in v0.8.7)
+PhotoCleaner can watch folders and analyse new photos automatically:
+1. Settings → Watch Folders → Add folder
+2. New images copied to that folder are indexed automatically
+3. Duplicate detection and quality scoring run in the background
+4. Gallery and review badge are updated on completion
+- Debounce window prevents premature analysis during active file copies
+- Auto-import can be enabled / disabled in settings
+
 ### Decisions & Safety
 - PhotoCleaner never deletes automatically.
 - CLEANUP mode executes deletions.
@@ -139,7 +187,7 @@ Auto-Selection marks the best image in each group. Details:
 
 ### Licenses (Short)
 - FREE includes one-time lifetime usage for 250 images total
-- PRO unlocks unlimited analysis and premium features
+- PRO unlocks unlimited analysis and premium features (€29/year)
 - Offline use is supported with a signed local cache
 
 Details: [LICENSE_SYSTEM.md](LICENSE_SYSTEM.md)
@@ -148,3 +196,4 @@ Details: [LICENSE_SYSTEM.md](LICENSE_SYSTEM.md)
 - Process large libraries in batches (e.g., 1k-5k).
 - Use an SSD when possible.
 - Disable Face Mesh if performance is critical.
+- EXIF geocoding requires an internet connection; results are cached locally (7-day TTL).

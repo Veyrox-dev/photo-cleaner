@@ -97,7 +97,6 @@
         - [ ] Install / Upgrade / Uninstall protokollieren
         - [ ] 5/5 Durchläufe ohne kritische Fehler
 
-
 - [ ] **Stripe + Supabase E2E-Validierung** (Priorität: Hoch · Zeitraum: August-September 2026)
         - [ ] Kauf -> Aktivierung -> Ablauf -> Erneuerung
         - [ ] Fehlerpfade dokumentiert (Timeout, Retry, Webhook-Sonderfälle)
@@ -217,11 +216,11 @@ timeline
 - [ ] Kritisches Gate hat Vorrang vor allen Nice-to-have-Arbeiten
 - [ ] Post-Launch-Features bleiben strikt in Phase A/B/C
 
-## 5.1 Naechster Fokus (Mai/Juni 2026)
+## 5.1 Naechster Fokus (Mai/Juni 2026) ✅ ABGESCHLOSSEN (3. Mai 2026)
 
-- [ ] Watch Folders Integration in `modern_window.py` starten
-- [ ] Watch-Folder Pipeline mit DuplicateFinder/RatingWorker verbinden
-- [ ] E2E- und Performance-Validierung fuer Watch Folders vorbereiten
+- [x] Watch Folders Integration in `modern_window.py` starten
+- [x] Watch-Folder Pipeline mit DuplicateFinder/RatingWorker verbinden
+- [x] E2E- und Performance-Validierung fuer Watch Folders vorbereiten
 
 ---
 
