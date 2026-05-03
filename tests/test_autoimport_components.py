@@ -6,9 +6,11 @@ Führe aus mit:
 """
 
 import pytest
+import sqlite3
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from PySide6.QtCore import QTimer, QCoreApplication
+from PIL import Image
 
 from src.photo_cleaner.autoimport.watchfolder_monitor import WatchfolderMonitor
 from src.photo_cleaner.autoimport.debounced_event_handler import DebouncedEventHandler
@@ -219,6 +221,38 @@ class TestAutoimportPipeline:
         # Sollte keine Exception werfen
         pipeline.analyze_files([])
 
+    def test_index_files_stores_records(self, pipeline, tmp_path):
+        """Test: Neue Dateien werden in die DB indexiert."""
+        image_path = tmp_path / "watch.jpg"
+        Image.new("RGB", (32, 32), color=(10, 20, 30)).save(image_path, format="JPEG")
+
+        stats = pipeline._index_files([str(image_path)])
+
+        assert stats["total_files"] == 1
+        assert stats["hashed_files"] == 1
+
+        with sqlite3.connect(pipeline.db_path) as con:
+            row = con.execute("SELECT path FROM files WHERE path = ?", (str(image_path),)).fetchone()
+        assert row is not None
+
+    def test_rate_images_uses_rating_worker(self, pipeline, monkeypatch):
+        """Test: Qualitätsbewertung wird an RatingWorkerThread angebunden."""
+        called = {"run": 0}
+
+        def fake_run(self):
+            called["run"] += 1
+            self.finished.emit({"rated": True, "warn": False})
+
+        monkeypatch.setattr(
+            "src.photo_cleaner.autoimport.autoimport_pipeline.RatingWorkerThread.run",
+            fake_run,
+        )
+
+        rating = pipeline._rate_images(["a.jpg"])
+
+        assert called["run"] == 1
+        assert rating["rated"] is True
+
 
 class TestAutoimportController:
     """Unit-Tests für AutoimportController."""
@@ -317,6 +351,23 @@ class TestAutoimportController:
         
         # Prüfe ob Config-Datei erstellt wurde
         assert ctrl.CONFIG_FILE.exists()
+
+    def test_startup_respects_disabled_config(self, tmp_path):
+        """Test: Startup bleibt aus, wenn Autoimport deaktiviert ist."""
+        db_path = tmp_path / "test.db"
+        config_mock = Mock()
+        config_mock.autoimport_enabled = False
+        license_mock = Mock()
+
+        controller = AutoimportController(
+            db_path=db_path,
+            config=config_mock,
+            license_manager=license_mock,
+        )
+        controller.CONFIG_FILE = tmp_path / "watchfolders.json"
+        controller.startup()
+
+        assert controller.is_enabled() is False
 
 
 if __name__ == "__main__":

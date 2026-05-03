@@ -142,3 +142,130 @@ def test_finish_post_indexing_keeps_review_open(monkeypatch) -> None:
         finally:
             win.close()
             win.db.close()
+
+
+def test_modern_window_starts_autoimport_controller(monkeypatch) -> None:
+    app = QApplication.instance() or QApplication([])
+    assert app is not None
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "ui_workflow.db"
+        db = Database(db_path)
+        db.close()
+
+        monkeypatch.setattr(ModernMainWindow, "_build_ui", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "show", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_setup_grid_thumbnail_loader", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_build_menu", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_wire_shortcuts", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_on_theme_changed", lambda self, _theme=None: None)
+        monkeypatch.setattr(ModernMainWindow, "_load_session", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "refresh_groups", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_update_progress", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_setup_auto_save", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_maybe_show_first_run_onboarding", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_schedule_update_check", lambda self: None)
+
+        calls = {"startup": 0, "shutdown": 0}
+
+        class SignalStub:
+            def connect(self, _callback):
+                return None
+
+        class FakeController:
+            def __init__(self, *args, **kwargs):
+                self.status_changed = SignalStub()
+                self.import_complete = SignalStub()
+
+            def startup(self):
+                calls["startup"] += 1
+
+            def shutdown(self):
+                calls["shutdown"] += 1
+
+        monkeypatch.setattr("photo_cleaner.ui.modern_window.AutoimportController", FakeController)
+
+        win = ModernMainWindow(db_path=db_path)
+        win._group_thumb_loader = None
+        win._grid_thumb_loader = None
+
+        try:
+            assert calls["startup"] == 1
+        finally:
+            win.close()
+            win.db.close()
+            assert calls["shutdown"] == 1
+
+
+def test_autoimport_complete_refreshes_gallery_and_badge(monkeypatch) -> None:
+    app = QApplication.instance() or QApplication([])
+    assert app is not None
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "ui_workflow.db"
+        db = Database(db_path)
+        db.close()
+
+        monkeypatch.setattr(ModernMainWindow, "_build_ui", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "show", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_setup_grid_thumbnail_loader", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_build_menu", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_wire_shortcuts", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_on_theme_changed", lambda self, _theme=None: None)
+        monkeypatch.setattr(ModernMainWindow, "_load_session", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_update_progress", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_setup_auto_save", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_maybe_show_first_run_onboarding", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_schedule_update_check", lambda self: None)
+
+        class SignalStub:
+            def connect(self, _callback):
+                return None
+
+        class FakeController:
+            def __init__(self, *args, **kwargs):
+                self.status_changed = SignalStub()
+                self.import_complete = SignalStub()
+
+            def startup(self):
+                return None
+
+            def shutdown(self):
+                return None
+
+        monkeypatch.setattr("photo_cleaner.ui.modern_window.AutoimportController", FakeController)
+
+        calls = {"gallery": 0, "groups": 0, "badge": []}
+        monkeypatch.setattr(
+            ModernMainWindow,
+            "_refresh_gallery_data",
+            lambda self: calls.__setitem__("gallery", calls["gallery"] + 1),
+        )
+        monkeypatch.setattr(
+            ModernMainWindow,
+            "refresh_groups",
+            lambda self: calls.__setitem__("groups", calls["groups"] + 1),
+        )
+        monkeypatch.setattr(
+            ModernMainWindow,
+            "_show_gallery_review_badge",
+            lambda self, count: calls["badge"].append(count),
+        )
+
+        win = ModernMainWindow(db_path=db_path)
+        win._group_thumb_loader = None
+        win._grid_thumb_loader = None
+        win._map_widget = None
+        win.status_label = type("StatusStub", (), {"setText": lambda self, text: None})()
+        calls["gallery"] = 0
+        calls["groups"] = 0
+
+        try:
+            win._on_autoimport_complete({"total_files": 4, "duplicates_found": 2})
+
+            assert calls["gallery"] == 1
+            assert calls["groups"] == 1
+            assert calls["badge"] == [2]
+        finally:
+            win.close()
+            win.db.close()

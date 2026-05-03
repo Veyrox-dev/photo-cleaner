@@ -9,9 +9,15 @@ Verantwortung:
 """
 
 import logging
+import uuid
 from pathlib import Path
 from datetime import datetime
 from PySide6.QtCore import QObject, Signal
+
+from photo_cleaner.core.indexer import PhotoIndexer
+from photo_cleaner.db.schema import Database
+from photo_cleaner.duplicates.finder import DuplicateFinder
+from photo_cleaner.ui.worker_threads.analysis_workers import RatingWorkerThread
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +91,8 @@ class AutoimportPipeline(QObject):
         try:
             logger.info(f"AutoimportPipeline: Starte Analyse für {len(valid_files)} Bilder")
             self.import_started.emit(len(valid_files))
+
+            indexing_stats = self._index_files(valid_files)
             
             # 1. Duplikate finden
             logger.info(f"AutoimportPipeline: Starten Duplikaterkennung")
@@ -92,13 +100,16 @@ class AutoimportPipeline(QObject):
             
             # 2. Ratings durchführen
             logger.info(f"AutoimportPipeline: Starten Qualitätsbewertung")
-            self._rate_images(valid_files)
+            rating_info = self._rate_images(valid_files)
             
             # 3. Ergebnis zusammenfassen
             result = {
                 "total_files": len(valid_files),
+                "indexed_files": indexing_stats.get("hashed_files", 0),
+                "cached_files": indexing_stats.get("cached_files", 0),
                 "duplicates_found": len(duplicates),
                 "duplicates": duplicates,
+                "rating": rating_info,
                 "timestamp": datetime.now().isoformat(),
                 "source": "autoimport"
             }
@@ -158,12 +169,48 @@ class AutoimportPipeline(QObject):
                    f"(von {len(file_paths)} ursprünglich)")
         
         return valid
+
+    def _index_files(self, file_paths: list[str]) -> dict:
+        """Index the imported files into the main DB using PhotoIndexer helpers."""
+        logger.info(f"AutoimportPipeline._index_files(): {len(file_paths)} Dateien")
+
+        db = Database(self.db_path)
+        db.connect()
+        indexer = PhotoIndexer(db, max_workers=None)
+        scan_id = str(uuid.uuid4())[:8]
+        paths = [Path(path_str) for path_str in file_paths]
+
+        try:
+            indexer._reactivate_scanned_files(paths)
+            new_files, modified_files, unchanged_files = indexer._categorize_files(paths)
+            files_to_hash = new_files + modified_files
+            results_to_store: list[tuple[Path, dict]] = []
+
+            total_to_hash = len(files_to_hash)
+            for index, path in enumerate(files_to_hash, start=1):
+                result = indexer._process_file(path)
+                if result is not None:
+                    results_to_store.append((path, result))
+                self.import_progress.emit(index, max(1, total_to_hash))
+
+            if results_to_store:
+                indexer._batch_store_incremental_records(results_to_store, scan_id)
+
+            duplicates_found = indexer._count_new_duplicates(results_to_store)
+            return {
+                "total_files": len(paths),
+                "new_files": len(new_files),
+                "modified_files": len(modified_files),
+                "hashed_files": len(results_to_store),
+                "cached_files": len(unchanged_files),
+                "duplicates_found": duplicates_found,
+            }
+        finally:
+            db.close()
     
     def _find_duplicates(self, file_paths: list) -> list:
         """
         Führt Duplikaterkennung durch.
-        
-        [FILL: Integration mit existierendem DuplicateFinder]
         
         Args:
             file_paths: Liste von Dateipfaden zur Analyse
@@ -172,61 +219,98 @@ class AutoimportPipeline(QObject):
             Liste von erkannten Duplikaten: [{"path": "...", "duplicate_of": "...", "class": "A|B"}, ...]
         """
         logger.info(f"AutoimportPipeline._find_duplicates(): {len(file_paths)} Dateien")
-        
-        # from photo_cleaner.duplicates.finder import DuplicateFinder
-        # 
-        # finder = DuplicateFinder(
-        #     db_path=self.db_path,
-        #     hash_algorithm='sha256',
-        #     phash_threshold=5
-        # )
-        # 
-        # for idx, file_path in enumerate(file_paths):
-        #     finder.add_file(file_path)
-        #     self.import_progress.emit(idx, len(file_paths))
-        # 
-        # duplicates = finder.find_duplicates()
-        # return duplicates
-        
-        # [PLACEHOLDER: Rückgabe leere Liste für Now]
-        return []
+
+        imported_paths = [str(Path(path_str)) for path_str in file_paths]
+        if not imported_paths:
+            return []
+
+        db = Database(self.db_path)
+        db.connect()
+        try:
+            finder = DuplicateFinder(db, phash_threshold=5)
+            finder.build_groups()
+
+            placeholders = ",".join("?" for _ in imported_paths)
+            cursor = db.conn.execute(
+                f"""
+                SELECT d.group_id, COUNT(*) AS group_size
+                FROM duplicates d
+                WHERE d.group_id IN (
+                    SELECT DISTINCT d2.group_id
+                    FROM duplicates d2
+                    JOIN files f2 ON f2.file_id = d2.file_id
+                    WHERE f2.path IN ({placeholders})
+                )
+                GROUP BY d.group_id
+                ORDER BY d.group_id
+                """,
+                imported_paths,
+            )
+            return [
+                {"group_id": row[0], "group_size": int(row[1])}
+                for row in cursor.fetchall()
+            ]
+        finally:
+            db.close()
     
     def _rate_images(self, file_paths: list):
         """
         Führt Qualitätsbewertung durch.
         
-        [FILL: Integration mit existierendem RatingWorkerThread]
-        
         Args:
             file_paths: Liste von Dateipfaden zur Bewertung
         """
         logger.info(f"AutoimportPipeline._rate_images(): {len(file_paths)} Dateien")
-        
-        # from photo_cleaner.analysis.rating_worker import RatingWorkerThread
-        # 
-        # worker = RatingWorkerThread()
-        # worker.set_files(file_paths)
-        # worker.progress.connect(lambda curr, total: 
-        #                        self.import_progress.emit(curr, total))
-        # 
-        # worker.run()  # Synchron, nicht start()
-        # 
-        # results = worker.get_results()
-        # for file_path, rating_data in results.items():
-        #     self._save_rating_to_db(file_path, rating_data)
-        
-        # [PLACEHOLDER: No-op for now]
-        pass
+
+        worker = RatingWorkerThread(
+            self.db_path,
+            top_n=3,
+            mtcnn_status={"available": False, "error": "autoimport"},
+        )
+        rating_info: dict = {"rated": False, "warn": False}
+        rating_errors: list[str] = []
+
+        worker.progress.connect(lambda pct, _status: self.import_progress.emit(max(0, pct), 100))
+        worker.finished.connect(lambda info: rating_info.update(info))
+        worker.error.connect(lambda error_msg: rating_errors.append(error_msg))
+        worker.run()
+
+        if rating_errors:
+            raise RuntimeError(rating_errors[-1])
+        return rating_info
     
     def _save_rating_to_db(self, file_path: str, rating_data: dict):
         """
         Speichert Bewertungsergebnisse in der Datenbank.
         
-        [FILL: Integration mit DB-Manager]
         """
         logger.debug(f"AutoimportPipeline._save_rating_to_db(): {Path(file_path).name}")
-        # [PLACEHOLDER]
-        pass
+        db = Database(self.db_path)
+        db.connect()
+        try:
+            updates = []
+            for column_name in (
+                "quality_score",
+                "sharpness_component",
+                "lighting_component",
+                "resolution_component",
+                "face_quality_component",
+            ):
+                if column_name in rating_data:
+                    updates.append((column_name, rating_data[column_name]))
+
+            if not updates:
+                return
+
+            set_clause = ", ".join(f"{column_name} = ?" for column_name, _ in updates)
+            params = [value for _, value in updates] + [str(Path(file_path))]
+            db.conn.execute(
+                f"UPDATE files SET {set_clause} WHERE path = ?",
+                params,
+            )
+            db.conn.commit()
+        finally:
+            db.close()
     
     @staticmethod
     def _is_supported_format(path: Path) -> bool:

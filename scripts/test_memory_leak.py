@@ -13,6 +13,15 @@ import traceback
 from pathlib import Path
 
 
+def _ensure_repo_src_on_path() -> None:
+    """Ensure direct script execution can import photo_cleaner from src/."""
+    repo_root = Path(__file__).resolve().parents[1]
+    src_path = repo_root / "src"
+    src_str = str(src_path)
+    if src_path.exists() and src_str not in sys.path:
+        sys.path.insert(0, src_str)
+
+
 def _write_test_image(path: Path, size: tuple[int, int]) -> None:
     try:
         from PIL import Image
@@ -26,6 +35,7 @@ def _write_test_image(path: Path, size: tuple[int, int]) -> None:
 def main() -> int:
     try:
         print("[INFO] Starting memory leak smoke test", flush=True)
+        _ensure_repo_src_on_path()
         os.environ.setdefault("PHOTOCLEANER_SKIP_HEAVY_DEPS", "1")
         os.environ.setdefault("PHOTOCLEANER_FACE_DETECTOR", "haar")
         os.environ.setdefault("PHOTOCLEANER_EYE_DETECTION_STAGE", "1")

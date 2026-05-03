@@ -95,6 +95,7 @@ from PySide6.QtWidgets import (
 
 from photo_cleaner.db.schema import Database
 from photo_cleaner import __version__ as APP_VERSION
+from photo_cleaner.autoimport import AutoimportController
 from photo_cleaner.config import AppConfig
 from photo_cleaner.models.mode import AppMode
 from photo_cleaner.models.status import FileStatus
@@ -2556,6 +2557,27 @@ class ModernMainWindow(QMainWindow):
             geocoding_cache=self._geocoding_cache,
             geocoder=self._nominatim_geocoder,
         )
+        self._autoimport_controller: AutoimportController | None = None
+
+        try:
+            from photo_cleaner.license import get_license_manager
+
+            license_manager = get_license_manager()
+        except Exception:
+            license_manager = None
+
+        try:
+            self._autoimport_controller = AutoimportController(
+                db_path=self.db_path,
+                config=AppConfig,
+                license_manager=license_manager,
+                parent=self,
+            )
+            self._autoimport_controller.status_changed.connect(self._on_autoimport_status)
+            self._autoimport_controller.import_complete.connect(self._on_autoimport_complete)
+        except Exception:
+            logger.error("AutoimportController konnte nicht initialisiert werden", exc_info=True)
+            self._autoimport_controller = None
         
         # PHASE 4 FIX 1: Initialize CameraCalibrator for ML learning
         from photo_cleaner.pipeline.camera_calibrator import CameraCalibrator
@@ -2685,6 +2707,12 @@ class ModernMainWindow(QMainWindow):
         
         # Setup auto-save timer
         self._setup_auto_save()
+
+        if self._autoimport_controller is not None:
+            try:
+                self._autoimport_controller.startup()
+            except Exception:
+                logger.error("AutoimportController konnte nicht gestartet werden", exc_info=True)
 
         # Show first-run onboarding immediately after startup UI is ready.
         self._maybe_show_first_run_onboarding()
@@ -4154,6 +4182,32 @@ class ModernMainWindow(QMainWindow):
         if self._gallery_view is not None and hasattr(self, "_main_stack"):
             if self._main_stack.currentWidget() is self._gallery_view:
                 self._gallery_view.refresh()
+
+    def _on_autoimport_status(self, status: str) -> None:
+        """Reflect watch-folder status updates in the compact status area."""
+        logger.info("[Autoimport] %s", status)
+        if hasattr(self, "status_label") and self.status_label is not None:
+            try:
+                self.status_label.setText(status)
+            except Exception:
+                logger.debug("Autoimport status could not be pushed to status label", exc_info=True)
+
+    def _on_autoimport_complete(self, result: dict) -> None:
+        """Refresh gallery, review and map after watch-folder analysis finished."""
+        total_files = int(result.get("total_files", 0) or 0)
+        duplicate_count = int(result.get("duplicates_found", 0) or 0)
+        logger.info(
+            "[Autoimport] Abschluss: %d Dateien, %d Duplikat-Gruppen",
+            total_files,
+            duplicate_count,
+        )
+        self._refresh_gallery_data()
+        self.refresh_groups()
+        self._update_progress()
+        self._show_gallery_review_badge(duplicate_count)
+        if self._map_widget is not None:
+            self._map_widget.refresh()
+        self._on_autoimport_status(f"Autoimport: {total_files} Bilder, {duplicate_count} Gruppen")
 
     def _refresh_gallery_data(self) -> None:
         """Refresh gallery data cache regardless of current active view."""
@@ -8058,6 +8112,12 @@ class ModernMainWindow(QMainWindow):
     def closeEvent(self, event):
         """Handle window close - cleanup threads before exit."""
         self._is_shutting_down = True
+
+        try:
+            if self._autoimport_controller is not None:
+                self._autoimport_controller.shutdown()
+        except Exception:
+            logger.debug("Autoimport shutdown fehlgeschlagen", exc_info=True)
 
         # TileServer (Karten-Modul) sauber beenden
         try:

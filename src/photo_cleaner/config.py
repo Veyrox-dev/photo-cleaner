@@ -153,6 +153,39 @@ class AppConfig:
             logging.error(f"Failed to save settings: {e}")
 
     @classmethod
+    def get_autoimport_enabled(cls) -> bool:
+        """Return whether watch-folder autoimport is enabled."""
+        settings = cls.get_user_settings()
+        autoimport = settings.get("autoimport", {})
+        return bool(autoimport.get("enabled", False))
+
+    @classmethod
+    def set_autoimport_enabled(cls, enabled: bool) -> None:
+        """Persist the watch-folder autoimport enabled flag."""
+        settings = cls.get_user_settings()
+        autoimport = settings.setdefault("autoimport", {})
+        autoimport["enabled"] = bool(enabled)
+        cls.set_user_settings(settings)
+
+    @classmethod
+    def get_autoimport_debounce_ms(cls) -> int:
+        """Return debounce window for watch-folder imports."""
+        settings = cls.get_user_settings()
+        autoimport = settings.get("autoimport", {})
+        try:
+            return max(250, int(autoimport.get("debounce_window_ms", 3000)))
+        except (TypeError, ValueError):
+            return 3000
+
+    @classmethod
+    def set_autoimport_debounce_ms(cls, debounce_ms: int) -> None:
+        """Persist debounce window for watch-folder imports."""
+        settings = cls.get_user_settings()
+        autoimport = settings.setdefault("autoimport", {})
+        autoimport["debounce_window_ms"] = max(250, int(debounce_ms))
+        cls.set_user_settings(settings)
+
+    @classmethod
     def get_auto_keep_tiers(cls) -> tuple:
         """Return (tier1_threshold, tier1_keep, tier2_threshold, tier2_keep, tier3_keep)."""
         settings = cls.get_user_settings()

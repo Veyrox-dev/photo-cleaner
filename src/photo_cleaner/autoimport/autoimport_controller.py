@@ -72,11 +72,48 @@ class AutoimportController(QObject):
         self._enabled = False
         
         logger.debug("AutoimportController initialisiert")
+
+    def _get_config_value(self, attr_name: str, fallback_method: str, default):
+        """Read config values from object attrs or AppConfig classmethods."""
+        config_dict = getattr(self.config, "__dict__", {})
+        if attr_name in config_dict:
+            return getattr(self.config, attr_name)
+
+        getter = None
+        if isinstance(self.config, type):
+            getter = getattr(self.config, fallback_method, None)
+        elif fallback_method in config_dict and callable(config_dict[fallback_method]):
+            getter = config_dict[fallback_method]
+
+        if callable(getter):
+            try:
+                return getter()
+            except Exception:
+                logger.debug(
+                    "AutoimportController: Config getter %s fehlgeschlagen",
+                    fallback_method,
+                    exc_info=True,
+                )
+
+        return default
     
     def startup(self):
         """Initialisiert und startet Autoimport."""
-        # [FILL: Prüfe self.config.autoimport_enabled]
+        autoimport_enabled = bool(
+            self._get_config_value("autoimport_enabled", "get_autoimport_enabled", False)
+        )
+        debounce_ms = int(
+            self._get_config_value("autoimport_debounce_ms", "get_autoimport_debounce_ms", 3000)
+        )
+
+        if not autoimport_enabled:
+            logger.info("AutoimportController: Deaktiviert via Konfiguration")
+            self._enabled = False
+            self.status_changed.emit("Autoimport deaktiviert")
+            return
+
         logger.info("AutoimportController: Starten")
+        self._debouncer.set_debounce_window(debounce_ms)
         self._load_watchfolders()
         self._enabled = True
         self.status_changed.emit("Autoimport aktiv")
@@ -87,6 +124,11 @@ class AutoimportController(QObject):
         
         # Verarbeite offene Events
         self._debouncer.flush()
+
+        # Stoppe laufende Pipeline und deregistriere Watchfolder sauber
+        self._pipeline.stop()
+        for folder_path in list(self._monitor.get_watched_paths().keys()):
+            self._monitor.remove_watchfolder(Path(folder_path))
         
         # Speichere Config
         self._save_watchfolders()

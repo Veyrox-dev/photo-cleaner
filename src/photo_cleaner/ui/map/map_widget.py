@@ -482,7 +482,8 @@ class MapWidget(QWidget):
                     JOIN geo_groups gg ON gg.id = ggi.geo_group_id
                     WHERE gg.latitude IS NOT NULL
                       AND gg.longitude IS NOT NULL
-                      AND f.status = 'KEEP'
+                                            AND f.file_status = 'KEEP'
+                                            AND COALESCE(f.is_deleted, 0) = 0
                     ORDER BY f.quality_score DESC
                     """
                 )

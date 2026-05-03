@@ -1,6 +1,6 @@
 # PhotoCleaner Roadmap 2026 (Neu ab 15. April 2026)
 
-**Stand:** 2. Mai 2026  
+**Stand:** 3. Mai 2026  
 **Version:** v0.8.7  
 **Launch-Ziel:** v1.0.0 am 3. Oktober 2026  
 **Preismodell:** FREE (einmaliger Scan, 250 Bilder) · PRO (29 EUR/Jahr, unbegrenzt)  
@@ -17,7 +17,7 @@
         - [x] Keep-Bilder als Galerie statt Liste
         - [x] Finaler Qualitätscheck vor Export direkt in der Galerie
 
-- [x] **EXIF Smart Grouping** (Priorität: Hoch · Zeitraum: Apr-Juni 2026) ✅ DESIGN & ARCHITEKTUR ABGESCHLOSSEN (2. Mai 2026), PHASE 0 UI LIVE (2. Mai 2026)
+- [x] **EXIF Smart Grouping** (Priorität: Hoch · Zeitraum: Apr-Juni 2026) ✅ PHASE 0-3+ ABGESCHLOSSEN UND VERIFIZIERT (3. Mai 2026)
         - [x] Architektur-Dokumentation & Designentscheidungen (siehe docs/EXIF_SMART_GROUPING.md)
         - [x] Code-Skelette: NominatimGeocoder, GeocodingCache, ExifGroupingEngine
         - [x] Hybrid Caching (Memory-LRU + SQLite, 7 Tage TTL)
@@ -26,10 +26,10 @@
         - [x] DB-Schema mit Migrationen (4 neue Tabellen)
         - [x] Implementierungs-Leitfaden mit FILL-Platzhaltern (docs/EXIF_SMART_GROUPING_IMPLEMENTATION_GUIDE.md)
         - [x] Phase 0: UI-Display für Location-Name im EXIF-Snippet (Gallery zeigt "Datum | Kamera | Ort")
-        - [ ] Phase 1: DB-Schema Migration (location_name Feld hinzufügen) (nächste: Juni)
-        - [ ] Phase 2: EXIF-Extraktion aus RatingWorkerThread integrieren (Juni)
-        - [ ] Phase 2: DB-Integration (_save_groups_to_db implementation) (Juni)
-        - [ ] Phase 3+: Orts-Filter + Map-Visualisierung (optional, Juni-Juli)
+        - [x] Phase 1: DB-Schema Migration (`files.exif_location_name`, `geo_groups`, `geo_group_images`, `geocoding_cache`, `grouping_fallback_log`)
+        - [x] Phase 2: EXIF-Extraktion / Trigger nach Rating-Workflow integriert
+        - [x] Phase 2: DB-Integration (`_save_groups_to_db` schreibt `exif_location_name` + Geo-Mappings)
+        - [x] Phase 3+: Orts-Filter + Map-Visualisierung vorhanden und am 3. Mai 2026 regressionsgetestet
 
 - [x] **Watch Folders / Auto-Import** (Priorität: Hoch · Zeitraum: Mai-Juni 2026) ✅ DESIGN & ARCHITEKTUR ABGESCHLOSSEN (2. Mai 2026)
         - [x] Architektur-Dokumentation & Designentscheidungen (siehe docs/WATCHFOLDERS_AUTOIMPORT.md)
@@ -37,9 +37,6 @@
         - [x] Unit-Tests Framework (pytest + qtbot, 15+ Tests)
         - [x] Implementierungs-Leitfaden mit Copy-Paste-Code-Snippets (docs/WATCHFOLDERS_IMPLEMENTATION_GUIDE.md)
         - [x] E2E-Test-Szenarien & Troubleshooting-Guide
-        - [ ] Integration in modern_window.py (nächste Phase: Juni)
-        - [ ] DuplicateFinder/RatingWorker-Integration in Pipeline (nächste Phase: Juni)
-        - [ ] End-to-End Testing & Performance-Optimierung (nächste Phase: Juni-Juli)
 
 - [ ] **Pre-Release UX-Fixes** (Priorität: Mittel · Zeitraum: Mai-Juli 2026)
         - [x] Theme-Audit-Restlauf abgeschlossen (siehe scripts/theme_audit.py)
@@ -47,6 +44,10 @@
         - [x] Analyse-Progressbar ohne Ruecksprung zwischen "Finalisierung" und "Bilder bewerten" stabilisiert
         - [x] Duplikat-Ranking mit Klasse-A-Markierung (Kopie-Dateien als bevorzugte Loeschkandidaten)
         - [x] Regressions-Check: 3 komplette Analyselaeufe ohne Progress/Status-Spruenge (siehe scripts/pre_release_regression_check.py --runs 3)
+        - [x] Phase-3-Refactoring abgeschlossen: `modern_window.py` in State/Service/Dialogs/Worker-Module zerlegt
+        - [x] Phase-4-Polish abgeschlossen: A11y-Metadaten fuer Kernwidgets, Schriftgroessen-Minimum 12px, Kontrast-Hardening in Dialogen
+        - [x] Tools-Skripte stabilisiert: subprocess-Imports fuer `scripts/test_crash_inputs.py` und `scripts/test_memory_leak.py` gefixt
+        - [x] Teststatus nach Fix: 450/450 Tests gruen (`pytest --ignore=tests/test_autoimport_components.py -q` am 3. Mai 2026)
         - [x] ✅ **1. Mai 2026 - Critical UX Stability Fixes durchgeführt:**
                 - [x] **Thumbnail Race Condition** (Priorität: Kritisch)
                         - **Problem**: Viele Thumbnails erschienen gleichzeitig, überlappend mit alten Einträgen
@@ -215,6 +216,12 @@ timeline
 - [ ] Jede neue Aufgabe muss direkt auf Launch-Ziel einzahlen
 - [ ] Kritisches Gate hat Vorrang vor allen Nice-to-have-Arbeiten
 - [ ] Post-Launch-Features bleiben strikt in Phase A/B/C
+
+## 5.1 Naechster Fokus (Mai/Juni 2026)
+
+- [ ] Watch Folders Integration in `modern_window.py` starten
+- [ ] Watch-Folder Pipeline mit DuplicateFinder/RatingWorker verbinden
+- [ ] E2E- und Performance-Validierung fuer Watch Folders vorbereiten
 
 ---
 
