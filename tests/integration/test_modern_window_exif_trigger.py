@@ -1,0 +1,93 @@
+"""UI workflow test: rating completion triggers EXIF grouping in ModernMainWindow."""
+
+import sqlite3
+import tempfile
+from pathlib import Path
+
+from PySide6.QtWidgets import QApplication
+
+from photo_cleaner.db.schema import Database
+from photo_cleaner.ui.modern_window import ModernMainWindow
+
+
+def test_rating_finished_triggers_exif_grouping_and_updates_db(monkeypatch) -> None:
+    app = QApplication.instance() or QApplication([])
+    assert app is not None
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        db_path = tmp_path / "ui_workflow.db"
+        image_path = tmp_path / "keep_001.jpg"
+        image_path.touch()
+
+        db = Database(db_path)
+        conn = db.connect()
+        conn.execute(
+            """
+            INSERT INTO files (path, file_status, is_deleted)
+            VALUES (?, ?, ?)
+            """,
+            (str(image_path), "KEEP", 0),
+        )
+        conn.commit()
+        db.close()
+
+        # Keep construction deterministic and headless-friendly.
+        monkeypatch.setattr(ModernMainWindow, "_build_ui", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "show", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_setup_grid_thumbnail_loader", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_build_menu", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_wire_shortcuts", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_on_theme_changed", lambda self, _theme=None: None)
+        monkeypatch.setattr(ModernMainWindow, "_load_session", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "refresh_groups", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_update_progress", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_setup_auto_save", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_maybe_show_first_run_onboarding", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_schedule_update_check", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_show_analysis_summary", lambda self, _summary: None)
+        monkeypatch.setattr(ModernMainWindow, "_persist_analysis_metrics", lambda self, _info: None)
+        monkeypatch.setattr(ModernMainWindow, "_open_gallery", lambda self: None)
+        monkeypatch.setattr(ModernMainWindow, "_show_gallery_review_badge", lambda self, _count: None)
+        monkeypatch.setattr(ModernMainWindow, "_update_thumbnail_progress", lambda self: None)
+
+        win = ModernMainWindow(db_path=db_path)
+        # _build_ui is patched to no-op in this test; set expected attrs explicitly.
+        win._group_thumb_loader = None
+        win._grid_thumb_loader = None
+
+        calls: dict[str, object] = {}
+
+        def fake_group_images(paths, scan_session_id=None):
+            calls["paths"] = paths
+            calls["scan_session_id"] = scan_session_id
+            conn2 = sqlite3.connect(str(db_path))
+            try:
+                for p in paths:
+                    conn2.execute(
+                        "UPDATE files SET exif_location_name = ? WHERE path = ?",
+                        ("Berlin, Deutschland", str(p)),
+                    )
+                conn2.commit()
+            finally:
+                conn2.close()
+
+        monkeypatch.setattr(win._exif_grouping_engine, "group_images", fake_group_images)
+
+        try:
+            win._on_rating_finished({"rated": True})
+
+            assert "paths" in calls
+            assert len(calls["paths"]) == 1
+
+            conn3 = sqlite3.connect(str(db_path))
+            location = conn3.execute(
+                "SELECT exif_location_name FROM files WHERE path = ?",
+                (str(image_path),),
+            ).fetchone()[0]
+            conn3.close()
+
+            assert location == "Berlin, Deutschland"
+        finally:
+            win.close()
+            win.db.close()

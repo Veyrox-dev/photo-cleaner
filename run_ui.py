@@ -53,6 +53,27 @@ _modern_ui_imported = False
 _DLL_DIR_HANDLES = []
 
 
+def _apply_startup_migrations(db_path: Path, logger) -> tuple[int, list[str]]:
+    """Apply package migrations during startup and verify v005 presence."""
+    from photo_cleaner.db.migrations import MigrationManager, get_all_migrations
+
+    manager = MigrationManager(db_path)
+    migrations = get_all_migrations()
+
+    applied_count, messages = manager.migrate_to_latest(migrations)
+    logger.info("Applied %d migrations", applied_count)
+
+    status = manager.get_migration_status(migrations)
+    applied_versions = {entry["version"] for entry in status.get("applied", [])}
+    if "005" in applied_versions:
+        logger.info("v005 applied/present")
+    else:
+        logger.error("v005 missing after startup migration")
+        raise RuntimeError("Startup migration validation failed: v005 missing")
+
+    return applied_count, messages
+
+
 def parse_args():
     p = argparse.ArgumentParser(description="Photo Cleaner - Moderne deutsche UI")
     p.add_argument("--input", type=Path, help="Input-Ordner (ueberspringt Dialog)")
@@ -469,6 +490,8 @@ def main():
         preflight_db = Database(db_path)
         preflight_conn = preflight_db.connect()
         preflight_conn.close()
+        preflight_db.close()
+        _apply_startup_migrations(db_path, logger)
         logger.info("Database ready: %s", db_path)
     except Exception as e:
         logger.error("Database initialization failed for %s: %s", db_path, e, exc_info=True)

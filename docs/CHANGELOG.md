@@ -1,6 +1,39 @@
 # PhotoCleaner - Changelog
 > Version 0.8.7 - Export Options + UI Consistency Update (2026-04-11)
 
+## [Unreleased] - EXIF Smart Grouping Phase 4 (2026-05-03) ✅
+
+### 🧭 Gallery: Ortsfilter (UI + Logik)
+- `GalleryFilterOptions` um `location_query` erweitert
+- Neue Orts-Suche in der Gallery-Filterleiste (`Ort`, `Ort suchen...`)
+- Filterlogik in `GalleryView._apply_filter()` ergänzt:
+  - case-insensitive Teilstring-Match auf `location_name`
+  - Einträge ohne `location_name` werden bei aktivem Ortsfilter ausgeschlossen
+- Bestehende Score-/Datums-/Textfilter bleiben unverändert aktiv
+
+### 🗃️ Startup-Migrationen: v005 an App-Start gekoppelt
+- Package-basierter `MigrationManager` unter `src/photo_cleaner/db/migrations/manager.py` ergänzt und in `src/photo_cleaner/db/migrations/__init__.py` exportiert
+- `run_ui.py` erweitert um `_apply_startup_migrations(db_path, logger)`
+- App-Startup führt nun `get_all_migrations()` + `migrate_to_latest()` aus
+- Startup-Logging ergänzt:
+  - `Applied X migrations`
+  - `v005 applied/present`
+- Harte Validierung: fehlendes v005 führt zu klarer Startup-Exception
+
+### ✅ Neue Testabdeckung
+- `tests/test_gallery_location_filter.py`
+  - Teilstring-Match
+  - case-insensitive Match
+  - kein Match
+  - `location_name=None` wird ausgeschlossen
+- `tests/integration/test_app_startup_migrations.py`
+  - Legacy-DB wird auf v005 migriert
+  - idempotenter Start bei aktueller DB
+- `tests/integration/test_modern_window_exif_trigger.py`
+  - UI-Workflow über `ModernMainWindow._on_rating_finished()`
+  - Verifikation: `ExifGroupingEngine.group_images()` wird aufgerufen
+  - Verifikation: `files.exif_location_name` wird gesetzt
+
 ## [Unreleased] - Full i18n Rollout FR/ES/NL/IT + JSON Locale Loader (2026-04-10) ✅
 
 ### 🌍 Neue UI-Sprachen voll integriert

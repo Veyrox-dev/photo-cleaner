@@ -11,10 +11,21 @@
 | Phase | Beschreibung | Status | Aufwand | Datum |
 |-------|-------------|--------|--------|-------|
 | **Phase 0** | UI-Display (Location-Name im EXIF-Snippet) | ✅ DONE | 1-2h | 2. Mai 2026 |
-| **Phase 1** | DB-Schema Migration | ⏳ TODO | 1 Tag | Juni 2026 |
-| **Phase 2** | EXIF-Integration (Engine) | ⏳ TODO | 1 Tag | Juni 2026 |
-| **Phase 3** | Testing & Validierung | ⏳ TODO | 1 Tag | Juni 2026 |
-| **Phase 4** | UI-Erweiterte Features (Filter, Karte) | ⏳ TODO | 1-2 Tage | Juni-Juli 2026 |
+| **Phase 1** | DB-Schema Migration | ✅ DONE | 1 Tag | 3. Mai 2026 |
+| **Phase 2** | EXIF-Integration (Engine) | ✅ DONE | 1 Tag | 3. Mai 2026 |
+| **Phase 3** | Testing & Validierung | ✅ DONE | 1 Tag | 3. Mai 2026 |
+| **Phase 4** | UI-Erweiterte Features (Filter, Startup-Migration, UI-Workflow-Test) | ✅ DONE | 1-2 Tage | 3. Mai 2026 |
+
+---
+
+## Phase-4-Inputs
+
+- Target environment: Windows, Python 3.11, PySide6, SQLite, pytest
+- Entry point: `run_ui.py`
+- Current codebase state: Phase 0-3 abgeschlossen, v005 vorhanden
+- Existing tests: `tests/test_exif_grouping.py`, `tests/integration/test_exif_grouping_gallery_e2e.py`, `tests/test_exif_grouping_performance.py`, `tests/test_gallery_location_display.py`
+- Dependencies / Modulnamen: `gallery_view.py`, `gallery_filter_bar.py`, `modern_window.py`, `migrations.py`, `src/photo_cleaner/db/migrations/__init__.py`, `v005_add_exif_geo_grouping.py`
+- Timeline / deadline: TBD (nach Sprint-Planung)
 
 ---
 
@@ -27,7 +38,7 @@ src/photo_cleaner/exif/
 ├── __init__.py                      ✅ Paket-Einstiegspunkt
 ├── nominatim_geocoder.py            ✅ Reverse Geocoding (100% complete)
 ├── geocoding_cache.py               ✅ Hybrid Caching (100% complete)
-└── exif_grouping_engine.py          ⏳ Placeholder für EXIF-Extraktion & DB-Integration
+└── exif_grouping_engine.py          ✅ EXIF-Extraktion + DB-Integration abgeschlossen
 ```
 
 ### 2. Nächste Schritte (in dieser Reihenfolge)
@@ -39,25 +50,25 @@ Phase 0: UI-DISPLAY (✅ ABGESCHLOSSEN)
   ├─ [✅] Tests erstellen (test_gallery_location_display.py)
   └─ [✅] Format: "2024-05-02 | Sony A7IV | New York, USA"
 
-Phase 1: DB-SCHEMA (1 Tag, nächste Phase)
-  ├─ [ ] Migrationsskript erstellen (4 neue Tabellen)
-  ├─ [ ] Tests für Tabellen-Struktur
-  └─ [ ] Validierung auf Test-DB
+Phase 1: DB-SCHEMA (✅ ABGESCHLOSSEN)
+    ├─ [✅] Migrationsskript erstellt (`v005_add_exif_geo_grouping.py`)
+    ├─ [✅] Tests für Tabellen-Struktur
+    └─ [✅] Validierung auf Test-DB
 
-Phase 2: EXIF-INTEGRATION (1 Tag)
-  ├─ [ ] _extract_exif_data() implementieren (FILL: RatingWorkerThread Integration)
-  ├─ [ ] _save_groups_to_db() implementieren (FILL: SQL INSERT)
-  └─ [ ] DB-Migrationen testen
+Phase 2: EXIF-INTEGRATION (✅ ABGESCHLOSSEN)
+    ├─ [✅] _extract_exif_data() implementiert
+    ├─ [✅] _save_groups_to_db() implementiert
+    └─ [✅] DB-Migrationen getestet
 
-Phase 3: TESTING & INTEGRATION (1 Tag)
-  ├─ [ ] Unit-Tests (pytest tests/test_exif_grouping.py)
-  ├─ [ ] E2E-Tests (EXIF → Grouping → Gallery anzeigen)
-  └─ [ ] Performance: 250 Bilder sollten <5s Grouping dauern
+Phase 3: TESTING & INTEGRATION (✅ ABGESCHLOSSEN)
+    ├─ [✅] Unit-Tests (`pytest tests/test_exif_grouping.py -v`)
+    ├─ [✅] E2E-Test (EXIF → Grouping → Gallery anzeigen)
+    └─ [✅] Performance: 250 Bilder <5s
 
-Phase 4: UI-INTEGRATION (optional, 1 Tag)
-  ├─ [ ] Gallery-Filter nach Location
-  ├─ [ ] Gruppen-Statistik anzeigen
-  └─ [ ] Map-Visualisierung (optional, Leaflet)
+Phase 4: UI-INTEGRATION (✅ ABGESCHLOSSEN)
+    ├─ [✅] Gallery-Filter nach Location (UI + Logik)
+    ├─ [✅] v005-Migrationspfad an produktiven App-Start gekoppelt
+    └─ [✅] UI-Workflow-Test mit ModernMainWindow ergänzt
 ```
 
 ---
@@ -390,6 +401,12 @@ pytest tests/test_exif_grouping.py -v
 3. Prüfe: geo_groups Tabelle hat Einträge
 4. Prüfe: geo_group_images hat Bilder-Zuordnungen
 5. Prüfe: geocoding_cache hat Einträge
+
+### 4.3 Phase-4 Fallbacks
+
+- Phase 4A Fallback: Falls UI-Rendering blockiert, nur Backend-Filterlogik über `_apply_filter()` und `location_query` aktivieren; UI-Control nachziehen.
+- Phase 4B Fallback: `Database._initialize_schema()` bleibt aktives Sicherheitsnetz; MigrationManager-Startup-Aufruf bleibt zusätzlich und idempotent.
+- Phase 4C Fallback: Trigger-Test (`_on_rating_finished`) isoliert halten; Datenwirkung weiterhin durch E2E-Test absichern.
 
 ---
 

@@ -18,7 +18,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 CREATE_FILES_TABLE = """
 CREATE TABLE IF NOT EXISTS files (
@@ -211,6 +211,7 @@ CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_file_hash_mapping_hash ON file_hash_mapping(hash_key);",
     # v0.9: EXIF Smart Grouping indexes
     "CREATE INDEX IF NOT EXISTS idx_geo_groups_key ON geo_groups(group_key);",
+    "CREATE INDEX IF NOT EXISTS idx_geo_groups_location ON geo_groups(location_name);",
     "CREATE INDEX IF NOT EXISTS idx_geo_groups_session ON geo_groups(scan_session_id);",
     "CREATE INDEX IF NOT EXISTS idx_geo_group_images_group ON geo_group_images(geo_group_id);",
     "CREATE INDEX IF NOT EXISTS idx_geo_group_images_file ON geo_group_images(file_id);",

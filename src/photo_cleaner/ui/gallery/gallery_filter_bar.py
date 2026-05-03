@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GalleryFilterOptions:
     search_text: str = ""
+    location_query: str = ""
     min_score: int = 0          # 0–100
     date_from: Optional[date] = None
     date_to: Optional[date] = None
@@ -137,6 +138,19 @@ class GalleryFilterBar(QWidget):
         self._search_box.textChanged.connect(self._on_filter_changed)
         layout.addWidget(self._search_box)
 
+        # Ortsfilter
+        self._location_label = QLabel("Ort")
+        self._location_label.setStyleSheet(f"font-size: 12px; color: {colors['text']};")
+        layout.addWidget(self._location_label)
+
+        self._location_box = QLineEdit()
+        self._location_box.setPlaceholderText("Ort suchen...")
+        self._location_box.setClearButtonEnabled(True)
+        self._location_box.setMinimumHeight(28)
+        self._location_box.setMaximumWidth(220)
+        self._location_box.textChanged.connect(self._on_filter_changed)
+        layout.addWidget(self._location_box)
+
         layout.addStretch()
 
         self._apply_button_styles()
@@ -183,6 +197,7 @@ class GalleryFilterBar(QWidget):
 
         opts.min_score = self._score_slider.value()
         opts.search_text = self._search_box.text().strip()
+        opts.location_query = self._location_box.text().strip()
         return opts
 
     def reset(self):
@@ -192,6 +207,7 @@ class GalleryFilterBar(QWidget):
             btn.setChecked(pk == "all")
         self._score_slider.setValue(0)
         self._search_box.clear()
+        self._location_box.clear()
         self._apply_button_styles()
 
     def retranslate(self):
@@ -199,3 +215,5 @@ class GalleryFilterBar(QWidget):
         for period_key, btn in self._period_btns.items():
             btn.setText(t(_btn_i18n_key(period_key)))
         self._search_box.setPlaceholderText(t("search_placeholder"))
+        self._location_label.setText("Ort")
+        self._location_box.setPlaceholderText("Ort suchen...")

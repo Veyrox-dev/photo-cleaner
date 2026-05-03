@@ -330,6 +330,13 @@ class GalleryView(QWidget):
                 if needle not in entry.path.name.lower() and needle not in str(entry.path).lower():
                     continue
 
+            # Ortsfilter (Phase 4A): case-insensitive Teilstring auf location_name
+            if opts.location_query.strip() != "":
+                if not entry.location_name:
+                    continue
+                if opts.location_query.casefold() not in entry.location_name.casefold():
+                    continue
+
             results.append(entry)
 
         self._filtered_entries = results

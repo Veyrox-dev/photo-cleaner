@@ -6,6 +6,7 @@ Führe aus mit:
 """
 
 import pytest
+import sqlite3
 import tempfile
 from pathlib import Path
 from datetime import datetime
@@ -13,6 +14,7 @@ from datetime import datetime
 from photo_cleaner.exif.nominatim_geocoder import NominatimGeocoder
 from photo_cleaner.exif.geocoding_cache import GeocodingCache
 from photo_cleaner.exif.exif_grouping_engine import ExifGroupingEngine
+from photo_cleaner.db.migrations.v005_add_exif_geo_grouping import V005AddExifGeoGrouping
 
 
 class TestNominatimGeocoder:
@@ -283,19 +285,51 @@ class TestDbMigration:
 
     def test_unique_constraint_geo_groups(self, db):
         """Test: UNIQUE(group_key) in geo_groups wird durchgesetzt."""
-        import sqlite3 as _sqlite3
         conn, _ = db
         conn.execute(
             "INSERT INTO geo_groups (group_key, image_count) VALUES (?, ?)",
             ("dup_key", 1),
         )
         conn.commit()
-        with pytest.raises(_sqlite3.IntegrityError):
+        with pytest.raises(sqlite3.IntegrityError):
             conn.execute(
                 "INSERT INTO geo_groups (group_key, image_count) VALUES (?, ?)",
                 ("dup_key", 2),
             )
             conn.commit()
+
+
+class TestMigrationV005GeoGrouping:
+    """Validiert die dedizierte DB-Migration für Geo-Grouping."""
+
+    def test_v005_creates_expected_tables_on_legacy_db(self):
+        """Test: v005 legt die neuen Tabellen auch auf einer älteren DB korrekt an."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "legacy.db"
+            conn = sqlite3.connect(str(db_path))
+            conn.execute(
+                """
+                CREATE TABLE files (
+                    file_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    path TEXT NOT NULL UNIQUE,
+                    file_status TEXT NOT NULL DEFAULT 'UNDECIDED'
+                )
+                """
+            )
+
+            migration = V005AddExifGeoGrouping()
+            migration.up(conn)
+
+            table_names = {
+                row[0]
+                for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+            }
+            conn.close()
+
+            assert "geo_groups" in table_names
+            assert "geo_group_images" in table_names
+            assert "geocoding_cache" in table_names
+            assert "grouping_fallback_log" in table_names
 
 
 class TestSaveGroupsToDb:
