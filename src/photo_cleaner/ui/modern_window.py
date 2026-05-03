@@ -17,6 +17,7 @@ import os
 import json
 import re
 import sqlite3
+import threading
 import time
 import urllib.request
 import urllib.error
@@ -133,25 +134,29 @@ from photo_cleaner.ui.gallery import GalleryView
 from photo_cleaner.ui.thumbnail_lazy import ThumbnailLoader, SmartThumbnailCache  # Thumbnail async loading
 from photo_cleaner.exif import ExifGroupingEngine, GeocodingCache, NominatimGeocoder
 
-# Lazy load heavy analysis modules
+# Lazy load heavy analysis modules (with Thread Safety Locks - EMERGENCY FIX #1)
 _QualityAnalyzer = None
 _GroupScorer = None
+_analyzer_lock = threading.Lock()  # Thread-safe lazy loading
+_scorer_lock = threading.Lock()
 from photo_cleaner.core.kpi_tracker import get_kpi_tracker  # Phase F: KPI tracking
 
 def _get_quality_analyzer():
-    """Lazy load QualityAnalyzer to avoid numpy initialization."""
+    """Lazy load QualityAnalyzer to avoid numpy initialization (THREAD-SAFE)."""
     global _QualityAnalyzer
-    if _QualityAnalyzer is None:
-        from photo_cleaner.pipeline.quality_analyzer import QualityAnalyzer
-        _QualityAnalyzer = QualityAnalyzer
+    with _analyzer_lock:  # EMERGENCY FIX: Prevent race condition in lazy loading
+        if _QualityAnalyzer is None:
+            from photo_cleaner.pipeline.quality_analyzer import QualityAnalyzer
+            _QualityAnalyzer = QualityAnalyzer
     return _QualityAnalyzer
 
 def _get_group_scorer():
-    """Lazy load GroupScorer to avoid numpy initialization."""
+    """Lazy load GroupScorer to avoid numpy initialization (THREAD-SAFE)."""
     global _GroupScorer
-    if _GroupScorer is None:
-        from photo_cleaner.pipeline.scorer import GroupScorer
-        _GroupScorer = GroupScorer
+    with _scorer_lock:  # EMERGENCY FIX: Prevent race condition in lazy loading
+        if _GroupScorer is None:
+            from photo_cleaner.pipeline.scorer import GroupScorer
+            _GroupScorer = GroupScorer
     return _GroupScorer
 
 
@@ -272,6 +277,7 @@ class RatingWorkerThread(QThread):
                 logger.info("[WORKER] MTCNN status unknown - continuing with runtime auto-detection")
         
         db = None
+        conn = None
         try:
             logger.info("[WORKER] Connecting to database...")
             db = Database(self.db_path)
@@ -551,8 +557,17 @@ class RatingWorkerThread(QThread):
             self.finished.emit(info)
         finally:
             logger.info(f"[WORKER] RatingWorkerThread cleanup")
+            # EMERGENCY FIX #2: Ensure database connection is properly closed
+            if conn:
+                try:
+                    conn.close()  # Close connection explicitly
+                except Exception as e:
+                    logger.warning(f"Error closing connection: {e}")
             if db:
-                db.close()
+                try:
+                    db.close()
+                except Exception as e:
+                    logger.warning(f"Error closing database: {e}")
     
     def cancel(self):
         """Cancel the rating operation."""
@@ -579,6 +594,7 @@ class MergeGroupRatingWorker(QThread):
 
     def run(self) -> None:
         db = None
+        conn = None
         try:
             last_progress_emit_ts = 0.0
             last_progress_signature: tuple[int, int, str, str, int, int] | None = None
@@ -799,8 +815,17 @@ class MergeGroupRatingWorker(QThread):
             logger.error("MergeGroupRatingWorker failed: %s", e, exc_info=True)
             self.error.emit(str(e))
         finally:
+            # EMERGENCY FIX #2: Ensure database connections are properly closed
+            if conn:
+                try:
+                    conn.close()  # Close connection explicitly
+                except Exception as e:
+                    logger.warning(f"Error closing connection: {e}")
             if db:
-                db.close()
+                try:
+                    db.close()
+                except Exception as e:
+                    logger.warning(f"Error closing database: {e}")
 
 
 class DuplicateFinderThread(QThread):
@@ -819,9 +844,10 @@ class DuplicateFinderThread(QThread):
         from photo_cleaner.duplicates.finder import DuplicateFinder
 
         db = None
+        conn = None
         try:
             db = Database(self.db_path)
-            db.connect()
+            conn = db.connect()  # Store connection for proper cleanup
             finder = DuplicateFinder(db, phash_threshold=self.phash_threshold)
             group_rows = finder.build_groups()
             self.finished.emit(group_rows)
@@ -829,8 +855,17 @@ class DuplicateFinderThread(QThread):
             logger.error(f"Duplicate finder failed: {e}", exc_info=True)
             self.error.emit(str(e))
         finally:
+            # EMERGENCY FIX #2: Ensure database connections are properly closed
+            if conn:
+                try:
+                    conn.close()  # Close connection explicitly
+                except Exception as e:
+                    logger.warning(f"Error closing connection: {e}")
             if db:
-                db.close()
+                try:
+                    db.close()
+                except Exception as e:
+                    logger.warning(f"Error closing database: {e}")
 
 
 class ExifWorkerThread(QThread):
