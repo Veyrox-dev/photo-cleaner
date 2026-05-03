@@ -128,6 +128,7 @@ from photo_cleaner.ui.cleanup_completion_dialog import CleanupCompletionDialog
 from photo_cleaner.cache.image_cache_manager import ImageCacheManager  # v0.5.3
 from photo_cleaner.ui.gallery import GalleryView
 from photo_cleaner.ui.thumbnail_lazy import ThumbnailLoader, SmartThumbnailCache  # Thumbnail async loading
+from photo_cleaner.exif import ExifGroupingEngine, GeocodingCache, NominatimGeocoder
 
 # Lazy load heavy analysis modules
 _QualityAnalyzer = None
@@ -1639,7 +1640,7 @@ class FolderSelectionDialog(QDialog):
         output_layout.setSpacing(8)
         output_layout.setContentsMargins(16, 16, 16, 16)
         
-        output_label = QLabel(f"{t('select_output_folder_label')} {t('output_folder_required')}")
+        output_label = QLabel(t("select_output_folder_label"))
         output_layout.addWidget(output_label)
         
         output_hint = QLabel(f"<i>{t('import_output_card_hint')}</i>")
@@ -3976,6 +3977,16 @@ class ModernMainWindow(QMainWindow):
         self._selection_workflow = SelectionWorkflowController()
         self._export_delete_workflow = ExportDeleteWorkflowController()
         self.cache_manager = ImageCacheManager(self.conn)
+        self._geocoding_cache = GeocodingCache(
+            db_path=AppConfig.get_cache_dir() / "geocoding_cache.db",
+            ttl_days=7,
+        )
+        self._nominatim_geocoder = NominatimGeocoder()
+        self._exif_grouping_engine = ExifGroupingEngine(
+            db_path=self.db_path,
+            geocoding_cache=self._geocoding_cache,
+            geocoder=self._nominatim_geocoder,
+        )
         
         # PHASE 4 FIX 1: Initialize CameraCalibrator for ML learning
         from photo_cleaner.pipeline.camera_calibrator import CameraCalibrator
@@ -4686,6 +4697,9 @@ class ModernMainWindow(QMainWindow):
         self.refresh_groups()
         refresh_time = time.monotonic() - refresh_start
         logger.info(f"[UI] refresh_groups() completed in {refresh_time:.3f}s")
+
+        # Phase 1: EXIF-Smart-Grouping auslösen und exif_location_name in DB schreiben
+        self._trigger_exif_grouping_for_keep_images()
         
         self._update_progress()
         self._pending_rating_summary = rating_info
@@ -4714,6 +4728,41 @@ class ModernMainWindow(QMainWindow):
         
         finish_time = time.monotonic() - finish_start
         logger.info(f"[UI] _finish_post_indexing() FINISHED in {finish_time:.3f}s")
+
+    def _trigger_exif_grouping_for_keep_images(self) -> None:
+        """Phase 1: Füllt exif_location_name über Reverse-Geocoding für KEEP-Bilder."""
+        try:
+            image_paths = self._get_keep_image_paths_for_grouping()
+            if not image_paths:
+                logger.info("[EXIF] Keine KEEP-Bilder für Grouping gefunden")
+                return
+
+            logger.info("[EXIF] Starte ExifGroupingEngine für %d Bilder", len(image_paths))
+            self._exif_grouping_engine.group_images(image_paths)
+        except Exception as e:
+            logger.error("[EXIF] Grouping konnte nicht gestartet werden: %s", e, exc_info=True)
+
+    def _get_keep_image_paths_for_grouping(self) -> list[Path]:
+        """Lädt KEEP-Bildpfade als Input für ExifGroupingEngine."""
+        paths: list[Path] = []
+        try:
+            cur = self.conn.execute(
+                """
+                SELECT path
+                FROM files
+                WHERE file_status = 'KEEP'
+                  AND is_deleted = 0
+                ORDER BY path ASC
+                """
+            )
+            for row in cur.fetchall():
+                path_value = row[0]
+                if not path_value:
+                    continue
+                paths.append(Path(path_value))
+        except sqlite3.Error:
+            logger.error("[EXIF] Fehler beim Laden der KEEP-Pfade", exc_info=True)
+        return paths
 
     def _show_analysis_summary(self, rating_info: dict) -> None:
         results = self._indexing_results or {}

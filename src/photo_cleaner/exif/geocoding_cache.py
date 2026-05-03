@@ -156,6 +156,7 @@ class GeocodingCache:
         Returns:
             Dict oder None
         """
+        conn = None
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -178,21 +179,24 @@ class GeocodingCache:
                     WHERE coordinates = ?
                 """, (coord_str,))
                 conn.commit()
-                
-                return {
+
+                result = {
                     "location_name": row[0],
                     "city": row[1],
                     "country": row[2],
                     "address": json.loads(row[3]) if row[3] else {},
                     "cached_at": row[4]
                 }
+                return result
             
-            conn.close()
             return None
         
         except Exception as e:
             logger.error(f"GeocodingCache: Fehler beim DB-Abruf: {e}", exc_info=True)
             return None
+        finally:
+            if conn is not None:
+                conn.close()
     
     def _save_to_db(self, coordinates: Tuple[float, float], location_data: Dict):
         """

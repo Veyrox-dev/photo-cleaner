@@ -6,6 +6,18 @@
 
 ---
 
+## Status: Implementierungen
+
+| Phase | Beschreibung | Status | Aufwand | Datum |
+|-------|-------------|--------|--------|-------|
+| **Phase 0** | UI-Display (Location-Name im EXIF-Snippet) | ✅ DONE | 1-2h | 2. Mai 2026 |
+| **Phase 1** | DB-Schema Migration | ⏳ TODO | 1 Tag | Juni 2026 |
+| **Phase 2** | EXIF-Integration (Engine) | ⏳ TODO | 1 Tag | Juni 2026 |
+| **Phase 3** | Testing & Validierung | ⏳ TODO | 1 Tag | Juni 2026 |
+| **Phase 4** | UI-Erweiterte Features (Filter, Karte) | ⏳ TODO | 1-2 Tage | Juni-Juli 2026 |
+
+---
+
 ## Quick Start
 
 ### 1. Komponenten sind bereit!
@@ -21,7 +33,13 @@ src/photo_cleaner/exif/
 ### 2. Nächste Schritte (in dieser Reihenfolge)
 
 ```
-Phase 1: DB-SCHEMA (1 Tag)
+Phase 0: UI-DISPLAY (✅ ABGESCHLOSSEN)
+  ├─ [✅] GalleryEntry um location_name erweitern
+  ├─ [✅] _build_exif_snippet() für Ort-Anzeige anpassen
+  ├─ [✅] Tests erstellen (test_gallery_location_display.py)
+  └─ [✅] Format: "2024-05-02 | Sony A7IV | New York, USA"
+
+Phase 1: DB-SCHEMA (1 Tag, nächste Phase)
   ├─ [ ] Migrationsskript erstellen (4 neue Tabellen)
   ├─ [ ] Tests für Tabellen-Struktur
   └─ [ ] Validierung auf Test-DB
@@ -41,6 +59,80 @@ Phase 4: UI-INTEGRATION (optional, 1 Tag)
   ├─ [ ] Gruppen-Statistik anzeigen
   └─ [ ] Map-Visualisierung (optional, Leaflet)
 ```
+
+---
+
+## Phase 0: UI-Display für Aufnahmeort (✅ ABGESCHLOSSEN)
+
+### 0.1 Was wurde implementiert?
+
+Die Galerie zeigt nun den Aufnahmeort (location_name) im EXIF-Snippet unter jedem Thumbnail an.
+
+**Vorher:**
+```
+2024-05-02 | Sony A7IV
+```
+
+**Nachher (Phase 0):**
+```
+2024-05-02 | Sony A7IV | New York, USA
+```
+
+### 0.2 Code-Änderungen
+
+**Datei:** `src/photo_cleaner/ui/gallery/gallery_view.py`
+
+1. **GalleryEntry Dataclass erweitert:**
+   ```python
+   @dataclass
+   class GalleryEntry:
+       # ... existierende Felder ...
+       location_name: Optional[str] = None  # NEU: Ort aus EXIF/Reverse-Geocoding
+   ```
+
+2. **_build_exif_snippet() angepasst:**
+   ```python
+   def _build_exif_snippet(self, entry: GalleryEntry) -> str:
+       """Erstellt EXIF-Einzeiler: Datum | Kamera | Ort"""
+       parts = []
+       # ... Datum + Kamera wie vorher ...
+       
+       # Phase 0: Aufnahmeort hinzufügen
+       if entry.location_name:
+           parts.append(entry.location_name)
+       
+       return " | ".join(parts)
+   ```
+
+### 0.3 Fallback & Robustheit
+
+- Wenn `location_name` = `None`: Snippet sieht aus wie vorher (nur Datum | Kamera)
+- Snippet wird nicht gezeigt, wenn es leer ist
+- Sehr lange Ortsangaben: können später trunciert werden
+
+### 0.4 Testing
+
+**Test-Datei:** `tests/test_gallery_location_display.py`
+
+Führe aus mit:
+```bash
+pytest tests/test_gallery_location_display.py -v
+```
+
+Validiert:
+- ✅ GalleryEntry akzeptiert `location_name`
+- ✅ Fallback funktioniert (location_name=None)
+- ✅ EXIF-Snippet wird korrekt formatiert
+- ✅ Format: "2024-05-02 | Sony A7IV | New York, USA"
+
+### 0.5 Nächster Schritt: Phase 1 (DB-Integration)
+
+Nach Phase 0 ist die UI **bereit**, aber die `location_name` ist noch leer (None).
+
+**In Phase 1 wird implementiert:**
+1. DB-Felder für exif_location_name hinzufügen
+2. exif_grouping_engine die Daten füllen lassen
+3. DB-Query in gallery_view.py anpassen, um location_name zu laden
 
 ---
 

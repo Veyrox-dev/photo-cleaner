@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS files (
     modified_time REAL,
     created_time REAL,
     exif_json TEXT,
+    exif_location_name TEXT,
     sharpness_score REAL,
     overall_score REAL,
     quality_score REAL,
@@ -141,6 +142,58 @@ CREATE TABLE IF NOT EXISTS file_hash_mapping (
 );
 """
 
+# ========== v0.9: EXIF Smart Grouping tables ==========
+
+CREATE_GEO_GROUPS_TABLE = """
+CREATE TABLE IF NOT EXISTS geo_groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_session_id TEXT,
+    group_key TEXT UNIQUE NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    location_name TEXT,
+    city TEXT,
+    country TEXT,
+    date_start DATE,
+    date_end DATE,
+    image_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+CREATE_GEO_GROUP_IMAGES_TABLE = """
+CREATE TABLE IF NOT EXISTS geo_group_images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    geo_group_id INTEGER NOT NULL REFERENCES geo_groups(id) ON DELETE CASCADE,
+    file_id INTEGER NOT NULL REFERENCES files(file_id) ON DELETE CASCADE,
+    UNIQUE(geo_group_id, file_id)
+);
+"""
+
+CREATE_GEOCODING_CACHE_TABLE = """
+CREATE TABLE IF NOT EXISTS geocoding_cache (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    coordinates TEXT UNIQUE NOT NULL,
+    location_name TEXT,
+    city TEXT,
+    country TEXT,
+    raw_response TEXT,
+    cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ttl_hours INTEGER DEFAULT 168,
+    hits INTEGER DEFAULT 0
+);
+"""
+
+CREATE_GROUPING_FALLBACK_LOG_TABLE = """
+CREATE TABLE IF NOT EXISTS grouping_fallback_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_id INTEGER REFERENCES files(file_id) ON DELETE CASCADE,
+    tier_used INTEGER,
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
 CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_files_phash ON files(phash);",
     "CREATE INDEX IF NOT EXISTS idx_files_path ON files(path);",
@@ -156,6 +209,13 @@ CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_analysis_cache_hash ON analysis_cache(file_hash);",
     "CREATE INDEX IF NOT EXISTS idx_file_hash_mapping_file ON file_hash_mapping(file_id);",
     "CREATE INDEX IF NOT EXISTS idx_file_hash_mapping_hash ON file_hash_mapping(hash_key);",
+    # v0.9: EXIF Smart Grouping indexes
+    "CREATE INDEX IF NOT EXISTS idx_geo_groups_key ON geo_groups(group_key);",
+    "CREATE INDEX IF NOT EXISTS idx_geo_groups_session ON geo_groups(scan_session_id);",
+    "CREATE INDEX IF NOT EXISTS idx_geo_group_images_group ON geo_group_images(geo_group_id);",
+    "CREATE INDEX IF NOT EXISTS idx_geo_group_images_file ON geo_group_images(file_id);",
+    "CREATE INDEX IF NOT EXISTS idx_geocoding_cache_coords ON geocoding_cache(coordinates);",
+    "CREATE INDEX IF NOT EXISTS idx_grouping_fallback_file ON grouping_fallback_log(file_id);",
 ]
 
 
@@ -265,6 +325,12 @@ class Database:
         cursor.execute(CREATE_ANALYSIS_CACHE_TABLE)
         cursor.execute(CREATE_FILE_HASH_MAPPING_TABLE)
 
+        # v0.9: EXIF Smart Grouping tables
+        cursor.execute(CREATE_GEO_GROUPS_TABLE)
+        cursor.execute(CREATE_GEO_GROUP_IMAGES_TABLE)
+        cursor.execute(CREATE_GEOCODING_CACHE_TABLE)
+        cursor.execute(CREATE_GROUPING_FALLBACK_LOG_TABLE)
+
         # Backwards-compatible migration: ensure optional columns exist on older DBs
         try:
             cursor.execute("PRAGMA table_info(files)")
@@ -291,6 +357,8 @@ class Database:
                 cursor.execute("ALTER TABLE files ADD COLUMN quality_score REAL")
             if "capture_time" not in cols:
                 cursor.execute("ALTER TABLE files ADD COLUMN capture_time REAL")
+            if "exif_location_name" not in cols:
+                cursor.execute("ALTER TABLE files ADD COLUMN exif_location_name TEXT")
             # NEW: Quality score components
             if "sharpness_component" not in cols:
                 cursor.execute("ALTER TABLE files ADD COLUMN sharpness_component REAL")

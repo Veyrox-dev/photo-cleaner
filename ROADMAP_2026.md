@@ -17,7 +17,7 @@
         - [x] Keep-Bilder als Galerie statt Liste
         - [x] Finaler Qualitätscheck vor Export direkt in der Galerie
 
-- [x] **EXIF Smart Grouping** (Priorität: Hoch · Zeitraum: Apr-Juni 2026) ✅ DESIGN & ARCHITEKTUR ABGESCHLOSSEN (2. Mai 2026)
+- [x] **EXIF Smart Grouping** (Priorität: Hoch · Zeitraum: Apr-Juni 2026) ✅ DESIGN & ARCHITEKTUR ABGESCHLOSSEN (2. Mai 2026), PHASE 0 UI LIVE (2. Mai 2026)
         - [x] Architektur-Dokumentation & Designentscheidungen (siehe docs/EXIF_SMART_GROUPING.md)
         - [x] Code-Skelette: NominatimGeocoder, GeocodingCache, ExifGroupingEngine
         - [x] Hybrid Caching (Memory-LRU + SQLite, 7 Tage TTL)
@@ -25,9 +25,11 @@
         - [x] Fallback-Hierarchie (GPS → Kamera-Ort → Datum-Cluster → Ungrouped)
         - [x] DB-Schema mit Migrationen (4 neue Tabellen)
         - [x] Implementierungs-Leitfaden mit FILL-Platzhaltern (docs/EXIF_SMART_GROUPING_IMPLEMENTATION_GUIDE.md)
-        - [ ] EXIF-Extraktion aus RatingWorkerThread integrieren (nächste Phase: Juni)
-        - [ ] DB-Integration (_save_groups_to_db implementation) (nächste Phase: Juni)
-        - [ ] UI-Integration: Gallery-Filter + Map-Visualisierung (nächste Phase: Juni-Juli)
+        - [x] Phase 0: UI-Display für Location-Name im EXIF-Snippet (Gallery zeigt "Datum | Kamera | Ort")
+        - [ ] Phase 1: DB-Schema Migration (location_name Feld hinzufügen) (nächste: Juni)
+        - [ ] Phase 2: EXIF-Extraktion aus RatingWorkerThread integrieren (Juni)
+        - [ ] Phase 2: DB-Integration (_save_groups_to_db implementation) (Juni)
+        - [ ] Phase 3+: Orts-Filter + Map-Visualisierung (optional, Juni-Juli)
 
 - [x] **Watch Folders / Auto-Import** (Priorität: Hoch · Zeitraum: Mai-Juni 2026) ✅ DESIGN & ARCHITEKTUR ABGESCHLOSSEN (2. Mai 2026)
         - [x] Architektur-Dokumentation & Designentscheidungen (siehe docs/WATCHFOLDERS_AUTOIMPORT.md)

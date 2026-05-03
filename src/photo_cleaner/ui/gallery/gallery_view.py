@@ -57,6 +57,7 @@ class GalleryEntry:
     face_quality_component: Optional[float]
     capture_time: Optional[float]   # unix timestamp
     exif_json: Optional[str]        # raw JSON, für Snippet-Auflösung
+    location_name: Optional[str] = None  # Ort (z.B. "New York, USA") aus EXIF/Reverse-Geocoding
 
 
 class GalleryView(QWidget):
@@ -263,7 +264,8 @@ class GalleryView(QWidget):
                     f.resolution_component,
                     f.face_quality_component,
                     f.capture_time,
-                    f.exif_json
+                                        f.exif_json,
+                                        f.exif_location_name
                 FROM files f
                 WHERE f.file_status = 'KEEP'
                   AND f.is_deleted = 0
@@ -288,6 +290,7 @@ class GalleryView(QWidget):
                     face_quality_component=row["face_quality_component"],
                     capture_time=row["capture_time"],
                     exif_json=row["exif_json"],
+                    location_name=row["exif_location_name"],
                 )
             )
         return entries
@@ -628,7 +631,7 @@ class GalleryView(QWidget):
     # ──────────────────────────────────────────────────────────────────────────
 
     def _build_exif_snippet(self, entry: GalleryEntry) -> str:
-        """Erstellt einen kurzen EXIF-Einzeiler (Datum + Kamera)."""
+        """Erstellt einen kurzen EXIF-Einzeiler (Datum | Kamera | Ort)."""
         parts = []
 
         # Datum aus capture_time
@@ -652,6 +655,11 @@ class GalleryView(QWidget):
                     parts.append(model_str)
             except (json.JSONDecodeError, TypeError, KeyError):
                 pass
+
+        # Phase 1: Aufnahmeort aus location_name (wenn vorhanden)
+        # [FUTURE] location_name wird durch exif_grouping_engine mit Reverse-Geocoding gefüllt
+        if entry.location_name:
+            parts.append(entry.location_name)
 
         return " | ".join(parts)
 
