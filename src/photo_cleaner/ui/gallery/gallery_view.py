@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -134,11 +135,19 @@ class GalleryView(QWidget):
             f"QScrollArea {{ background-color: {colors['window']}; }}"
         )
 
+        # QUICK-WIN #1: Use QStackedWidget to avoid setWidget() destroying the grid
+        # container when swapping to the empty state view.
         self._grid_container = QWidget()
         self._grid_layout = QGridLayout(self._grid_container)
         self._grid_layout.setSpacing(12)
         self._grid_layout.setContentsMargins(16, 16, 16, 16)
-        self._scroll.setWidget(self._grid_container)
+
+        self._empty_state_widget = self._build_empty_state_widget()
+
+        self._content_stack = QStackedWidget()
+        self._content_stack.addWidget(self._grid_container)    # index 0 = grid
+        self._content_stack.addWidget(self._empty_state_widget) # index 1 = empty
+        self._scroll.setWidget(self._content_stack)
         layout.addWidget(self._scroll, stretch=1)
 
         # Paginierung + Status
@@ -357,6 +366,7 @@ class GalleryView(QWidget):
             results.append(entry)
 
         self._filtered_entries = results
+        self._update_empty_state_visibility()  # QUICK-WIN #1: Show/hide empty state
         self._render_current_page()
 
     def _entry_date(self, entry: GalleryEntry) -> Optional[date]:
@@ -686,6 +696,88 @@ class GalleryView(QWidget):
             parts.append(entry.location_name)
 
         return " | ".join(parts)
+
+    def _build_empty_state_widget(self) -> QWidget:
+        """Build welcome widget for empty gallery (QUICK-WIN #1).
+        
+        Shows onboarding steps when no images exist.
+        """
+        colors = get_theme_colors()
+        semantic = get_semantic_colors()
+        
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        
+        # Center content vertically and horizontally
+        layout.addStretch()
+        
+        # Title
+        title = QLabel(t("gallery_empty_title"))
+        title.setStyleSheet(f"font-size: 24px; font-weight: 700; color: {colors['text']};")
+        title.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title, alignment=Qt.AlignHCenter)
+        
+        # Subtitle
+        subtitle = QLabel(t("gallery_empty_subtitle"))
+        subtitle.setStyleSheet(f"font-size: 14px; color: {get_text_hint_color()}; margin-top: 8px;")
+        subtitle.setAlignment(Qt.AlignCenter)
+        layout.addWidget(subtitle, alignment=Qt.AlignHCenter)
+        
+        # Onboarding steps
+        steps_label = QLabel("<b>" + t("gallery_empty_steps") + "</b>")
+        steps_label.setStyleSheet(f"font-size: 13px; color: {colors['text']}; margin-top: 24px;")
+        steps_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(steps_label, alignment=Qt.AlignHCenter)
+        
+        steps_text = (
+            "1️⃣ " + t("gallery_empty_step1") + "\n"
+            "2️⃣ " + t("gallery_empty_step2") + "\n"
+            "3️⃣ " + t("gallery_empty_step3") + "\n"
+            "4️⃣ " + t("gallery_empty_step4")
+        )
+        steps_display = QLabel(steps_text)
+        steps_display.setStyleSheet(
+            f"font-size: 12px; color: {get_text_hint_color()}; margin-top: 12px;"
+        )
+        steps_display.setAlignment(Qt.AlignCenter)
+        layout.addWidget(steps_display, alignment=Qt.AlignHCenter)
+        
+        # Import button (call-to-action)
+        import_btn = QPushButton(t("gallery_empty_import_button"))
+        import_btn.setMinimumHeight(40)
+        import_btn.setMaximumWidth(200)
+        import_btn.setStyleSheet(
+            f"QPushButton {{ padding: 10px 20px; border-radius: 8px; border: none; "
+            f"background-color: {semantic['info']}; color: white; font-size: 13px; font-weight: 600; }}"
+        )
+        import_btn.clicked.connect(self.scan_requested.emit)
+        layout.addWidget(import_btn, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        
+        # Bottom stretch
+        layout.addStretch()
+        
+        widget.setStyleSheet(f"background-color: {colors['window']};")
+        return widget
+
+    def _update_empty_state_visibility(self) -> None:
+        """Update visibility of empty state vs grid based on filtered entries (QUICK-WIN #1)."""
+        has_images = len(self._filtered_entries) > 0
+        
+        # Show empty state when no images, grid when images exist (only if UI is built)
+        if hasattr(self, '_content_stack'):
+            self._content_stack.setCurrentIndex(0 if has_images else 1)
+        
+        # Hide pagination when empty
+        if hasattr(self, '_prev_btn'):
+            self._prev_btn.setVisible(has_images)
+        if hasattr(self, '_next_btn'):
+            self._next_btn.setVisible(has_images)
+        if hasattr(self, '_page_label'):
+            self._page_label.setVisible(has_images)
+        if hasattr(self, '_count_label'):
+            self._count_label.setVisible(has_images)
 
     def _close_gallery(self):
         self._stop_slideshow()

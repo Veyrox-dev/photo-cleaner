@@ -6,6 +6,7 @@ und Upgrade-Informationen.
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer
@@ -36,6 +37,24 @@ from photo_cleaner.i18n import t
 from photo_cleaner.services.license_service import LicenseService
 
 logger = logging.getLogger(__name__)
+
+
+_LICENSE_KEY_ALLOWED_PATTERN = re.compile(r"^[A-Z0-9-]+$")
+_LICENSE_KEY_MAX_LENGTH = 128
+
+
+def _validate_license_key_input(license_key: str) -> tuple[bool, str | None]:
+    """Validate user-entered license key before activation request."""
+    if not license_key:
+        return False, "output_required"
+
+    if len(license_key) > _LICENSE_KEY_MAX_LENGTH:
+        return False, "license_key_too_long"
+
+    if "-" not in license_key or not _LICENSE_KEY_ALLOWED_PATTERN.fullmatch(license_key):
+        return False, "license_key_invalid_format"
+
+    return True, None
 
 
 class LicenseDialog(QDialog):
@@ -292,13 +311,15 @@ class LicenseDialog(QDialog):
 
     def _activate_license_key(self):
         """Aktiviert einen Lizenzschlüssel über Supabase."""
-        license_key = self.key_input.text().strip()
+        license_key = self.key_input.text().strip().upper()
+        self.key_input.setText(license_key)
 
-        if not license_key:
+        is_valid_input, error_key = _validate_license_key_input(license_key)
+        if not is_valid_input:
             QMessageBox.warning(
                 self,
                 t("license_confirm_activation"),
-                t("output_required"),
+                t(error_key or "license_key_invalid_format"),
             )
             return
 

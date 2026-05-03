@@ -72,6 +72,9 @@ class SettingsDialog(QDialog):
             "QSlider::handle:horizontal { width: 14px; height: 14px; margin: -4px 0; border-radius: 7px; background: #2f6fde; border: 1px solid #2256b3; }"
         )
         
+        # QUICK-WIN #4: Track signal connections for cleanup on close
+        self._signal_connections = []  # List of (signal, slot) tuples to disconnect
+        
         # Import systems
         try:
             from photo_cleaner.config_update_system import get_config_update_system, ChangeType
@@ -89,6 +92,11 @@ class SettingsDialog(QDialog):
         
         self._build_ui()
         self._load_settings()
+    
+    def _connect_signal(self, signal, slot):
+        """Connect signal and track for cleanup (QUICK-WIN #4)."""
+        signal.connect(slot)
+        self._signal_connections.append((signal, slot))
     
     def _build_ui(self):
         """Build settings UI with tabs."""
@@ -161,7 +169,7 @@ class SettingsDialog(QDialog):
         if self.preset_manager:
             presets = self.preset_manager.list_presets()
             self.preset_combo.addItems(presets)
-        self.preset_combo.currentTextChanged.connect(self._on_preset_selected)
+        self._connect_signal(self.preset_combo.currentTextChanged, self._on_preset_selected)
         preset_layout.addWidget(self.preset_combo)
         
         layout.addWidget(preset_group)
@@ -179,7 +187,7 @@ class SettingsDialog(QDialog):
         self.blur_slider.setMinimum(0)
         self.blur_slider.setMaximum(100)
         self.blur_value_label = QLabel("50%")
-        self.blur_slider.valueChanged.connect(lambda v: self.blur_value_label.setText(f"{v}%"))
+        self._connect_signal(self.blur_slider.valueChanged, lambda v: self.blur_value_label.setText(f"{v}%"))
         blur_row.addWidget(self.blur_slider, stretch=1)
         blur_row.addWidget(self.blur_value_label, stretch=0)
         quality_layout.addLayout(blur_row)
@@ -192,7 +200,7 @@ class SettingsDialog(QDialog):
         self.contrast_slider.setMinimum(0)
         self.contrast_slider.setMaximum(100)
         self.contrast_value_label = QLabel("50%")
-        self.contrast_slider.valueChanged.connect(lambda v: self.contrast_value_label.setText(f"{v}%"))
+        self._connect_signal(self.contrast_slider.valueChanged, lambda v: self.contrast_value_label.setText(f"{v}%"))
         contrast_row.addWidget(self.contrast_slider, stretch=1)
         contrast_row.addWidget(self.contrast_value_label, stretch=0)
         quality_layout.addLayout(contrast_row)
@@ -205,7 +213,7 @@ class SettingsDialog(QDialog):
         self.exposure_slider.setMinimum(0)
         self.exposure_slider.setMaximum(100)
         self.exposure_value_label = QLabel("50%")
-        self.exposure_slider.valueChanged.connect(lambda v: self.exposure_value_label.setText(f"{v}%"))
+        self._connect_signal(self.exposure_slider.valueChanged, lambda v: self.exposure_value_label.setText(f"{v}%"))
         exposure_row.addWidget(self.exposure_slider, stretch=1)
         exposure_row.addWidget(self.exposure_value_label, stretch=0)
         quality_layout.addLayout(exposure_row)
@@ -218,7 +226,7 @@ class SettingsDialog(QDialog):
         self.noise_slider.setMinimum(0)
         self.noise_slider.setMaximum(100)
         self.noise_value_label = QLabel("50%")
-        self.noise_slider.valueChanged.connect(lambda v: self.noise_value_label.setText(f"{v}%"))
+        self._connect_signal(self.noise_slider.valueChanged, lambda v: self.noise_value_label.setText(f"{v}%"))
         noise_row.addWidget(self.noise_slider, stretch=1)
         noise_row.addWidget(self.noise_value_label, stretch=0)
         quality_layout.addLayout(noise_row)
@@ -291,7 +299,7 @@ class SettingsDialog(QDialog):
         advanced_layout.addLayout(relaxed_row)
 
         self.advanced_group.setVisible(False)
-        self.show_advanced_check.toggled.connect(self.advanced_group.setVisible)
+        self._connect_signal(self.show_advanced_check.toggled, self.advanced_group.setVisible)
         grouping_layout.addWidget(self.advanced_group)
 
         layout.addWidget(grouping_group)
@@ -458,15 +466,15 @@ class SettingsDialog(QDialog):
         maintenance_layout = QVBoxLayout(maintenance_group)
 
         self.clear_cache_btn = QPushButton(t("clear_cache"))
-        self.clear_cache_btn.clicked.connect(self._clear_cache)
+        self._connect_signal(self.clear_cache_btn.clicked, self._clear_cache)
         maintenance_layout.addWidget(self.clear_cache_btn)
 
         self.reset_pipeline_btn = QPushButton(t("reset_pipeline_db"))
-        self.reset_pipeline_btn.clicked.connect(self._reset_pipeline_state)
+        self._connect_signal(self.reset_pipeline_btn.clicked, self._reset_pipeline_state)
         maintenance_layout.addWidget(self.reset_pipeline_btn)
 
         self.check_updates_btn = QPushButton(t("check_for_updates"))
-        self.check_updates_btn.clicked.connect(self._check_updates_now)
+        self._connect_signal(self.check_updates_btn.clicked, self._check_updates_now)
         maintenance_layout.addWidget(self.check_updates_btn)
 
         layout.addWidget(maintenance_group)
@@ -475,15 +483,15 @@ class SettingsDialog(QDialog):
         legal_layout = QVBoxLayout(legal_group)
 
         self.open_impressum_btn = QPushButton(t("open_impressum"))
-        self.open_impressum_btn.clicked.connect(lambda: self._open_legal_document("impressum.html"))
+        self._connect_signal(self.open_impressum_btn.clicked, lambda: self._open_legal_document("impressum.html"))
         legal_layout.addWidget(self.open_impressum_btn)
 
         self.open_privacy_btn = QPushButton(t("open_privacy_policy"))
-        self.open_privacy_btn.clicked.connect(lambda: self._open_legal_document("datenschutz.html"))
+        self._connect_signal(self.open_privacy_btn.clicked, lambda: self._open_legal_document("datenschutz.html"))
         legal_layout.addWidget(self.open_privacy_btn)
 
         self.open_agb_btn = QPushButton(t("open_terms_conditions"))
-        self.open_agb_btn.clicked.connect(lambda: self._open_legal_document("agb.html"))
+        self._connect_signal(self.open_agb_btn.clicked, lambda: self._open_legal_document("agb.html"))
         legal_layout.addWidget(self.open_agb_btn)
 
         layout.addWidget(legal_group)
@@ -893,3 +901,20 @@ class SettingsDialog(QDialog):
             return
         
         super().accept()
+    
+    def closeEvent(self, event):
+        """Clean up signal connections on dialog close (QUICK-WIN #4).
+        
+        Prevents signal accumulation when dialog is opened/closed multiple times.
+        Without this, each reopen would add new signal handlers to the old ones.
+        """
+        # Disconnect all tracked signals
+        for signal, slot in self._signal_connections:
+            try:
+                signal.disconnect(slot)
+            except RuntimeError:
+                # Signal was already disconnected, ignore
+                pass
+        
+        self._signal_connections.clear()
+        super().closeEvent(event)

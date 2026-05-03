@@ -53,11 +53,14 @@ class InstallationWorker(QThread):
             success, message = self.manager.install_package(package_key, progress_callback)
             
             if not success:
-                self.installation_complete.emit(False, f"Fehler bei {package_key}: {message}")
+                self.installation_complete.emit(
+                    False,
+                    t("installation_error_package").format(package=package_key, message=message),
+                )
                 return
         
         # Alle erfolgreich
-        self.installation_complete.emit(True, "Alle Pakete erfolgreich installiert!")
+        self.installation_complete.emit(True, t("installation_all_packages_installed"))
 
 
 class InstallationDialog(QDialog):
@@ -145,29 +148,30 @@ class InstallationDialog(QDialog):
     
     def _create_system_info_group(self) -> QGroupBox:
         """Erstelle System-Info Gruppe"""
-        group = QGroupBox("System-Informationen")
+        group = QGroupBox(t("installation_system_info_title"))
         layout = QVBoxLayout()
         
         info = self.manager.system_info
         
         # OS & Python
-        os_label = QLabel(f"Betriebssystem: {info.os_name} ({info.os_version})")
+        os_label = QLabel(t("installation_os_label").format(name=info.os_name, version=info.os_version))
         layout.addWidget(os_label)
         
-        python_label = QLabel(f"Python: {info.python_version} ({'64-bit' if info.is_64bit else '32-bit'})")
+        arch = t("installation_arch_64") if info.is_64bit else t("installation_arch_32")
+        python_label = QLabel(t("installation_python_label").format(version=info.python_version, arch=arch))
         layout.addWidget(python_label)
         
         # CPU & GPU
-        cpu_label = QLabel(f"CPU Kerne: {info.cpu_cores}")
+        cpu_label = QLabel(t("installation_cpu_cores_label").format(count=info.cpu_cores))
         layout.addWidget(cpu_label)
         
-        gpu_state = "Verfügbar" if info.has_gpu else "Nicht erkannt"
-        gpu_label = QLabel(f"GPU: {gpu_state}")
+        gpu_state = t("installation_state_available") if info.has_gpu else t("installation_state_not_detected")
+        gpu_label = QLabel(t("installation_gpu_label").format(state=gpu_state))
         layout.addWidget(gpu_label)
         
         # Build Tools (wichtig für dlib)
-        bt_state = "Verfügbar" if info.has_build_tools else "Nicht erkannt"
-        bt_label = QLabel(f"C++ Build Tools: {bt_state}")
+        bt_state = t("installation_state_available") if info.has_build_tools else t("installation_state_not_detected")
+        bt_label = QLabel(t("installation_build_tools_label").format(state=bt_state))
         if not info.has_build_tools:
             bt_label.setToolTip(t("build_tools_required"))
         layout.addWidget(bt_label)
@@ -177,7 +181,7 @@ class InstallationDialog(QDialog):
     
     def _create_package_selection_group(self) -> QGroupBox:
         """Erstelle Package-Auswahl Gruppe"""
-        group = QGroupBox("Zu installierende Pakete")
+        group = QGroupBox(t("installation_packages_title"))
         layout = QVBoxLayout()
         
         # Radio Button Group für Auswahl
@@ -189,8 +193,7 @@ class InstallationDialog(QDialog):
         mediapipe_layout = QHBoxLayout()
         
         mediapipe_label = QLabel(
-            f"<b>MediaPipe</b> (Stufe 3)<br>"
-            f"<i>Einfach, {mediapipe_dep.size_mb} MB, beste Genauigkeit</i>"
+            t("installation_mediapipe_description").format(size=mediapipe_dep.size_mb)
         )
         mediapipe_label.setWordWrap(True)
         
@@ -198,7 +201,7 @@ class InstallationDialog(QDialog):
         mediapipe_layout.addWidget(mediapipe_label, 1)
         
         if mediapipe_dep.installed:
-            mediapipe_status = QLabel("Installiert")
+            mediapipe_status = QLabel(t("installation_installed"))
             mediapipe_status.setStyleSheet("QLabel { color: green; font-weight: bold; }")
             mediapipe_layout.addWidget(mediapipe_status)
             self.mediapipe_radio.setEnabled(False)
@@ -212,8 +215,7 @@ class InstallationDialog(QDialog):
         dlib_layout = QHBoxLayout()
         
         dlib_label = QLabel(
-            f"<b>dlib</b> (Stufe 2)<br>"
-            f"<i>Mittel, {dlib_dep.size_mb} MB, benötigt C++ Build Tools</i>"
+            t("installation_dlib_description").format(size=dlib_dep.size_mb)
         )
         dlib_label.setWordWrap(True)
         
@@ -221,14 +223,14 @@ class InstallationDialog(QDialog):
         dlib_layout.addWidget(dlib_label, 1)
         
         if dlib_dep.installed:
-            dlib_status = QLabel("Installiert")
+            dlib_status = QLabel(t("installation_installed"))
             dlib_status.setStyleSheet("QLabel { color: green; font-weight: bold; }")
             dlib_layout.addWidget(dlib_status)
             self.dlib_radio.setEnabled(False)
         elif not self.manager.system_info.has_build_tools:
-            warning_label = QLabel("Build Tools fehlen")
+            warning_label = QLabel(t("installation_build_tools_missing"))
             warning_label.setStyleSheet("QLabel { color: orange; font-weight: bold; }")
-            warning_label.setToolTip("Installation kann fehlschlagen ohne Build Tools")
+            warning_label.setToolTip(t("installation_build_tools_missing_tooltip"))
             dlib_layout.addWidget(warning_label)
         
         layout.addLayout(dlib_layout)
@@ -266,7 +268,7 @@ class InstallationDialog(QDialog):
         
         if rec.recommended_package == "none":
             self.recommendation_label.setText(
-                "Alle erweiterten Funktionen sind bereits installiert."
+                t("installation_already_installed")
             )
             self.recommendation_label.setStyleSheet(
                 "QLabel { background-color: #d4edda; padding: 10px; border-radius: 5px; color: #155724; }"
@@ -275,7 +277,7 @@ class InstallationDialog(QDialog):
             self.install_button.setText(t("complete"))
         else:
             # Zeige Empfehlung
-            rec_text = f"<b>Empfehlung für Ihr System:</b> {rec.recommended_package}<br>"
+            rec_text = t("installation_recommendation_prefix").format(package=rec.recommended_package)
             rec_text += f"<i>{rec.reason}</i>"
             
             if rec.warning:
@@ -302,7 +304,7 @@ class InstallationDialog(QDialog):
                 packages.append("dlib")
         
         if not packages:
-            QMessageBox.information(self, "Information", "Bitte wählen Sie ein Paket zur Installation aus.")
+            QMessageBox.information(self, t("information"), t("installation_select_package"))
             return
         
         # Bestätigungsdialog
@@ -310,9 +312,7 @@ class InstallationDialog(QDialog):
         confirm = QMessageBox.question(
             self,
             t("license_confirm_activation"),
-            f"Folgende Pakete werden installiert:\n\n{', '.join(package_names)}\n\n"
-            f"Die Installation erfolgt im User-Space (keine Admin-Rechte erforderlich).\n\n"
-            f"Fortfahren?",
+            t("installation_confirm_packages").format(packages=", ".join(package_names)),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
@@ -325,7 +325,15 @@ class InstallationDialog(QDialog):
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         
-        self._log_message(f"\n{'='*60}\nStarte Installation: {', '.join(package_names)}\n{'='*60}\n")
+        self._log_message(
+            "\n"
+            + "=" * 60
+            + "\n"
+            + t("installation_start_log").format(packages=", ".join(package_names))
+            + "\n"
+            + "=" * 60
+            + "\n"
+        )
         
         # Starte Worker-Thread
         self.installation_worker = InstallationWorker(self.manager, packages)
@@ -350,8 +358,7 @@ class InstallationDialog(QDialog):
             QMessageBox.information(
                 self,
                 t("finalize_success"),
-                f"{message}\n\nDie neuen Funktionen sind jetzt verfügbar.\n\n"
-                f"Bitte starten Sie die Analyse neu, um die Änderungen zu übernehmen."
+                t("installation_success_message").format(message=message)
             )
             
             # Aktualisiere Manager
@@ -363,8 +370,7 @@ class InstallationDialog(QDialog):
             QMessageBox.critical(
                 self,
                 t("finalize_failed"),
-                f"{message}\n\n"
-                f"Bitte überprüfen Sie das Log für Details oder installieren Sie manuell."
+                t("installation_failure_message").format(message=message)
             )
     
     def _log_message(self, message: str):

@@ -2763,13 +2763,13 @@ class ImageDetailDialog(QDialog):
             quality_layout.addWidget(concerns_label)
 
         if explanation.needs_reanalysis:
-            reanalysis_label = QLabel("Details fehlen: für diese Datei bitte Analyse erneut ausführen.")
+            reanalysis_label = QLabel(t("quality_details_missing"))
             reanalysis_label.setWordWrap(True)
             reanalysis_label.setStyleSheet(f"color: {get_semantic_colors()['info']};")
             quality_layout.addWidget(reanalysis_label)
 
         if quality_layout.count() == 0:
-            empty_label = QLabel("Keine Qualitätsdaten verfügbar")
+            empty_label = QLabel(t("no_quality_data_available"))
             empty_label.setStyleSheet(f"color: {colors['text']}; font-style: italic;")
             quality_layout.addWidget(empty_label)
 
@@ -3669,7 +3669,7 @@ class SideBySideComparisonWindow(QMainWindow):
                 image_view.set_image(pixmap)
         except (OSError, IOError, ValueError) as e:
             logger.error(f"Fehler beim Laden des Bildes {file_row.path.name}: {e}", exc_info=True)
-            error_label = QLabel("Bild konnte nicht geladen werden")
+            error_label = QLabel(t("image_could_not_be_loaded"))
             error_label.setStyleSheet(f"color: {get_semantic_colors()['error']}; padding: 10px;")
             layout.addWidget(error_label)
         
@@ -3922,6 +3922,7 @@ class ModernMainWindow(QMainWindow):
         # Kein statischer Titel - wird dynamisch gesetzt (z.B. "Detail: xyz.jpg")
         self.setWindowTitle("PhotoCleaner")
         self.resize(1600, 1000)
+        self.setMinimumSize(800, 600)
         self._pending_scan = bool(input_path)  # Auto-run only when provided via CLI
         
         # Default folders (user can change via main menu)
@@ -6444,7 +6445,7 @@ class ModernMainWindow(QMainWindow):
         preset_layout = preset_section.layout()
         
         preset_combo_layout = QHBoxLayout()
-        preset_combo_layout.addWidget(QLabel("Voreinstellung:"))
+        preset_combo_layout.addWidget(QLabel(t("preset_label")))
         self.preset_combo = QComboBox()
         
         # Load preset names
@@ -6614,7 +6615,7 @@ class ModernMainWindow(QMainWindow):
         if preset:
             self.config_system.load_preset(preset)
             self._update_ui_from_config()
-            self.quality_status_label.setText(f"Voreinstellung '{preset_name}' geladen")
+            self.quality_status_label.setText(t("preset_loaded").format(name=preset_name))
     
     def _save_current_preset(self):
         """Speichere aktuelle Einstellungen als Preset."""
@@ -6666,7 +6667,7 @@ class ModernMainWindow(QMainWindow):
             self.preset_combo.setCurrentText(new_name)
             self.preset_combo.blockSignals(False)
             
-            self.quality_status_label.setText(f"Voreinstellung '{new_name}' gespeichert")
+            self.quality_status_label.setText(t("preset_saved").format(name=new_name))
         else:
             QMessageBox.warning(self, t("error"), t("preset_save_failed").format(error=error))
     
@@ -6676,7 +6677,7 @@ class ModernMainWindow(QMainWindow):
         
         if preset_name in self.preset_manager.BUILTIN_PRESETS:
             QMessageBox.information(self, t("not_possible"), 
-                                   f"Kann vordefiniertes Preset '{preset_name}' nicht löschen.")
+                                   t("preset_cannot_delete_builtin").format(name=preset_name))
             return
         
         reply = QMessageBox.question(
@@ -6726,11 +6727,11 @@ class ModernMainWindow(QMainWindow):
     def _on_config_applied(self, changes):
         """Callback wenn Konfigurationsänderungen angewendet wurden."""
         self._update_ui_from_config()
-        self.quality_status_label.setText("Einstellungen aktualisiert")
+        self.quality_status_label.setText(t("settings_updated"))
     
     def _on_config_validation_error(self, key, error_msg):
         """Callback bei Validierungsfehler."""
-        self.quality_status_label.setText(f"Fehler in '{key}': {error_msg}")
+        self.quality_status_label.setText(t("config_validation_error").format(key=key, error=error_msg))
     
     def _update_ui_from_config(self):
         """Aktualisiere UI-Controls von aktueller Konfiguration."""
@@ -7110,7 +7111,7 @@ class ModernMainWindow(QMainWindow):
         layout.addWidget(self.progress, stretch=1)
         
         # Status label (kleiner Text)
-        self.status_label = QLabel("Bereit")
+        self.status_label = QLabel(t("ready"))
         self.status_label.setStyleSheet("padding: 2px 6px; font-size: 11px;")
         self.status_label.setMaximumWidth(260)
         layout.addWidget(self.status_label)
@@ -8205,7 +8206,7 @@ class ModernMainWindow(QMainWindow):
         
         self._update_pagination_controls(total_pages, start, end, total_items)
         self._update_selection_ui()
-        logger.info(f"[UI] Queued {self._grid_thumb_total} grid thumbnails (page {self.current_page + 1}/{total_pages})")
+        self._update_button_states()
         self._resume_thumbnail_loaders_if_idle()
         self._update_thumbnail_progress()
 
@@ -8285,6 +8286,7 @@ class ModernMainWindow(QMainWindow):
                 last_selected = index
                 self._save_group_selection_state(self.current_group or "", selected_indices, last_selected)
                 self._update_selection_ui()
+                self._update_button_states()
             
             # Shift+Click: Range selection
             elif modifiers & Qt.ShiftModifier:
@@ -8300,6 +8302,7 @@ class ModernMainWindow(QMainWindow):
                     
                     self._save_group_selection_state(self.current_group or "", selected_indices, last_selected)
                     self._update_selection_ui()
+                    self._update_button_states()
             
             # Normal click: open image only (selection is checkbox-driven)
             else:
@@ -8322,6 +8325,7 @@ class ModernMainWindow(QMainWindow):
                 last_selected = max(selected_indices) if selected_indices else -1
         self._save_group_selection_state(group_id, selected_indices, last_selected)
         self._update_selection_ui()
+        self._update_button_states()
     
     def _select_all(self):
         """Select all images in current group."""
@@ -8334,6 +8338,7 @@ class ModernMainWindow(QMainWindow):
         last_idx = page_start + len(self.thumbnail_cards) - 1 if self.thumbnail_cards else -1
         self._save_group_selection_state(self.current_group or "", selected_indices, last_idx)
         self._update_selection_ui()
+        self._update_button_states()
     
     def _clear_selection(self):
         """Clear all selections for current group."""
@@ -8343,6 +8348,7 @@ class ModernMainWindow(QMainWindow):
         selected_indices.clear()
         self._save_group_selection_state(self.current_group or "", selected_indices, -1)
         self._update_selection_ui()
+        self._update_button_states()
     
     def _get_group_selection_state(self, group_id: str) -> tuple[set[int], int]:
         """Get selection state for a specific group. Returns (selected_indices, last_selected_index)."""
@@ -8431,6 +8437,7 @@ class ModernMainWindow(QMainWindow):
         """Wende Status auf alle ausgewählten Bilder an (ATOMIC mit Transaktionen).
         
         BUG #10 FIX: Validate input before batch operation.
+        QUICK-WIN #3: Add confirmation dialogs before critical actions.
         """
         selected_indices = self._selection_workflow.get_selected_indices(
             self.current_group,
@@ -8455,6 +8462,18 @@ class ModernMainWindow(QMainWindow):
         if not paths_to_update:
             self._show_status_message(t("no_valid_images_to_update"), error=True)
             return
+        
+        # QUICK-WIN #3: Show confirmation dialog for DELETE operations
+        if status == FileStatus.DELETE:
+            confirmed = self._show_delete_confirmation(paths_to_update)
+            if not confirmed:
+                return  # User cancelled
+        
+        # QUICK-WIN #3: Show confirmation for large KEEP/UNSURE operations (5+ images)
+        elif status in (FileStatus.KEEP, FileStatus.UNSURE) and len(paths_to_update) >= 5:
+            confirmed = self._show_batch_operation_confirmation(status, paths_to_update)
+            if not confirmed:
+                return  # User cancelled
         
         # CRITICAL: Nutze atomare Batch-Methode
         res = self.actions.ui_batch_set_status(paths_to_update, status)
@@ -8481,6 +8500,68 @@ class ModernMainWindow(QMainWindow):
             error_msg = res.get("message", "Unbekannter Fehler")
             logger.error(f"Batch status update failed: {error_msg}")
             self._show_status_message(t("error_message").format(error=error_msg), error=True)
+    
+    def _show_delete_confirmation(self, paths: list) -> bool:
+        """Show confirmation dialog for DELETE operations (QUICK-WIN #3).
+        
+        Returns: True if user confirmed, False if cancelled.
+        """
+        count = len(paths)
+        title = t("confirm_delete")
+        
+        # Build file list preview (max 10 files shown)
+        file_list_text = "\n".join([f"  • {p.name}" for p in paths[:10]])
+        if count > 10:
+            file_list_text += f"\n  ... and {count - 10} more files"
+        
+        # Build message with proper HTML formatting
+        message = (
+            f"<b>{t('confirm_delete_files').format(count=count)}</b><br><br>"
+            f"<b>{t('affected_files')}</b><br>"
+            f"{file_list_text}<br><br>"
+            f"<font color='red'><b>{t('warning_cannot_undo')}</b></font>"
+        )
+        
+        result = QMessageBox.warning(
+            self,
+            title,
+            message,
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No  # Default to No (safer)
+        )
+        
+        return result == QMessageBox.Yes
+    
+    def _show_batch_operation_confirmation(self, status: FileStatus, paths: list) -> bool:
+        """Show confirmation dialog for batch KEEP/UNSURE operations with 5+ files (QUICK-WIN #3).
+        
+        Returns: True if user confirmed, False if cancelled.
+        """
+        count = len(paths)
+        status_text = t("keep") if status == FileStatus.KEEP else t("unsure")
+        title = t("confirm_batch_operation")
+        
+        # Build file list preview (max 10 files shown)
+        file_list_text = "\n".join([f"  • {p.name}" for p in paths[:10]])
+        if count > 10:
+            file_list_text += f"\n  ... and {count - 10} more files"
+        
+        # Build message
+        message = (
+            f"<b>{t('mark_files_as').format(count=count, status=status_text)}</b><br><br>"
+            f"<b>{t('affected_files')}</b><br>"
+            f"{file_list_text}"
+        )
+        
+        result = QMessageBox.information(
+            self,
+            title,
+            message,
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No  # Default to No
+        )
+        
+        return result == QMessageBox.Yes
     
     def _toggle_lock_selection(self):
         """Sperre/Entsperre alle ausgewählten Bilder."""
@@ -8563,6 +8644,7 @@ class ModernMainWindow(QMainWindow):
                     card.set_selected(True)
             
             self._update_selection_ui()
+            self._update_button_states()
         
         self._refresh_recent_actions_ui()
         self._update_progress()
@@ -9137,21 +9219,49 @@ class ModernMainWindow(QMainWindow):
         self.mode_combo.setCurrentText(current_mode.name)
     
     def _update_button_states(self):
-        """Update button states based on mode."""
-        current_mode = self.mode_svc.get_mode()
+        """Update button states based on mode, selection, and history (QUICK-WIN #2).
         
+        Intelligently enable/disable buttons based on:
+        - Application mode (SAFE_MODE disables decision buttons)
+        - Current selection state (action buttons need images selected)
+        - Undo history (undo only enabled when history exists)
+        - Merge group selection (merge only enabled with 2+ groups)
+        """
+        current_mode = self.mode_svc.get_mode()
+        has_history = self.history.last_action_id() is not None
+        
+        # Get selection state for current group
+        selected_indices, _ = self._get_group_selection_state(self.current_group or "")
+        has_selection = len(selected_indices) > 0
+        
+        # SAFE_MODE disables all action buttons
         if current_mode == AppMode.SAFE_MODE:
             self.keep_btn.setEnabled(False)
             self.del_btn.setEnabled(False)
             self.unsure_btn.setEnabled(False)
             self.lock_btn.setEnabled(False)
             self.undo_btn.setEnabled(False)
+            self.compare_btn.setEnabled(False)
+            self.split_group_btn.setEnabled(False)
         else:
-            self.keep_btn.setEnabled(True)
-            self.del_btn.setEnabled(True)
-            self.unsure_btn.setEnabled(True)
-            self.lock_btn.setEnabled(True)
-            self.undo_btn.setEnabled(self.history.last_action_id() is not None)
+            # Decision buttons (keep, delete, unsure) only enabled with selection
+            self.keep_btn.setEnabled(has_selection)
+            self.del_btn.setEnabled(has_selection)
+            self.unsure_btn.setEnabled(has_selection)
+            
+            # Lock/unlock only enabled with selection
+            self.lock_btn.setEnabled(has_selection)
+            
+            # Undo always available if history exists
+            self.undo_btn.setEnabled(has_history)
+            
+            # Compare and split depend on selection state (managed by _update_selection_ui)
+            # but also respect SAFE_MODE above, so no need to set here
+            
+        # Merge groups button depends on checked groups (not current selection)
+        if hasattr(self, 'merge_groups_btn'):
+            checked_count = len(self._checked_group_ids)
+            self.merge_groups_btn.setEnabled(checked_count >= 2)
     
     # Export
     
@@ -9470,41 +9580,38 @@ class ModernMainWindow(QMainWindow):
         download_url = str(manifest.get("download_url", "")).strip()
         if not latest_version:
             if show_up_to_date:
-                QMessageBox.warning(self, "Update-Check", "Manifest ohne latest_version")
+                QMessageBox.warning(self, t("update_check_title"), t("update_manifest_no_version"))
             return
 
         if not _is_newer_version(latest_version, APP_VERSION):
             if show_up_to_date:
                 QMessageBox.information(
                     self,
-                    "Update-Check",
-                    f"Du nutzt bereits die aktuelle Version ({APP_VERSION}).",
+                    t("update_check_title"),
+                    t("update_up_to_date").format(version=APP_VERSION),
                 )
             return
 
         if not download_url:
             if show_up_to_date:
-                QMessageBox.warning(self, "Update-Check", "Manifest ohne download_url")
+                QMessageBox.warning(self, t("update_check_title"), t("update_manifest_no_url"))
             return
 
         dialog = QMessageBox(self)
         dialog.setIcon(QMessageBox.Information)
-        dialog.setWindowTitle("Update verfuegbar")
-        dialog.setText(
-            f"Neue Version verfuegbar: {latest_version}\n"
-            f"Aktuell installiert: {APP_VERSION}"
-        )
-        dialog.setInformativeText("Download-Seite jetzt oeffnen?")
-        open_btn = dialog.addButton("Download oeffnen", QMessageBox.AcceptRole)
-        dialog.addButton("Spaeter", QMessageBox.RejectRole)
+        dialog.setWindowTitle(t("update_available"))
+        dialog.setText(t("update_new_version").format(latest=latest_version, current=APP_VERSION))
+        dialog.setInformativeText(t("update_open_download_prompt"))
+        open_btn = dialog.addButton(t("update_open_download"), QMessageBox.AcceptRole)
+        dialog.addButton(t("update_later"), QMessageBox.RejectRole)
         dialog.exec()
 
         if dialog.clickedButton() == open_btn:
             if not QDesktopServices.openUrl(QUrl(download_url)):
                 QMessageBox.warning(
                     self,
-                    "Update",
-                    f"Download-Link konnte nicht geoeffnet werden:\n{download_url}",
+                    t("update_check_title"),
+                    t("update_link_failed").format(url=download_url),
                 )
     
     # Cleanup
@@ -9741,6 +9848,7 @@ class ModernMainWindow(QMainWindow):
         if self.current_group:
             self._load_group_files(self.current_group)
             self._update_selection_ui()
+            self._update_button_states()
         
         logger.info(f"Session restored: {session.description}")
 

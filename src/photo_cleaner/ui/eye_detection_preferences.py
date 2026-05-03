@@ -51,6 +51,7 @@ from PySide6.QtWidgets import (
 )
 
 from photo_cleaner.config import AppConfig
+from photo_cleaner.i18n import t
 
 logger = logging.getLogger(__name__)
 CONFIG_FILENAME = "eye_detection_config.json"
@@ -411,7 +412,7 @@ class EyeDetectionPreferencesDialog(QDialog):
         if self.config_manager.apply_config(self.cfg):
             self.accept()
         else:
-            QMessageBox.critical(self, "Fehler", "Konfiguration konnte nicht angewendet werden. Bitte prüfen Sie die Einstellungen.")
+            QMessageBox.critical(self, t("error"), t("eye_detection_config_apply_failed"))
 
     # === Actions ===
     def _choose_dlib_predictor(self) -> None:

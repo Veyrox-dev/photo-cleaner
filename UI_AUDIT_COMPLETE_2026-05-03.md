@@ -1007,16 +1007,16 @@ class ModernMainWindow:
 ## ✅ **RECOMMENDED NEXT STEPS**
 
 ### **Phase 1: EMERGENCY FIX (1 Tag)**
-- [ ] Thread Safety Lock implementieren (2h)
-- [ ] Database Connection Leaks fixen (1h)
-- [ ] Dead Code löschen (1h)
-- [ ] Tests ausführen ✓
+- [x] Thread Safety Lock implementieren (2h)
+- [x] Database Connection Leaks fixen (1h)
+- [x] Dead Code löschen (1h)
+- [x] Tests ausführen ✓
 
 ### **Phase 2: QUICK WINS (2-3 Tage)**
-- [ ] Hardcoded Strings → i18n
-- [ ] Empty States mit Anleitung
-- [ ] Buttons intelligent enablen/disablen
-- [ ] Bestätigungs-Dialoge
+- [ ] Hardcoded Strings → i18n (größtenteils umgesetzt, Rest-Migration offen)
+- [x] Empty States mit Anleitung
+- [x] Buttons intelligent enablen/disablen
+- [x] Bestätigungs-Dialoge
 
 ### **Phase 3: REFACTORING (5-7 Tage)**
 - [ ] modern_window.py aufteilen
@@ -1026,7 +1026,7 @@ class ModernMainWindow:
 ### **Phase 4: POLISH (3-4 Tage)**
 - [ ] UX Überprüfung
 - [ ] Accessibility Prüfung
-- [ ] Unit Tests
+- [x] Unit Tests
 
 ---
 
