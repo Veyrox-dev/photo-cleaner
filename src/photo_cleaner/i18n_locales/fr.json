@@ -622,5 +622,21 @@
   "fresh_session_failed": "Une nouvelle session n'a pas pu être démarrée.",
   "pro_upgrade_button": "⭐ Mise à niveau vers Pro",
   "validation_free_limit_exceeded": "Licence gratuite : votre limite à vie est de 250 images. Déjà numérisé : {used}. Dans ce dossier : {count}. Trop – veuillez choisir un dossier plus petit ou passer à Pro.",
-  "validation_free_quota_remaining": "Licence gratuite : {remaining} sur 250 images restantes."
+  "validation_free_quota_remaining": "Licence gratuite : {remaining} sur 250 images restantes.",
+  "score_expl_no_quality_data": "Aucune donnée de qualité disponible",
+  "score_expl_overall_score": "Note globale : {score} %",
+  "score_expl_strengths": "Bon : {items}",
+  "score_expl_concerns": "Plus faible : {items}",
+  "score_expl_driver_only": "Pilote : {label} {value} %",
+  "score_expl_driver_weakest": "Pilote : {strong_label} {strong_value}% | Point le plus faible : {weak_label} {weak_value}%",
+  "score_expl_missing_details_reason": "Il manque des valeurs détaillées pour ce fichier.",
+  "score_expl_conf_reason_stable": "Les caractéristiques clés de l’image semblent toujours fortes.",
+  "score_expl_conf_reason_weak": "Au moins une caractéristique importante de l’image est clairement faible.",
+  "score_expl_conf_reason_mixed": "Le résultat est utilisable, mais pas toujours clair.",
+  "score_expl_conf_reason_manual_review": "Les caractéristiques de l’image sont mitigées et doivent être examinées manuellement.",
+  "score_expl_missing_details_hint": "Détails manquants : réexécutez l'analyse pour afficher les composants.",
+  "map_menu_beta": "Carte (bêta)",
+  "map_tooltip_beta": "Carte photo (bêta) - affiche les emplacements GPS de toutes les photos",
+  "map_beta_in_progress": "Travaux en cours - incomplets",
+  "map_status_beta": "Vue cartographique (bêta) : travaux en cours, encore incomplets"
 }

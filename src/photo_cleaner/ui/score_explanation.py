@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from photo_cleaner.i18n import t
+from photo_cleaner.i18n import get_language, t
 
 
 @dataclass(frozen=True)
@@ -36,11 +36,14 @@ def build_score_explanation(
     resolution_score: Optional[float],
     face_quality_score: Optional[float],
 ) -> ScoreExplanation:
+    language = get_language()
+
     metrics = _collect_metrics(
         sharpness_score=sharpness_score,
         lighting_score=lighting_score,
         resolution_score=resolution_score,
         face_quality_score=face_quality_score,
+        language=language,
     )
 
     has_any_data = quality_score is not None or bool(metrics)
@@ -56,22 +59,35 @@ def build_score_explanation(
             confidence_reason=None,
             confidence_level=None,
             needs_reanalysis=False,
-            tooltip_text="Keine Qualitaetsdaten verfuegbar",
+            tooltip_text=t("score_expl_no_quality_data", language),
         )
 
-    overall_text = f"Gesamtbewertung: {quality_score:.0f}%" if quality_score is not None else None
+    overall_text = (
+        t("score_expl_overall_score", language).format(score=f"{quality_score:.0f}")
+        if quality_score is not None
+        else None
+    )
     needs_reanalysis = quality_score is not None and not metrics
     strengths = [metric.label for metric in metrics if metric.value >= 75.0]
     concerns = [metric.label for metric in metrics if metric.value < 45.0]
 
-    component_summary_text = _build_component_summary(metrics)
-    strengths_text = f"Gut: {', '.join(strengths)}" if strengths else None
-    concerns_text = f"Schwaecher: {', '.join(concerns)}" if concerns else None
+    component_summary_text = _build_component_summary(metrics, language=language)
+    strengths_text = (
+        t("score_expl_strengths", language).format(items=", ".join(strengths))
+        if strengths
+        else None
+    )
+    concerns_text = (
+        t("score_expl_concerns", language).format(items=", ".join(concerns))
+        if concerns
+        else None
+    )
     confidence_label, confidence_reason, confidence_level = _classify_confidence(
         quality_score=quality_score,
         metrics=metrics,
         needs_reanalysis=needs_reanalysis,
         concerns=concerns,
+        language=language,
     )
     tooltip_text = _build_tooltip(
         overall_text=overall_text,
@@ -81,6 +97,7 @@ def build_score_explanation(
         confidence_label=confidence_label,
         confidence_reason=confidence_reason,
         needs_reanalysis=needs_reanalysis,
+        language=language,
     )
 
     return ScoreExplanation(
@@ -104,12 +121,13 @@ def _collect_metrics(
     lighting_score: Optional[float],
     resolution_score: Optional[float],
     face_quality_score: Optional[float],
+    language: str,
 ) -> list[ExplainedMetric]:
     ordered_metrics = [
-        ("sharpness", t("metric_sharpness"), sharpness_score),
-        ("lighting", t("metric_lighting"), lighting_score),
-        ("resolution", t("metric_resolution"), resolution_score),
-        ("eyes", t("metric_face_quality"), face_quality_score),
+        ("sharpness", t("metric_sharpness", language), sharpness_score),
+        ("lighting", t("metric_lighting", language), lighting_score),
+        ("resolution", t("metric_resolution", language), resolution_score),
+        ("eyes", t("metric_face_quality", language), face_quality_score),
     ]
     return [
         ExplainedMetric(key=key, label=label, value=float(value))
@@ -118,7 +136,7 @@ def _collect_metrics(
     ]
 
 
-def _build_component_summary(metrics: list[ExplainedMetric]) -> Optional[str]:
+def _build_component_summary(metrics: list[ExplainedMetric], language: str) -> Optional[str]:
     if not metrics:
         return None
 
@@ -127,11 +145,16 @@ def _build_component_summary(metrics: list[ExplainedMetric]) -> Optional[str]:
     weakest = ranked[-1]
 
     if strongest.key == weakest.key:
-        return f"Treiber: {strongest.label} {strongest.value:.0f}%"
+        return t("score_expl_driver_only", language).format(
+            label=strongest.label,
+            value=f"{strongest.value:.0f}",
+        )
 
-    return (
-        f"Treiber: {strongest.label} {strongest.value:.0f}% | "
-        f"Schwaechste Stelle: {weakest.label} {weakest.value:.0f}%"
+    return t("score_expl_driver_weakest", language).format(
+        strong_label=strongest.label,
+        strong_value=f"{strongest.value:.0f}",
+        weak_label=weakest.label,
+        weak_value=f"{weakest.value:.0f}",
     )
 
 
@@ -141,11 +164,13 @@ def _classify_confidence(
     metrics: list[ExplainedMetric],
     needs_reanalysis: bool,
     concerns: list[str],
+    language: str,
 ) -> tuple[Optional[str], Optional[str], Optional[str]]:
     if needs_reanalysis:
+        label = t("confidence_data_incomplete", language)
         return (
-            t("confidence_data_incomplete"),
-            t("confidence_data_incomplete") + ": " + "Es fehlen Detailwerte fuer diese Datei.",
+            label,
+            f"{label}: {t('score_expl_missing_details_reason', language)}",
             "incomplete",
         )
 
@@ -157,28 +182,28 @@ def _classify_confidence(
 
     if quality_score is not None and quality_score >= 75.0 and min_value >= 60.0 and not concerns:
         return (
-            t("confidence_very_reliable"),
-            "Die wichtigen Bildmerkmale wirken stabil gut.",
+            t("confidence_very_reliable", language),
+            t("score_expl_conf_reason_stable", language),
             "high",
         )
 
     if len(concerns) >= 2 or min_value < 30.0 or (quality_score is not None and quality_score < 45.0):
         return (
-            t("confidence_review_needed"),
-            "Mindestens ein wichtiges Bildmerkmal ist deutlich schwach.",
+            t("confidence_review_needed", language),
+            t("score_expl_conf_reason_weak", language),
             "low",
         )
 
     if avg_value >= 60.0:
         return (
-            t("confidence_review_recommended"),
-            "Das Ergebnis ist brauchbar, aber nicht durchgaengig klar.",
+            t("confidence_review_recommended", language),
+            t("score_expl_conf_reason_mixed", language),
             "medium",
         )
 
     return (
-        t("confidence_review_needed"),
-        "Die Bildmerkmale sind gemischt und sollten manuell geprueft werden.",
+        t("confidence_review_needed", language),
+        t("score_expl_conf_reason_manual_review", language),
         "low",
     )
 
@@ -192,6 +217,7 @@ def _build_tooltip(
     confidence_label: Optional[str],
     confidence_reason: Optional[str],
     needs_reanalysis: bool,
+    language: str,
 ) -> str:
     lines = []
     if overall_text:
@@ -208,5 +234,5 @@ def _build_tooltip(
     if concerns_text:
         lines.append(concerns_text)
     if needs_reanalysis:
-        lines.append("Details fehlen: Analyse erneut ausfuehren, um die Komponenten anzuzeigen.")
+        lines.append(t("score_expl_missing_details_hint", language))
     return "\n".join(lines)

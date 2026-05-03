@@ -863,6 +863,26 @@ Status: Offline-Nutzung aktiv
         "metric_lighting": "Belichtung",
         "metric_resolution": "Auflösung",
         "metric_face_quality": "Gesichtsqualität",
+
+        # Score explanation (component summary/tooltip)
+        "score_expl_no_quality_data": "Keine Qualitaetsdaten verfuegbar",
+        "score_expl_overall_score": "Gesamtbewertung: {score}%",
+        "score_expl_strengths": "Gut: {items}",
+        "score_expl_concerns": "Schwaecher: {items}",
+        "score_expl_driver_only": "Treiber: {label} {value}%",
+        "score_expl_driver_weakest": "Treiber: {strong_label} {strong_value}% | Schwaechste Stelle: {weak_label} {weak_value}%",
+        "score_expl_missing_details_reason": "Es fehlen Detailwerte fuer diese Datei.",
+        "score_expl_conf_reason_stable": "Die wichtigen Bildmerkmale wirken stabil gut.",
+        "score_expl_conf_reason_weak": "Mindestens ein wichtiges Bildmerkmal ist deutlich schwach.",
+        "score_expl_conf_reason_mixed": "Das Ergebnis ist brauchbar, aber nicht durchgaengig klar.",
+        "score_expl_conf_reason_manual_review": "Die Bildmerkmale sind gemischt und sollten manuell geprueft werden.",
+        "score_expl_missing_details_hint": "Details fehlen: Analyse erneut ausfuehren, um die Komponenten anzuzeigen.",
+
+        # Map (beta) UI labels
+        "map_menu_beta": "Karte (Beta)",
+        "map_tooltip_beta": "Fotokarte (Beta) - zeigt GPS-Standorte aller Bilder",
+        "map_beta_in_progress": "In Arbeit - unvollstaendig",
+        "map_status_beta": "Kartenansicht (Beta): In Arbeit, noch unvollstaendig",
         
         # Phase D: Progress & Finalization
         "progress_step_1_scanning": "Bilder scannen...",
@@ -1690,6 +1710,26 @@ Status: Offline usage active
         "metric_lighting": "Lighting",
         "metric_resolution": "Resolution",
         "metric_face_quality": "Face quality",
+
+        # Score explanation (component summary/tooltip)
+        "score_expl_no_quality_data": "No quality data available",
+        "score_expl_overall_score": "Overall score: {score}%",
+        "score_expl_strengths": "Good: {items}",
+        "score_expl_concerns": "Weaker: {items}",
+        "score_expl_driver_only": "Driver: {label} {value}%",
+        "score_expl_driver_weakest": "Driver: {strong_label} {strong_value}% | Weakest point: {weak_label} {weak_value}%",
+        "score_expl_missing_details_reason": "Detailed values are missing for this file.",
+        "score_expl_conf_reason_stable": "Key image characteristics look consistently strong.",
+        "score_expl_conf_reason_weak": "At least one important image characteristic is clearly weak.",
+        "score_expl_conf_reason_mixed": "The result is usable, but not consistently clear.",
+        "score_expl_conf_reason_manual_review": "Image characteristics are mixed and should be reviewed manually.",
+        "score_expl_missing_details_hint": "Details missing: run analysis again to show components.",
+
+        # Map (beta) UI labels
+        "map_menu_beta": "Map (Beta)",
+        "map_tooltip_beta": "Photo map (Beta) - shows GPS locations of all photos",
+        "map_beta_in_progress": "Work in progress - incomplete",
+        "map_status_beta": "Map view (Beta): Work in progress, still incomplete",
         
         # Phase D: Progress & Finalization
         "progress_step_1_scanning": "Scanning images...",

@@ -622,5 +622,21 @@
   "fresh_session_failed": "Nieuwe sessie kon niet worden gestart.",
   "pro_upgrade_button": "⭐ Upgrade naar Pro",
   "validation_free_limit_exceeded": "Gratis licentie: uw levenslange limiet is 250 afbeeldingen. Al gescand: {used}. In deze map: {count}. Te veel – kies een kleinere map of upgrade naar Pro.",
-  "validation_free_quota_remaining": "Gratis licentie: {remaining} van 250 resterende afbeeldingen."
+  "validation_free_quota_remaining": "Gratis licentie: {remaining} van 250 resterende afbeeldingen.",
+  "score_expl_no_quality_data": "Geen kwaliteitsgegevens beschikbaar",
+  "score_expl_overall_score": "Algemene score: {score}%",
+  "score_expl_strengths": "Goed: {items}",
+  "score_expl_concerns": "Zwakker: {items}",
+  "score_expl_driver_only": "Bestuurder: {label} {value}%",
+  "score_expl_driver_weakest": "Bestuurder: {strong_label} {strong_value}% | Zwakste punt: {weak_label} {weak_value}%",
+  "score_expl_missing_details_reason": "Gedetailleerde waarden ontbreken voor dit bestand.",
+  "score_expl_conf_reason_stable": "De belangrijkste beeldkenmerken zien er consistent sterk uit.",
+  "score_expl_conf_reason_weak": "Tenminste één belangrijk beeldkenmerk is duidelijk zwak.",
+  "score_expl_conf_reason_mixed": "Het resultaat is bruikbaar, maar niet altijd duidelijk.",
+  "score_expl_conf_reason_manual_review": "Beeldkenmerken zijn gemengd en moeten handmatig worden beoordeeld.",
+  "score_expl_missing_details_hint": "Details ontbreken: voer de analyse opnieuw uit om componenten weer te geven.",
+  "map_menu_beta": "Kaart (bèta)",
+  "map_tooltip_beta": "Fotokaart (bèta) - toont GPS-locaties van alle foto's",
+  "map_beta_in_progress": "Werk in uitvoering - onvolledig",
+  "map_status_beta": "Kaartweergave (bèta): werk in uitvoering, nog steeds niet voltooid"
 }

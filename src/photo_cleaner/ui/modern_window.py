@@ -5414,13 +5414,13 @@ class ModernMainWindow(QMainWindow):
         self.review_action.setToolTip(t("review_duplicates_tooltip"))
 
         # Karten-Ansicht
-        self.map_action = menubar.addAction("Karte (Beta)")
+        self.map_action = menubar.addAction(t("map_menu_beta"))
         self.map_action.triggered.connect(self._open_map)
         self.map_action.setToolTip(
-            "Fotokarte (Beta) — zeigt GPS-Standorte aller Bilder\n"
-            "In Arbeit · unvollständig"
+            f"{t('map_tooltip_beta')}\n"
+            f"{t('map_beta_in_progress')}"
         )
-        self.map_action.setStatusTip("Kartenansicht (Beta): In Arbeit, noch unvollständig")
+        self.map_action.setStatusTip(t("map_status_beta"))
 
         # Settings button
         self.settings_action = menubar.addAction(t("settings"))

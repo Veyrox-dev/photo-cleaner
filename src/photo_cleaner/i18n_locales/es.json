@@ -622,5 +622,21 @@
   "fresh_session_failed": "No se pudo iniciar una nueva sesión.",
   "pro_upgrade_button": "⭐ Actualiza a Pro",
   "validation_free_limit_exceeded": "Licencia gratuita: su límite de por vida es de 250 imágenes. Ya escaneado: {used}. En esta carpeta: {count}. Demasiados: elija una carpeta más pequeña o actualice a Pro.",
-  "validation_free_quota_remaining": "Licencia gratuita: {remaining} de 250 imágenes restantes."
+  "validation_free_quota_remaining": "Licencia gratuita: {remaining} de 250 imágenes restantes.",
+  "score_expl_no_quality_data": "No hay datos de calidad disponibles",
+  "score_expl_overall_score": "Puntuación general: {score}%",
+  "score_expl_strengths": "Bueno: {items}",
+  "score_expl_concerns": "Más débil: {items}",
+  "score_expl_driver_only": "Conductor: {label} {value}%",
+  "score_expl_driver_weakest": "Conductor: {strong_label} {strong_value}% | Punto más débil: {weak_label} {weak_value}%",
+  "score_expl_missing_details_reason": "Faltan valores detallados para este archivo.",
+  "score_expl_conf_reason_stable": "Las características clave de la imagen parecen consistentemente fuertes.",
+  "score_expl_conf_reason_weak": "Al menos una característica importante de la imagen es claramente débil.",
+  "score_expl_conf_reason_mixed": "El resultado es utilizable, pero no siempre claro.",
+  "score_expl_conf_reason_manual_review": "Las características de la imagen son mixtas y deben revisarse manualmente.",
+  "score_expl_missing_details_hint": "Faltan detalles: ejecute el análisis nuevamente para mostrar los componentes.",
+  "map_menu_beta": "Mapa (Beta)",
+  "map_tooltip_beta": "Mapa de fotos (Beta): muestra las ubicaciones GPS de todas las fotos",
+  "map_beta_in_progress": "Trabajo en progreso - incompleto",
+  "map_status_beta": "Vista de mapa (Beta): trabajo en progreso, aún incompleto"
 }

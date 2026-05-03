@@ -622,5 +622,21 @@
   "fresh_session_failed": "Impossibile avviare la nuova sessione.",
   "pro_upgrade_button": "⭐ Passa alla versione Pro",
   "validation_free_limit_exceeded": "Licenza gratuita: il limite a vita è di 250 immagini. Già scansionato: {used}. In questa cartella: {count}. Troppi: scegli una cartella più piccola o esegui l'upgrade a Pro.",
-  "validation_free_quota_remaining": "Licenza gratuita: {remaining} di 250 immagini rimanenti."
+  "validation_free_quota_remaining": "Licenza gratuita: {remaining} di 250 immagini rimanenti.",
+  "score_expl_no_quality_data": "Nessun dato sulla qualità disponibile",
+  "score_expl_overall_score": "Punteggio complessivo: {score}%",
+  "score_expl_strengths": "Buono: {items}",
+  "score_expl_concerns": "Più debole: {items}",
+  "score_expl_driver_only": "Conducente: {label} {value}%",
+  "score_expl_driver_weakest": "Conducente: {strong_label} {strong_value}% | Punto più debole: {weak_label} {weak_value}%",
+  "score_expl_missing_details_reason": "Mancano valori dettagliati per questo file.",
+  "score_expl_conf_reason_stable": "Le caratteristiche chiave dell'immagine sembrano costantemente forti.",
+  "score_expl_conf_reason_weak": "Almeno una caratteristica importante dell'immagine è chiaramente debole.",
+  "score_expl_conf_reason_mixed": "Il risultato è utilizzabile, ma non sempre chiaro.",
+  "score_expl_conf_reason_manual_review": "Le caratteristiche dell'immagine sono miste e devono essere riviste manualmente.",
+  "score_expl_missing_details_hint": "Dettagli mancanti: esegui nuovamente l'analisi per mostrare i componenti.",
+  "map_menu_beta": "Mappa (Beta)",
+  "map_tooltip_beta": "Mappa fotografica (Beta): mostra le posizioni GPS di tutte le foto",
+  "map_beta_in_progress": "Lavori in corso - incompleti",
+  "map_status_beta": "Visualizzazione mappa (Beta): lavori in corso, ancora incompleti"
 }

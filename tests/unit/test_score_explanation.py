@@ -1,4 +1,9 @@
+from photo_cleaner.i18n import set_language
 from photo_cleaner.ui.score_explanation import build_score_explanation
+
+
+def setup_function() -> None:
+    set_language("de")
 
 
 def test_build_score_explanation_marks_high_confidence() -> None:
