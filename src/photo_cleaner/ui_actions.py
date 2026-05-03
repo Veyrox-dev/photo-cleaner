@@ -444,12 +444,12 @@ class UIActions:
             except (sqlite3.DatabaseError, sqlite3.OperationalError) as rollback_err:
                 logger.error(f"Rollback failed: {rollback_err}")
             return err("RESET_FAILED", "Database operation failed during reset")
-        except Exception as e:
+        except (ValueError, TypeError, RuntimeError, sqlite3.Error) as e:
             # BUG #5 FIX: Proper error propagation with logging and rollback
             logger.error(f"Reset failed: {e}", exc_info=True)
             try:
                 self.files.conn.rollback()
-            except Exception as rollback_err:
+            except (sqlite3.DatabaseError, sqlite3.OperationalError, RuntimeError) as rollback_err:
                 logger.error(f"Rollback failed: {rollback_err}")
             # Propagate error to caller with detailed context
             return err("RESET_FAILED", f"Pipeline reset failed: {str(e)}")

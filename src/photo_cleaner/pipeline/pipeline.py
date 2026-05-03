@@ -14,6 +14,7 @@ Pipeline stages:
 
 import logging
 import os
+import sqlite3
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -190,7 +191,7 @@ class PhotoCleanerPipeline:
                 return
             try:
                 status_callback(message)
-            except Exception:
+            except (RuntimeError, TypeError, ValueError):
                 logger.debug("Status callback failed", exc_info=True)
 
         logger.info(f"Starting pipeline on {folder_path}")
@@ -380,7 +381,7 @@ class PhotoCleanerPipeline:
                             group_ids.add(file_b["file_id"])
                             processed.add(file_b["file_id"])
                             
-                    except Exception as e:
+                    except (TypeError, ValueError) as e:
                         logger.warning(f"Failed to compare hashes: {e}")
                         continue
                 
@@ -440,7 +441,7 @@ class PhotoCleanerPipeline:
                     self.stats.marked_keep += 1
                 except Exception as e:
                     logger.error(f"Failed to mark single image as keep: {e}")
-        except Exception as e:
+        except (sqlite3.DatabaseError, sqlite3.OperationalError, ValueError, TypeError) as e:
             logger.error(f"Failed to process single images: {e}")
     
     def _store_duplicate_group(self, group_id: str, paths: list[Path]) -> None:
@@ -509,7 +510,7 @@ class PhotoCleanerPipeline:
                         reason="Last remaining after cheap filter",
                         action_id="CHEAP_FILTER",
                     )
-                except Exception as e:
+                except (sqlite3.DatabaseError, sqlite3.OperationalError, PermissionError) as e:
                     logger.error(f"Failed to mark single image as keep: {e}")
         
         return filtered_groups
@@ -664,7 +665,7 @@ class PhotoCleanerPipeline:
                     logger.debug(f"Marked {best_image_path.name} as recommended")
                 if second_image_path:
                     logger.debug(f"Marked {second_image_path.name} as auto_secondary")
-            except Exception as e:
+            except (sqlite3.DatabaseError, sqlite3.OperationalError) as e:
                 logger.warning(f"Failed to mark recommendations for group {group_id}: {e}")
         
         # Apply to database
@@ -732,7 +733,7 @@ class PhotoCleanerPipeline:
                 top_n_flag=top_n_flag,
                 metadata=metadata,
             )
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, sqlite3.DatabaseError, sqlite3.OperationalError) as e:
             logger.warning(f"Failed to cache result: {e}")
     
     def _create_cached_result(self, file_path: Path, cache_entry):
@@ -770,7 +771,7 @@ class PhotoCleanerPipeline:
             result = CachedQualityResult(file_path, cache_entry.quality_score, metadata)
             logger.debug(f"Loaded {file_path.name} from cache (score={cache_entry.quality_score:.2f})")
             return result
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError) as e:
             logger.warning(f"Failed to create cached result for {file_path}: {e}")
             return None
 

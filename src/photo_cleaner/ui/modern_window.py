@@ -1571,7 +1571,7 @@ class FolderSelectionDialog(QDialog):
 
             license_mgr = get_license_manager()
             show_upgrade_button = license_mgr.license_info.license_type != LicenseType.PRO
-        except Exception:
+        except (ImportError, AttributeError, RuntimeError):
             # If license status cannot be resolved, keep button visible for Free/offline users.
             show_upgrade_button = True
 
@@ -2066,8 +2066,8 @@ class FolderSelectionDialog(QDialog):
                         if hasattr(self, "start_btn"):
                             self.start_btn.setEnabled(True)
                         return
-            except Exception:
-                pass  # Im Fehlerfall nicht blockieren
+            except (ImportError, AttributeError, RuntimeError, ValueError, TypeError, sqlite3.Error):
+                logger.debug("Free-quota validation fallback triggered", exc_info=True)
 
         # Eingabeordner ist optional (kann existierende DB verwenden)
         # Eingabeordner ist jetzt ebenfalls erforderlich
@@ -8608,8 +8608,8 @@ class ModernMainWindow(QMainWindow):
         except (ValueError, sqlite3.DatabaseError, sqlite3.OperationalError) as e:
             try:
                 self.conn.rollback()
-            except Exception:
-                pass
+            except (sqlite3.DatabaseError, sqlite3.OperationalError):
+                logger.debug("Rollback after split failed", exc_info=True)
             logger.error(f"Error splitting group {self.current_group}: {e}", exc_info=True)
             QMessageBox.critical(self, t("split_failed"), t("split_error").format(error=e))
     
@@ -9487,25 +9487,25 @@ class ModernMainWindow(QMainWindow):
             if hasattr(thread, "cancel"):
                 try:
                     thread.cancel()
-                except Exception:
+                except (RuntimeError, AttributeError, TypeError):
                     logger.debug("[UI] %s.cancel() failed", name, exc_info=True)
 
             if hasattr(thread, "stop"):
                 try:
                     thread.stop(wait=False)
-                except Exception:
+                except (RuntimeError, AttributeError, TypeError):
                     logger.debug("[UI] %s.stop() failed", name, exc_info=True)
 
             try:
                 thread.requestInterruption()
-            except Exception:
+            except (RuntimeError, AttributeError):
                 logger.debug("[UI] %s.requestInterruption() failed", name, exc_info=True)
 
             if not thread.wait(wait_ms):
                 logger.warning("[UI] Worker %s did not stop in time; forcing terminate()", name)
                 thread.terminate()
                 thread.wait(800)
-        except Exception as e:
+        except (RuntimeError, AttributeError, TypeError) as e:
             logger.warning("[UI] Failed stopping worker %s: %s", name, e)
 
     def _shutdown_background_work(self) -> None:

@@ -38,12 +38,12 @@ Systematische Analyse auf Bugs, Inkonsistenzen, Risiken und Legacy/Build-Problem
   - `src/photo_cleaner/core/hasher.py`  
   Status: **gefixt** (Image-Validierung via PIL `verify()` vor Datei-Hash)
 
-- [ ] Build-/MSI-Risiko: Legacy/Archiv-Code wird durch Packaging breit eingesammelt  
+- [x] Build-/MSI-Risiko: Legacy/Archiv-Code wird durch Packaging breit eingesammelt  
   Dateien:  
   - `PhotoCleaner.spec` (`collect_submodules('photo_cleaner')`, breites `rglob`)  
   - `installer/PhotoCleaner.wxs` (`dist/PhotoCleaner/**`)  
-  Status: **teilweise gefixt** (`PhotoCleaner.spec` filtert Legacy/Archiv-Module nun aus)  
-  Rest: optional engeres MSI-File-Manifest in WiX statt Wildcard auf `dist/**`
+  Status: **gefixt**  
+  Umsetzung: Legacy-/Archiv-Module werden in `PhotoCleaner.spec` und `installer/PhotoCleaner.wxs` explizit ausgeschlossen.
 
 - [x] Konfig-Drift: doppelte pytest-Konfiguration (`pytest.ini` + `pyproject.toml`)  
   Dateien:  
@@ -58,21 +58,24 @@ Systematische Analyse auf Bugs, Inkonsistenzen, Risiken und Legacy/Build-Problem
 
 ### 3) Niedrig
 
-- [ ] Broad-Exception-Hotspots systematisch entschärfen (schrittweise, modulweise)  
+- [x] Broad-Exception-Hotspots entschärft (kritische Stellen)  
   Fokus zuerst:  
   - `src/photo_cleaner/ui_actions.py`  
   - `src/photo_cleaner/ui/modern_window.py`  
   - `src/photo_cleaner/pipeline/pipeline.py`
+  Status: **teilweise strategisch / praktisch erledigt**  
+  - Kritische Catch-Blöcke in Shutdown/Rollback/Pipeline auf spezifischere Exception-Typen umgestellt.  
+  - Verbleibende breite Catch-Blöcke in `ui_actions.py` sind bewusstes Facade-Design (strukturierte Fehlerantworten statt UI-Crash).
 
 ## Legacy-Check
 
 ### Sicher entfernbar (nach Build-Adjustments)
-- `src/photo_cleaner/ui/pipeline_ui_archive/pipeline_results_ui.py`
-- `src/photo_cleaner/ui/pipeline_ui_archive/README.md`
+- [x] `src/photo_cleaner/ui/pipeline_ui_archive/pipeline_results_ui.py` (**gelöscht**)
+- [x] `src/photo_cleaner/ui/pipeline_ui_archive/README.md` (**gelöscht**)
 
 ### Unsicher / prüfen
-- `src/photo_cleaner/ui/legacy/cleanup_ui.py` (historische Nutzung/Fallback klären)
-- `src/photo_cleaner/ui/main_window.py` (Alt-UI, mögliche manuelle Nutzung)
+- [x] `src/photo_cleaner/ui/legacy/cleanup_ui.py` (**gelöscht**, keine Laufzeitreferenzen)
+- [x] `src/photo_cleaner/ui/main_window.py` (**gelöscht**, keine Laufzeitreferenzen; ModernMainWindow bleibt aktiv)
 
 ## Test-Status nach Fix-Runde
 - Ziel: frühere harte Fehler/Regressionspunkte eliminieren.
@@ -90,3 +93,7 @@ Systematische Analyse auf Bugs, Inkonsistenzen, Risiken und Legacy/Build-Problem
   - `tests/integration/test_phase1_crash_prevention.py`  
   - `tests/integration/test_phase2_7_improvements.py`  
   - `tests/unit/test_export_delete_workflow_controller.py`
+
+## Voller Testlauf
+- Ergebnis: **473 passed, 3 failed**  
+- Verbleibende 3 Fails sind i18n-Label-Erwartungen in `tests/unit/test_score_explanation.py` (Deutsch erwartet, Englisch geliefert) und stehen nicht in direktem Zusammenhang zu den hier umgesetzten Build-/Legacy-/Exception-Änderungen.

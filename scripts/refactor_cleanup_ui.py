@@ -270,6 +270,5 @@ def refactor_cleanup_ui(file_path: str):
 if __name__ == "__main__":
     for file_path in [
         "src/photo_cleaner/ui/cleanup_ui.py",
-        "src/photo_cleaner/ui/legacy/cleanup_ui.py",
     ]:
         refactor_cleanup_ui(file_path)

@@ -29,7 +29,9 @@
 
   <Fragment>
     <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
-      <Files Include="..\dist\PhotoCleaner\**" />
+      <Files
+        Include="..\dist\PhotoCleaner\**"
+        Exclude="..\dist\PhotoCleaner\_internal\photo_cleaner\ui\legacy\**;..\dist\PhotoCleaner\_internal\photo_cleaner\ui\pipeline_ui_archive\**" />
     </ComponentGroup>
   </Fragment>
 
